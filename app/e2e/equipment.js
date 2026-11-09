@@ -49,6 +49,10 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await page.waitForTimeout(300);
   assert((await page.locator('body').innerText()).includes('بعد 0'), 'حذف صورة');
 
+  // قسم التشغيل في الأقسام
+  await id('tab-visits').click();
+  assert(await id('dept-f').count(), 'قسم التشغيل موجود');
+
   // الشعار يرجع لمهام اليوم
   await id('tab-reports').click();
   await id('brand-home').click();

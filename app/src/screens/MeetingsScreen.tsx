@@ -3,9 +3,9 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import { addMeeting, attendanceFor, saveAttendanceBatch } from '../domain/records';
 import { activeTechnicians, currentSlot, shiftLabel, shiftName, slotAt, techTag } from '../domain/shifts';
-import { yearMeetings } from '../domain/stats';
+import { meetingRemaining, yearMeetings } from '../domain/stats';
 import { useApply, useStore } from '../store';
-import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
+import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, KIND, Progress, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 import { DepartmentPicker } from './DepartmentPicker';
@@ -162,6 +162,8 @@ export function MeetingsScreen() {
         </View>
       </Card>
 
+      <MeetingFollowUp />
+
       <DepartmentPicker value={ui.departmentId} onChange={ui.setDepartmentId} icon="users" />
 
       {department ? (
@@ -292,5 +294,62 @@ export function MeetingsScreen() {
         </>
       ) : null}
     </View>
+  );
+}
+
+/** متابعة اجتماع: اختر اجتماعًا (وقسمًا) ويطلع كم موظف باقي ما حضره، ومن هم. */
+function MeetingFollowUp() {
+  const { ws, now } = useStore();
+  const ui = useUi();
+  const meetings = yearMeetings(ws, Number(now.date.slice(0, 4)));
+  const [meetingId, setMeetingId] = useState<string>(() => meetings[meetings.length - 1]?.id ?? '');
+  const [departmentId, setDepartmentId] = useState<string>('all');
+  const [limit, setLimit] = useState(10);
+  const meeting = meetings.find((item) => item.id === meetingId) ?? meetings[meetings.length - 1];
+  if (!meeting) return null;
+  const result = meetingRemaining(ws, meeting.id, departmentId);
+  const deptName = (id: string) => ws.departments.find((d) => d.id === id)?.name ?? '—';
+
+  return (
+    <Card>
+      <T style={{ fontWeight: '800', fontSize: 16 }}>من باقي عليه الاجتماع؟</T>
+      <Sub style={{ marginBottom: 8 }}>اختر الاجتماع والقسم.</Sub>
+      <Segmented wrap options={meetings.map((item) => ({ value: item.id, label: item.title }))} value={meeting.id} onChange={(id) => (setMeetingId(id), setLimit(10))} />
+      <View style={{ height: 8 }} />
+      <Segmented
+        wrap
+        options={[{ value: 'all', label: 'كل الأقسام' }, ...ws.departments.map((d) => ({ value: d.id, label: d.name }))]}
+        value={departmentId}
+        onChange={(id) => (setDepartmentId(id), setLimit(10))}
+      />
+      <View testID="meeting-remaining" style={{ backgroundColor: result.remaining.length ? KIND.meeting.bg : C.greenBg, borderRadius: 14, padding: 12, marginTop: 12 }}>
+        <Spread>
+          <View>
+            <T style={{ fontSize: 30, fontWeight: '700', lineHeight: 40, color: result.remaining.length ? KIND.meeting.fg : C.green }}>{result.remaining.length}</T>
+            <T style={{ fontSize: 13 }}>{result.remaining.length ? 'باقي ما حضروا' : 'الكل حضر 🎉'}</T>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <T style={{ fontWeight: '700' }}>{ratio(result.attended, result.total)}</T>
+            <Sub>حضروا</Sub>
+          </View>
+        </Spread>
+        <Progress value={result.attended} max={Math.max(result.total, 1)} color={C.green} track="#ffffffaa" />
+      </View>
+      {result.remaining.slice(0, limit).map((tech, index) => (
+        <Pressable
+          key={tech.id}
+          accessibilityRole="button"
+          onPress={() => ui.openPerson(tech.id)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderTopWidth: index ? 1 : 0, borderTopColor: C.line, marginTop: index ? 0 : 6 }}
+        >
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '600' }}>{tech.name}</T>
+            <Sub>{deptName(tech.departmentId) + ' · ' + shiftName(ws, tech)}</Sub>
+          </View>
+          <Icon name="chevron-left" size={16} color={C.muted} />
+        </Pressable>
+      ))}
+      {result.remaining.length > limit ? <Button small variant="ghost" label={'عرض الباقين · ' + (result.remaining.length - limit)} onPress={() => setLimit(limit + 20)} /> : null}
+    </Card>
   );
 }

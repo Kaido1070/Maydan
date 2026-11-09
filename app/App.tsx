@@ -19,6 +19,8 @@ import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
 import { useAppFonts } from './src/ui/fonts';
 import { Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
+import { dailyTasks } from './src/domain/daily';
+import { weekProgress, xpSummary } from './src/domain/stats';
 
 /** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
 export const SEEN_VERSION_KEY = 'maydan-seen-version';
@@ -43,7 +45,7 @@ const TITLES: Record<Tab, string> = {
 
 function Shell() {
   const insets = useSafeAreaInsets();
-  const { mode, ready } = useStore();
+  const { mode, ready, ws, now } = useStore();
   const [tab, setTab] = useState<Tab>('day');
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [rosterDate, setRosterDate] = useState<string | null>(null);
@@ -83,6 +85,12 @@ function Shell() {
         setToast(message);
         toastTimer.current = setTimeout(() => setToast(null), 3000);
       },
+      celebrateMilestone: (message) => {
+        // يُضاف تحت رسالة الحفظ الحالية بدل ما يمسحها.
+        clearTimeout(toastTimer.current);
+        setToast((current) => (current ? current + '\n' + message : message));
+        toastTimer.current = setTimeout(() => setToast(null), 4000);
+      },
       openVisit: setVisit,
       openTechnician: (id, date) => setTechnician({ id, date }),
       openSlot: setSlot,
@@ -96,6 +104,24 @@ function Shell() {
     }),
     [tab, departmentId, rosterDate, focusMeetingId],
   );
+
+  // احتفالات الإنجاز: مستوى جديد، هدف الأسبوع، وكل مهام اليوم.
+  const level = xpSummary(ws).level;
+  const week = weekProgress(ws, now.date);
+  const daily = useMemo(() => dailyTasks(ws, now), [ws, now]);
+  const allDone = daily.length > 0 && daily.every((task) => task.done);
+  const milestones = useRef<{ level: number; week: boolean; allDone: boolean } | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    const prev = milestones.current;
+    const weekDone = week.visits >= week.goal;
+    milestones.current = { level, week: weekDone, allDone };
+    if (!prev) return;
+    if (level > prev.level) ui.celebrateMilestone('⭐ وصلت المستوى ' + level + '! استمر');
+    else if (allDone && !prev.allDone) ui.celebrateMilestone('🏆 خلّصت كل مهام اليوم! يوم ممتاز');
+    else if (weekDone && !prev.week) ui.celebrateMilestone('🏅 حققت هدف الأسبوع: ' + week.goal + ' زيارات');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, level, allDone, week.visits, week.goal]);
 
   const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, equipment: EquipmentScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
 
@@ -163,9 +189,16 @@ function Shell() {
         </View>
 
         {toast ? (
+          celebrate(toast) ? (
+            <View pointerEvents="none" style={[styles.celebrate, { bottom: Math.max(insets.bottom, 8) + 80 }]} accessibilityLiveRegion="polite" testID="celebration">
+              <Text style={{ fontSize: 34, lineHeight: 42 }}>{celebrationEmoji(toast)}</Text>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>{toast.replace(/^[🎉⭐🏅🏆]\s*/u, '')}</Text>
+            </View>
+          ) : (
           <View pointerEvents="none" style={[styles.toast, { bottom: Math.max(insets.bottom, 8) + 74 }]} accessibilityLiveRegion="polite">
             <Text style={{ color: '#fff', fontSize: 13 }}>{toast}</Text>
           </View>
+          )
         ) : null}
 
         <VisitSheet
@@ -205,6 +238,10 @@ function Shell() {
   );
 }
 
+/** رسائل الإنجاز تطلع كاحتفال كبير. */
+const celebrate = (message: string) => /XP|^[🎉⭐🏅🏆]/u.test(message);
+const celebrationEmoji = (message: string) => message.match(/^[🎉⭐🏅🏆]/u)?.[0] ?? '🎉';
+
 export default function App() {
   const fontsReady = useAppFonts();
   if (!fontsReady) return <View style={{ flex: 1, backgroundColor: C.night }} />;
@@ -234,5 +271,6 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
   tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontSize: 12, color: '#5f5975' },
+  celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: '#4a2f9a', borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
 });

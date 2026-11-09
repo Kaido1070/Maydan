@@ -9,6 +9,8 @@ export type Ui = {
   go: (tab: Tab, options?: { departmentId?: string; date?: string; meetingId?: string }) => void;
   focusMeetingId: string | null;
   notify: (message: string) => void;
+  /** رسالة إنجاز تنضاف للرسالة الحالية (مستوى جديد، هدف الأسبوع...). */
+  celebrateMilestone: (message: string) => void;
   openVisit: (target: NonNullable<VisitTarget>) => void;
   openTechnician: (id: string, date?: string) => void;
   openSlot: (target: NonNullable<SlotTarget>) => void;

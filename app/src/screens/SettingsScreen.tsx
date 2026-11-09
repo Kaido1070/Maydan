@@ -3,6 +3,8 @@ import { TextInput, View } from 'react-native';
 import { formatDate } from '../domain/dates';
 import { deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName, techTag } from '../domain/shifts';
+import { weeklyGoal } from '../domain/stats';
+import { addDepartment } from '../domain/plan';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
@@ -26,6 +28,7 @@ export function SettingsScreen() {
   const [techSheet, setTechSheet] = useState<string | null>(null);
   const [techDept, setTechDept] = useState<string | null>(ws.departments[0]?.id ?? null);
   const [importText, setImportText] = useState('');
+  const [newDept, setNewDept] = useState('');
   const [excel, setExcel] = useState<{ file: string; preview: ImportPreview } | null>(null);
 
   const importExcel = async () => {
@@ -104,6 +107,7 @@ export function SettingsScreen() {
       <Card>
         <Field label="اسم المهندس (يظهر في بطاقة الإنجاز والتقارير)" value={ws.settings.engineerName} onChangeText={(v) => setSetting('engineerName', v)} />
         <NumberRow label="هدف الزيارات اليومي" value={ws.settings.dailyVisitGoal} min={1} onChange={(v) => setSetting('dailyVisitGoal', v)} />
+        <NumberRow label="هدف الزيارات الأسبوعي" value={weeklyGoal(ws)} min={1} onChange={(v) => setSetting('weeklyVisitGoal', v)} />
         <NumberRow label="هدف زيارات كل فني" value={ws.settings.visitTarget} min={1} onChange={(v) => setSetting('visitTarget', v)} />
         <NumberRow label="نافذة الزيارات (أشهر)" value={ws.settings.visitWindowMonths} min={1} onChange={(v) => setSetting('visitWindowMonths', v)} />
         <IconLine icon="zap" text={'كل زيارة +' + ws.settings.xpVisit + ' XP وكل تسجيل حضور اجتماع +' + ws.settings.xpMeeting + ' XP، وكل 100 XP مستوى جديد.'} />
@@ -122,6 +126,32 @@ export function SettingsScreen() {
           </Spread>
         </Card>
       ))}
+
+      <Card>
+        <T style={{ fontWeight: '700', marginBottom: 6 }}>إضافة قسم</T>
+        <Row>
+          <TextInput
+            testID="new-dept-name"
+            value={newDept}
+            onChangeText={setNewDept}
+            placeholder="اسم القسم"
+            placeholderTextColor="#a29db3"
+            style={[s.input, { flex: 1, minWidth: 0 }]}
+          />
+          <Button
+            testID="add-dept"
+            icon="plus"
+            label="إضافة"
+            disabled={!newDept.trim()}
+            onPress={() => {
+              const error = apply((c) => addDepartment(c, newDept));
+              if (error) return ui.notify(error);
+              setNewDept('');
+              ui.notify('تمت إضافة القسم. عدّل شفتاته وأوقاته من «تعديل»');
+            }}
+          />
+        </Row>
+      </Card>
 
       <SectionTitle
         title="الفنيون"

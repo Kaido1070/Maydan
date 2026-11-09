@@ -102,6 +102,8 @@ export type EquipmentRecord = {
 export type Settings = {
   engineerName: string;
   dailyVisitGoal: number;
+  /** هدف الزيارات الأسبوعي (الأحد إلى السبت). الافتراضي 5 أضعاف الهدف اليومي. */
+  weeklyVisitGoal?: number;
   visitTarget: number;
   visitWindowMonths: number;
   xpVisit: number;

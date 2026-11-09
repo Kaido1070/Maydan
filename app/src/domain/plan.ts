@@ -81,3 +81,24 @@ export function addPlanItem(ws: Workspace, item: Omit<PlanItem, 'id'>): Workspac
 }
 
 export const removePlanItem = (ws: Workspace, id: string): Workspace => ({ ...ws, plan: ws.plan.filter((item) => item.id !== id) });
+
+/** إضافة قسم جديد بشفت واحد ودوام أسبوعي افتراضي (يتعدل من إعداد القسم). */
+export function addDepartment(ws: Workspace, name: string): Workspace {
+  const clean = name.trim().replace(/\s+/g, ' ');
+  if (!clean) throw new Error('اكتب اسم القسم');
+  if (ws.departments.some((item) => item.name === clean)) throw new Error('القسم موجود بالفعل');
+  const id = newId('d');
+  return {
+    ...ws,
+    departments: [
+      ...ws.departments,
+      {
+        id,
+        name: clean,
+        shifts: [{ id: id + '-A', name: clean }],
+        periods: [{ id: 'admin', name: 'دوام', start: '07:00', end: '15:00' }],
+        rotation: { kind: 'weekly', workDays: [0, 1, 2, 3, 4] },
+      },
+    ],
+  };
+}

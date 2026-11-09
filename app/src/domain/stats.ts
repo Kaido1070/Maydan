@@ -1,4 +1,4 @@
-import { addDays, monthsBefore } from './dates';
+import { addDays, monthsBefore, weekdayOf } from './dates';
 import { activeTechnicians, crewForShift, shiftName } from './shifts';
 import type { Department, Meeting, Shift, Technician, Visit, Workspace } from './types';
 
@@ -165,4 +165,21 @@ export function visitStreak(ws: Workspace, today: string): { days: number; today
   let days = 0;
   for (let date = todayDone ? today : addDays(today, -1); met(date); date = addDays(date, -1)) days++;
   return { days, todayDone };
+}
+
+export const weeklyGoal = (ws: Workspace) => ws.settings.weeklyVisitGoal ?? ws.settings.dailyVisitGoal * 5;
+
+/** تقدم الأسبوع: الزيارات من يوم الأحد لين اليوم (بدون بيانات التجربة الأولية). */
+export function weekProgress(ws: Workspace, today: string): { visits: number; goal: number; start: string } {
+  const start = addDays(today, -weekdayOf(today));
+  const visits = ws.visits.filter((visit) => !visit.seed && visit.date >= start && visit.date <= today).length;
+  return { visits, goal: weeklyGoal(ws), start };
+}
+
+/** الموظفون (النشطون) اللي ما حضروا اجتماعًا معيّنًا، مع فلتر القسم. */
+export function meetingRemaining(ws: Workspace, meetingId: string, departmentId: string | 'all' = 'all'): { remaining: Technician[]; attended: number; total: number } {
+  const attendedIds = new Set(ws.attendance.filter((item) => item.meetingId === meetingId).flatMap((item) => item.technicianIds));
+  const people = activeTechnicians(ws).filter((tech) => departmentId === 'all' || tech.departmentId === departmentId);
+  const remaining = people.filter((tech) => !attendedIds.has(tech.id)).sort((a, b) => a.departmentId.localeCompare(b.departmentId) || a.name.localeCompare(b.name, 'ar'));
+  return { remaining, attended: people.length - remaining.length, total: people.length };
 }

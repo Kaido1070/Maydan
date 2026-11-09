@@ -55,6 +55,7 @@ const OUT = process.env.SHOTS || null;
     await shot('visit-sheet');
     await id('visit-save').click();
     await page.waitForTimeout(150);
+    assert(await id('celebration').isVisible(), 'احتفال بعد تسجيل الزيارة');
   }
   let body = await page.locator('body').innerText();
   assert(body.includes('موقع الاختبار الأول') && body.includes('موقع الاختبار الثاني'), 'الزيارتان تظهران في السجل');
@@ -82,6 +83,10 @@ const OUT = process.env.SHOTS || null;
   body = await page.locator('body').innerText();
   assert(body.includes('تم حفظ حضور 2 اجتماع'), 'حفظ دفعة واحدة لاجتماعين');
   assert(body.includes('مراجعة خطة الطوارئ\n2 حاضر') || /مراجعة خطة الطوارئ[\s\S]{0,40}2 حاضر/.test(body), 'سجل الحضور يظهر');
+
+  // متابعة اجتماع: كم باقي ما حضره
+  const remainingText = await id('meeting-remaining').innerText();
+  assert(/\d+/.test(remainingText) && remainingText.includes('حضروا'), 'عدد الباقين على الاجتماع ظاهر');
 
   // حضور اجتماع بتاريخ أمس ووقت محدد
   await page.getByRole('button', { name: 'السابق' }).first().click();
@@ -131,10 +136,12 @@ const OUT = process.env.SHOTS || null;
   assert((await page.locator('body').innerText()).includes('موقع الاختبار الأول'), 'البيانات محفوظة بعد إعادة التشغيل');
 
   // بطاقة اليوم: التقدم والسلسلة والمهمة التالية
+
   await id('tab-day').click();
   assert(/\d+ \/ \d+/.test(await id('hero-progress').innerText()), 'تقدم مهام اليوم ظاهر');
   assert((await id('hero-streak').innerText()).includes('🔥'), 'سلسلة الإنجاز ظاهرة');
   assert(await id('next-task').isVisible(), 'المهمة التالية ظاهرة');
+  assert((await id('hero-week').innerText()).includes('هدف الأسبوع') || (await id('hero-week').innerText()).includes('🏅'), 'هدف الأسبوع ظاهر');
 
   // مهام اليوم: تذكير زيارة → تفاصيل الفني → تسجيل زيارة له → تصير منجزة
   await id('tab-day').click();

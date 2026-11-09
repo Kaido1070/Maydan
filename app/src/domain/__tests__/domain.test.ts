@@ -253,7 +253,7 @@ describe('التقارير', () => {
 describe('وضع التجربة', () => {
   test('بيانات التجربة متسقة: خطة اليوم والفنيون والزيارات', () => {
     const ws = demoWorkspace(TODAY);
-    expect(ws.technicians).toHaveLength(51);
+    expect(ws.technicians).toHaveLength(56); // مع قسم التشغيل
     expect(tasksOn(ws, TODAY)).toHaveLength(4);
     expect(technicianVisits(ws, 'a1', TODAY)).toHaveLength(2);
     // a1 و a4 زيارتهما في نفس اليوم في نفس القسم → سجل واحد

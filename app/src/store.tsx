@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { riyadhNow } from './domain/dates';
-import { demoWorkspace, emptyWorkspace } from './domain/seed';
+import { defaultDepartments, demoWorkspace, emptyWorkspace } from './domain/seed';
 import type { AppState, Mode, Now, Workspace } from './domain/types';
 
 const STORAGE_KEY = 'maydan-app-state-v1';
@@ -30,7 +30,12 @@ export function migrate(state: AppState): AppState {
   const live = construction(state.live) && construction(state.live)!.entryKind === undefined
     ? { ...state.live, departments: state.live.departments.map((d) => (d === construction(state.live) ? { ...d, entryKind: 'project' as const } : d)) }
     : state.live;
-  return { ...state, demo: demoOld ? demoWorkspace(riyadhNow().date) : state.demo, live };
+  // 1.4.0: قسم التشغيل. بيانات العمل ينضاف لها القسم، وبيانات التجربة تتجدد.
+  const operations = defaultDepartments(riyadhNow().date).find((d) => d.id === 'f')!;
+  const hasOps = (ws: Workspace) => ws.departments.some((d) => d.name === 'التشغيل');
+  const liveOps = hasOps(live) ? live : { ...live, departments: [...live.departments, { ...operations, id: live.departments.some((d) => d.id === 'f') ? 'ops' : 'f', shifts: [{ id: 'ops-A', name: 'التشغيل' }] }] };
+  const demo = demoOld || !hasOps(state.demo) ? demoWorkspace(riyadhNow().date) : state.demo;
+  return { ...state, demo, live: liveOps };
 }
 
 function initialState(today: string): AppState {

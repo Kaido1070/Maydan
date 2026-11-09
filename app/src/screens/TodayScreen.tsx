@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { DailyTask, dailyTasks, taskReason } from '../domain/daily';
 import { formatDate } from '../domain/dates';
 import { currentSlot, periodRange, shiftLabel } from '../domain/shifts';
-import { dayProgress, visitStreak, xpSummary } from '../domain/stats';
+import { dayProgress, visitStreak, weekProgress, xpSummary } from '../domain/stats';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Icon, IconBox, KIND, Progress, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
@@ -21,6 +21,7 @@ export function TodayScreen() {
   const xp = xpSummary(ws);
   const today = dayProgress(ws, now.date);
   const streak = visitStreak(ws, now.date);
+  const week = weekProgress(ws, now.date);
   const all = dailyTasks(ws, now);
   const open = all.filter((task) => !task.done);
   const doneAll = all.filter((task) => task.done);
@@ -71,6 +72,13 @@ export function TodayScreen() {
           <HeroPill emoji="📍" value={'\u2066' + today.visits + '/' + today.goal + '\u2069'} label="زيارات اليوم" />
           <HeroPill emoji="⭐" value={'مستوى ' + xp.level} label={'\u2066' + xp.levelXp + '/100 XP\u2069'} />
         </Row>
+        <View testID="hero-week" style={{ marginTop: 12 }}>
+          <Spread>
+            <T style={{ color: '#fff', fontSize: 13 }}>{week.visits >= week.goal ? '🏅 حققت هدف الأسبوع' : 'هدف الأسبوع'}</T>
+            <T style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{'\u2066' + week.visits + ' / ' + week.goal + '\u2069 زيارة'}</T>
+          </Spread>
+          <Progress value={week.visits} max={week.goal} color="#ffd27a" track="#ffffff2e" height={8} />
+        </View>
       </View>
 
       {next ? (
