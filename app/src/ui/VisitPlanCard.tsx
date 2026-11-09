@@ -39,13 +39,13 @@ function CrewRow({ visit, index, showPeriod, onAct }: { visit: PlannedVisit; ind
           </>
         ) : null}
         {visit.meeting ? (
-          <View style={{ backgroundColor: KIND.meeting.bg, borderRadius: 10, padding: 8, marginTop: 4, gap: 4 }}>
-            <Row gap={6}>
-              <Icon name="users" size={14} color={KIND.meeting.fg} />
-              <T style={{ flex: 1, fontSize: 14, color: KIND.meeting.fg, fontWeight: '600' }}>{'اجتماع مقترح: ' + visit.meeting.meeting.title}</T>
-            </Row>
-            <Sub numberOfLines={2}>{'ما حضروه: ' + visit.meeting.people.map((tech) => tech.name).join('، ')}</Sub>
-            <Button testID="plan-meeting" small variant="secondary" icon="check-square" label={'سجّل حضورهم · ' + visit.meeting.people.length} onPress={startMeeting} style={{ alignSelf: 'flex-start' }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: KIND.meeting.bg, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 8, marginTop: 4 }}>
+            <Icon name="users" size={14} color={KIND.meeting.fg} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <T numberOfLines={1} style={{ fontSize: 14, color: KIND.meeting.fg, fontWeight: '600' }}>{visit.meeting.meeting.title}</T>
+              <Sub style={{ fontSize: 11 }}>{'اجتماع مقترح · ' + visit.meeting.people.length + ' ما حضروه'}</Sub>
+            </View>
+            <Button testID="plan-meeting" small variant="secondary" label="الحضور" onPress={startMeeting} />
           </View>
         ) : null}
       </View>
@@ -88,7 +88,7 @@ export function VisitPlanCard() {
       <Spread>
         <View style={{ flex: 1 }}>
           <T style={{ fontWeight: '700', fontSize: 16 }}>{first && first.date !== now.date ? 'خطة ' + formatDate(first.date, { weekday: true }) : 'خطة اليوم'}</T>
-          <Sub>زيارات واجتماعات حسب من يداوم وقت دوامك وما خلّص</Sub>
+          <Sub>مقترحة حسب من يداوم وقت دوامك</Sub>
         </View>
         {plan.length ? <Button testID="open-week-plan" small variant="secondary" label="الأسبوع" icon="calendar" onPress={() => setWeek(true)} /> : null}
       </Spread>

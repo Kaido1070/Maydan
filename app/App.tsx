@@ -18,7 +18,7 @@ import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { StoreProvider, useStore } from './src/store';
 import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
 import { useAppFonts } from './src/ui/fonts';
-import { Tab, Ui, UiContext } from './src/ui/ui';
+import { SettingsSection, Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
 import { dailyTasks } from './src/domain/daily';
 import { weekProgress, xpSummary } from './src/domain/stats';
@@ -53,6 +53,7 @@ function Shell() {
   const { mode, ready, ws, now } = useStore();
   const [tab, setTab] = useState<Tab>('day');
   const [departmentId, setDepartmentId] = useState<string | null>(null);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>(null);
   const [rosterDate, setRosterDate] = useState<string | null>(null);
   const [focusMeetingId, setFocusMeetingId] = useState<string | null>(null);
   const [visit, setVisit] = useState<VisitTarget>(null);
@@ -83,6 +84,7 @@ function Shell() {
         if (options?.departmentId) setDepartmentId(options.departmentId);
         if (options?.date) setRosterDate(options.date);
         setFocusMeetingId(options?.meetingId ?? null);
+        setSettingsSection(next === 'settings' ? options?.section ?? null : null);
         setTab(next);
         scroll.current?.scrollTo({ y: 0, animated: false });
       },
@@ -106,12 +108,13 @@ function Shell() {
       openPerson: setPerson,
       openOvertime: (id) => setOvertime({ id }),
       focusMeetingId,
+      settingsSection,
       departmentId,
       setDepartmentId,
       rosterDate,
       setRosterDate,
     }),
-    [tab, departmentId, rosterDate, focusMeetingId],
+    [tab, departmentId, rosterDate, focusMeetingId, settingsSection],
   );
 
   // احتفالات الإنجاز: مستوى جديد، هدف الأسبوع، وكل مهام اليوم.

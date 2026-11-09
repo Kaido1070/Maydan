@@ -6,7 +6,6 @@ import { activeTechnicians, currentSlot, shiftLabel, shiftName, slotAt, techTag 
 import { meetingRemaining, yearMeetings } from '../domain/stats';
 import { useApply, useStore } from '../store';
 import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, KIND, Progress, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
-import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 import { TalkCard } from '../ui/TalkCard';
 import { DepartmentPicker } from './DepartmentPicker';
@@ -24,22 +23,25 @@ export function MeetingsScreen() {
   const [scope, setScope] = useState<'shift' | 'all'>('shift');
   const [draft, setDraft] = useState<Record<string, string[]>>({});
 
-  const department = ws.departments.find((item) => item.id === ui.departmentId);
+  const [view, setView] = useState<'attend' | 'remaining' | 'topics'>('attend');
+  // بدون اختيار: نفتح على أول قسم بدل صفحة فاضية.
+  const departmentId = ui.departmentId ?? ws.departments[0]?.id ?? null;
+  const department = ws.departments.find((item) => item.id === departmentId);
   // تاريخ ووقت الاجتماع: الافتراضي الآن، ويقبل أي تاريخ لين اليوم.
   const [date, setDate] = useState(now.date);
   const [time, setTime] = useState(now.time);
   const validTime = isTime(time);
   const slot = department ? (date === now.date && (!validTime || time === now.time) ? currentSlot(ws, department, now) : slotAt(ws, department, date, validTime ? time : now.time)) : null;
 
-  useEffect(() => setDraft({}), [ui.departmentId, date]);
+  useEffect(() => setDraft({}), [departmentId, date]);
   // لما يتغير التاريخ أو القسم: نعرض وقت الاجتماع المحفوظ إن وجد.
   useEffect(() => {
-    if (!ui.departmentId) return;
-    const saved = ws.attendance.find((item) => item.departmentId === ui.departmentId && item.date === date && selected.includes(item.meetingId) && item.time);
+    if (!departmentId) return;
+    const saved = ws.attendance.find((item) => item.departmentId === departmentId && item.date === date && selected.includes(item.meetingId) && item.time);
     if (saved?.time) setTime(saved.time);
     else if (date === now.date) setTime(now.time);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui.departmentId, date]);
+  }, [departmentId, date]);
 
   const chosen = meetings.filter((meeting) => selected.includes(meeting.id));
   const crew = useMemo(() => {
@@ -103,34 +105,35 @@ export function MeetingsScreen() {
 
   return (
     <View>
-      <SectionTitle title="الاجتماعات" sub="حدد اجتماعًا أو أكثر واختر القسم، ثم علّم على حضور كل فني واحفظ دفعة واحدة." />
-      <TalkCard onAdopt={(id) => setSelected((list) => (list.includes(id) ? list : [...list, id]))} />
+      <SectionTitle title="الاجتماعات" />
+      <View style={{ marginBottom: 12 }}>
+        <Segmented
+          options={[
+            { value: 'attend', label: 'تسجيل الحضور' },
+            { value: 'remaining', label: 'من باقي؟' },
+            { value: 'topics', label: 'مواضيع مقترحة' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
 
+      {view === 'topics' ? (
+        <TalkCard
+          onAdopt={(id) => {
+            setSelected((list) => (list.includes(id) ? list : [...list, id]));
+            setView('attend');
+          }}
+        />
+      ) : null}
+      {view === 'remaining' ? <MeetingFollowUp /> : null}
 
+      {view === 'attend' ? (
+        <>
       <Card>
-        <T style={{ fontWeight: '800', marginBottom: 6 }}>إضافة عنوان اجتماع</T>
-        <Row>
-          <TextInput
-            testID="meeting-title-input"
-            value={title}
-            onChangeText={(text) => {
-              setTitle(text);
-              setTitleError(null);
-            }}
-            onSubmitEditing={addTitle}
-            placeholder="مثال: مراجعة خطة الطوارئ"
-            placeholderTextColor="#a29db3"
-            maxLength={80}
-            returnKeyType="done"
-            style={[s.input, { flex: 1, minWidth: 0 }]}
-          />
-          <Button testID="meeting-title-add" icon="plus" label="إضافة" onPress={addTitle} disabled={!title.trim()} />
-        </Row>
-        {titleError ? <T style={{ color: C.red, fontSize: 12, marginTop: 4 }}>{titleError}</T> : null}
-
-        <Spread style={{ marginTop: 14, marginBottom: 6 }}>
-          <T style={{ fontWeight: '800' }}>{'الاجتماعات المختارة · ' + chosen.length + ' من ' + meetings.length}</T>
-          <Sub>{'سنة ' + year}</Sub>
+        <Spread style={{ marginBottom: 8 }}>
+          <T style={{ fontWeight: '800' }}>{'١ · اختر الاجتماع'}</T>
+          <Sub>{chosen.length + ' مختار · سنة ' + year}</Sub>
         </Spread>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
           {meetings.length ? (
@@ -161,14 +164,33 @@ export function MeetingsScreen() {
               );
             })
           ) : (
-            <Sub>ما فيه اجتماعات لهذه السنة. أضف عنوانًا من الأعلى.</Sub>
+            <Sub>ما فيه عناوين لهذه السنة. اكتب أول عنوان تحت.</Sub>
           )}
         </View>
+        <Sub style={{ marginTop: 12, marginBottom: 6 }}>عنوان جديد</Sub>
+        <Row>
+          <TextInput
+            testID="meeting-title-input"
+            value={title}
+            onChangeText={(text) => {
+              setTitle(text);
+              setTitleError(null);
+            }}
+            onSubmitEditing={addTitle}
+            placeholder="مثال: مراجعة خطة الطوارئ"
+            placeholderTextColor="#a29db3"
+            maxLength={80}
+            returnKeyType="done"
+            style={[s.input, { flex: 1, minWidth: 0 }]}
+          />
+          <Button testID="meeting-title-add" icon="plus" label="إضافة" onPress={addTitle} disabled={!title.trim()} />
+        </Row>
+        {titleError ? <T style={{ color: C.red, fontSize: 12, marginTop: 4 }}>{titleError}</T> : null}
+
       </Card>
 
-      <MeetingFollowUp />
-
-      <DepartmentPicker value={ui.departmentId} onChange={ui.setDepartmentId} icon="users" />
+          <T style={{ fontWeight: '800', marginBottom: 8 }}>{'٢ · اختر القسم وعلّم الحضور'}</T>
+      <DepartmentPicker value={departmentId} onChange={ui.setDepartmentId} icon="users" />
 
       {department ? (
         <Card>
@@ -287,14 +309,8 @@ export function MeetingsScreen() {
               <Empty text="ما فيه حضور مسجل لهذا القسم." />
             )}
           </Card>
-          <SectionTitle title="حالة الفنيين" sub="حضور كل فني لاجتماعات السنة" />
-          <Card style={{ paddingVertical: 4 }}>
-            {activeTechnicians(ws)
-              .filter((tech) => tech.departmentId === department.id)
-              .map((tech) => (
-                <TechRow key={tech.id} ws={ws} tech={tech} asOf={now.date} />
-              ))}
-          </Card>
+        </>
+      ) : null}
         </>
       ) : null}
     </View>

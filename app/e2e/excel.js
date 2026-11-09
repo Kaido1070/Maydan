@@ -35,6 +35,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
 
   await id('open-settings').click();
   await page.getByText('بيانات العمل').first().click();
+  await id('settings-people').click();
 
   // تنزيل النموذج الفاضي
   const [download] = await Promise.all([page.waitForEvent('download'), id('excel-template').click()]);
@@ -56,7 +57,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await id('import-apply').click();
   body = await page.locator('body').innerText();
   assert(body.includes('تم استيراد الفنيين: 2 جديد'), 'رسالة النجاح');
-  assert(body.includes('2 فني نشط'), 'عدد الفنيين');
+  assert(body.includes('2 نشط'), 'عدد الفنيين');
 
   // يظهرون في شاشة الزيارات بالقسم والشفت الصحيح
   await id('tab-visits').click();
