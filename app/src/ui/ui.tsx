@@ -12,6 +12,7 @@ export type Ui = {
   openVisit: (target: NonNullable<VisitTarget>) => void;
   openTechnician: (id: string, date?: string) => void;
   openSlot: (target: NonNullable<SlotTarget>) => void;
+  openChangelog: () => void;
   /** القسم المختار المشترك بين شاشتي الزيارات والاجتماعات */
   departmentId: string | null;
   setDepartmentId: (id: string | null) => void;

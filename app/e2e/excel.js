@@ -31,6 +31,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   const id = (t) => page.locator(`[data-testid="${t}"]`);
+  await id('whats-new-ok').click();
 
   await id('open-settings').click();
   await page.getByText('بيانات العمل').first().click();

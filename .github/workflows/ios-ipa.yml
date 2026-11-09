@@ -1,6 +1,7 @@
 # يبني ملف IPA غير موقّع للآيفون على جهاز macOS في GitHub Actions.
 # الملف الناتج يظهر في صفحة التشغيل تحت Artifacts باسم Maydan-unsigned-ipa،
-# ويُنشر أيضًا كإصدار (Release) في المستودع، ويحتاج توقيعًا بشهادتك قبل التثبيت.
+# على main يُنشر كإصدار (Release) باسم رقم الإصدار ورقم البناء، مع ملاحظات من app/changelog.json.
+# يحتاج توقيعًا بشهادتك قبل التثبيت.
 name: iOS unsigned IPA
 
 on:
@@ -47,6 +48,18 @@ jobs:
       - name: Logic tests
         run: npx jest
 
+      - name: Stamp version and build number
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json"));
+            const latest = require("./changelog.json")[0];
+            if (app.expo.version !== latest.version) throw new Error("app.json version " + app.expo.version + " != changelog " + latest.version);
+            app.expo.ios = { ...app.expo.ios, buildNumber: process.env.GITHUB_RUN_NUMBER };
+            fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
+            fs.appendFileSync(process.env.GITHUB_ENV, "APP_VERSION=" + latest.version + "\nEXPO_PUBLIC_BUILD_NUMBER=" + process.env.GITHUB_RUN_NUMBER + "\n");
+          '
+
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --clean
 
@@ -84,17 +97,34 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Write release notes
+        if: github.ref == 'refs/heads/main'
+        run: |
+          node -e '
+            const latest = require("./changelog.json")[0];
+            const lines = [
+              "## " + latest.title,
+              "",
+              ...latest.changes.map((c) => "- " + c),
+              "",
+              "---",
+              "الإصدار " + latest.version + " · بناء " + process.env.GITHUB_RUN_NUMBER + " · " + latest.date,
+              "",
+              "ملف IPA غير موقّع: وقّعه بشهادتك وملف التعريف قبل التثبيت (مثلًا Sideloadly أو ESign).",
+              "معرّف الحزمة: `com.maydan.fieldsafety`. التطبيق لا يطلب صلاحيات خاصة.",
+              "سجل كل التحديثات داخل التطبيق: الإعدادات ← سجل التحديثات.",
+            ];
+            require("fs").writeFileSync(process.env.RUNNER_TEMP + "/notes.md", lines.join("\n"));
+          '
+
       - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ios-build-${{ github.run_number }}
+          tag_name: v${{ env.APP_VERSION }}-build.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: ميدان للآيفون · بناء ${{ github.run_number }} (غير موقّع)
-          prerelease: true
+          name: ميدان ${{ env.APP_VERSION }} · بناء ${{ github.run_number }}
+          prerelease: false
+          make_latest: true
           files: ${{ runner.temp }}/Maydan-unsigned.ipa
-          body: |
-            ملف IPA غير موقّع لتطبيق ميدان، مبني من الالتزام ${{ github.sha }} على الفرع ${{ github.ref_name }}.
-
-            - وقّعه بشهادتك وملف التعريف (provisioning profile) قبل التثبيت، مثلًا عبر Sideloadly أو ESign.
-            - معرّف الحزمة: `com.maydan.fieldsafety` (غيّره وقت التوقيع إذا كان ملف التعريف لمعرّف آخر).
-            - التطبيق لا يطلب صلاحيات خاصة.
+          body_path: ${{ runner.temp }}/notes.md

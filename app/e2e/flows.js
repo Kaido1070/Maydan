@@ -20,6 +20,22 @@ const OUT = process.env.SHOTS || null;
   await page.reload();
   await page.waitForSelector('[data-testid="tab-day"]');
   const id = (testId) => page.locator(`[data-testid="${testId}"]`);
+
+  // نافذة «الجديد» تظهر أول مرة، ثم ما تظهر بعد إعادة التحميل
+  const version = require('../changelog.json')[0].version;
+  await page.waitForSelector('text=الجديد في هذا التحديث');
+  assert((await page.locator('body').innerText()).includes(version), 'رقم الإصدار في نافذة الجديد');
+  await id('whats-new-ok').click();
+  await page.reload();
+  await page.waitForSelector('[data-testid="tab-day"]');
+  await page.waitForTimeout(500);
+  assert(!(await page.locator('body').innerText()).includes('الجديد في هذا التحديث'), 'النافذة ما تتكرر');
+  await id('open-settings').click();
+  assert((await id('app-version').innerText()).includes(version), 'رقم الإصدار في الإعدادات');
+  await id('open-changelog').click();
+  const log = await page.locator('body').innerText();
+  for (const release of require('../changelog.json')) assert(log.includes(release.title), 'سجل التحديثات: ' + release.version);
+  await id('sheet-close').click();
   const shot = async (name) => OUT && page.screenshot({ path: `${OUT}/${name}.png` });
   const text = async (testId) => (await id(testId).innerText()).replace(/\s+/g, ' ');
   const kpi = async (testId) => Number((await text(testId)).match(/\d+/)[0]);
