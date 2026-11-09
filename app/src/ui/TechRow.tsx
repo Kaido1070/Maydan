@@ -11,7 +11,11 @@ export function TechStatus({ ws, tech, asOf }: { ws: Workspace; tech: Technician
   const progress = techProgress(ws, tech, asOf);
   return (
     <Row gap={4} style={{ flexWrap: 'wrap' }}>
-      <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} icon="map-pin" label={'زيارات ' + ratio(progress.visitCount, ws.settings.visitTarget)} />
+      {progress.field ? (
+        <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} icon="map-pin" label={'زيارات ' + ratio(progress.visitCount, ws.settings.visitTarget)} />
+      ) : (
+        <Chip tone="neutral" icon="briefcase" label="مكتبي" />
+      )}
       {progress.meetingTarget ? (
         <Chip tone={tone(progress.attended.size, progress.meetingTarget)} icon="users" label={'اجتماعات ' + ratio(progress.attended.size, progress.meetingTarget)} />
       ) : null}

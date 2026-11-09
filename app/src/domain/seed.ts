@@ -76,7 +76,7 @@ const DEMO_CREW: Record<string, string[][]> = {
   'b-D': [['b8', 'عمر حسين'], ['b9', 'ياسر أحمد'], ['b18', 'راكان إبراهيم'], ['b19', 'طارق يحيى حمدي'], ['b20', 'منصور سالم']],
   'c-A': [['c1', 'إبراهيم أحمد'], ['c2', 'يحيى سالم'], ['c3', 'مهند علي'], ['c4', 'مالك محمد هزازي'], ['c5', 'صالح أحمد'], ['c6', 'عماد عبدالرحمن']],
   'd-A': [['d1', 'سالم حسين'], ['d2', 'عبدالله علي'], ['d3', 'محمد عبداللطيف صميلي'], ['d4', 'سامي حسن'], ['d5', 'أنس إبراهيم'], ['d6', 'معاذ يحيى جابري'], ['d7', 'حمد محمد']],
-  'f-A': [['f1', 'سعود محمد'], ['f2', 'عبدالمجيد علي'], ['f3', 'هاني أحمد'], ['f4', 'ثامر سالم'], ['f5', 'خليل يحيى']],
+  'f-A': [['f1', 'سعود محمد'], ['f2', 'عبدالمجيد علي'], ['f3', 'هاني أحمد'], ['f4', 'ثامر سالم'], ['f5', 'خليل يحيى'], ['f6', 'ماهر عبدالله'], ['f7', 'وائل حسن']],
   'e-A': [['e1', 'مشروع شبكة حي الروضة'], ['e2', 'مشروع محطة التحويل الشمالية'], ['e3', 'مشروع تمديد كابلات الطريق الدائري'], ['e4', 'مشروع إنارة المخطط الصناعي'], ['e5', 'مشروع توسعة محطة الجنوب'], ['e6', 'مشروع شبكة حي النخيل']],
 };
 
@@ -112,6 +112,9 @@ const DEMO_PLAN: [number, string, string, string, 'visit' | 'meeting'][] = [
 
 export const DEMO_ANCHOR = '2026-11-09';
 
+/** موظفون مكتبيون في بيانات التجربة (اجتماعات بدون زيارات). */
+const DEMO_OFFICE = ['f6', 'f7'];
+
 const DEMO_CONTRACTORS = ['مؤسسة البناء التجريبية', 'شركة الإنشاء التجريبية', 'مقاول تجريبي'];
 
 export const demoEmployeeNumber = (id: string) => String(1100 + (id.charCodeAt(0) - 97) * 100 + Number(id.slice(1)));
@@ -126,7 +129,7 @@ export function demoWorkspace(today: string): Workspace {
     crew.map(([id, name]) =>
       shiftId[0] === 'e'
         ? { id, name, employeeNumber: 'P-' + demoEmployeeNumber(id), kind: 'project' as const, contractor: DEMO_CONTRACTORS[Number(id.slice(1)) % DEMO_CONTRACTORS.length], departmentId: 'e', baseShiftId: shiftId }
-        : { id, name, employeeNumber: demoEmployeeNumber(id), departmentId: shiftId[0], baseShiftId: shiftId },
+        : { id, name, employeeNumber: demoEmployeeNumber(id), departmentId: shiftId[0], baseShiftId: shiftId, ...(DEMO_OFFICE.includes(id) ? { workplace: 'office' as const } : {}) },
     ),
   );
   const stamp = today + 'T09:00:00.000Z';

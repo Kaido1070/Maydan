@@ -69,7 +69,8 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
     if (!department) return { onShift: [], others: [] };
     const slot = isTime(time) ? slotAt(ws, department, date, time) : null;
     const shiftIds = new Set((slot?.crew ?? []).map((tech) => tech.id));
-    const pool = activeTechnicians(ws).filter((tech) => tech.departmentId === department.id || shiftIds.has(tech.id) || people.includes(tech.id));
+    // الموظفون المكتبيون ما لهم زيارات ميدانية (إلا لو كانوا محددين في زيارة قديمة)
+    const pool = activeTechnicians(ws).filter((tech) => (tech.workplace !== 'office' || people.includes(tech.id)) && (tech.departmentId === department.id || shiftIds.has(tech.id) || people.includes(tech.id)));
     return { onShift: pool.filter((tech) => shiftIds.has(tech.id)), others: pool.filter((tech) => !shiftIds.has(tech.id)) };
   }, [ws, department, date, time, people]);
 

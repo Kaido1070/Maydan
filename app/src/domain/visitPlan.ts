@@ -82,7 +82,7 @@ export function visitPlan(ws: Workspace, now: Now): DayPlan[] {
         if (!slot.shift) continue;
         const crew = slot.crew.filter((tech) => active.has(tech.id));
         const technicians = crew
-          .filter((tech) => !planned.has(tech.id) && need(tech).visits < target)
+          .filter((tech) => tech.workplace !== 'office' && !planned.has(tech.id) && need(tech).visits < target)
           .sort((a, b) => need(a).visits - need(b).visits || need(a).last.localeCompare(need(b).last) || a.name.localeCompare(b.name, 'ar'))
           .slice(0, MAX_PER_VISIT);
         // الاجتماع اللي أكثر فريق هذا الشفت ما حضره (من عناوينك لهذه السنة)

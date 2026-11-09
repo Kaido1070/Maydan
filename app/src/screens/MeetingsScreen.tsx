@@ -234,7 +234,7 @@ export function MeetingsScreen() {
                     <Row key={tech.id} gap={0} style={{ borderBottomWidth: 1, borderBottomColor: C.line, paddingVertical: 8 }}>
                       <View style={{ flex: 1 }}>
                         <T style={{ fontSize: 13, fontWeight: '600' }}>{tech.name}</T>
-                        <Sub style={{ fontSize: 10 }}>{techTag(tech) + ' · ' + shiftName(ws, tech)}</Sub>
+                        <Sub style={{ fontSize: 10 }}>{techTag(tech) + (tech.workplace === 'office' ? ' · مكتبي' : '') + ' · ' + shiftName(ws, tech)}</Sub>
                       </View>
                       {chosen.map((meeting) => (
                         <View key={meeting.id} style={{ width: 78, alignItems: 'center' }}>
@@ -347,7 +347,7 @@ function MeetingFollowUp() {
         >
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '600' }}>{tech.name}</T>
-            <Sub>{deptName(tech.departmentId) + ' · ' + shiftName(ws, tech)}</Sub>
+            <Sub>{deptName(tech.departmentId) + ' · ' + (tech.workplace === 'office' ? 'مكتبي' : shiftName(ws, tech))}</Sub>
           </View>
           <Icon name="chevron-left" size={16} color={C.muted} />
         </Pressable>

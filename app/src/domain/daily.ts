@@ -51,7 +51,7 @@ export function dailyTasks(ws: Workspace, now: Now): DailyTask[] {
     const progress = techProgress(ws, technician, now.date);
     const visitedToday = ws.visits.some((visit) => visit.date === now.date && visit.technicianIds.includes(technician.id));
     const metToday = ws.attendance.some((item) => item.date === now.date && item.technicianIds.includes(technician.id));
-    if (progress.visitCount === 0 || visitedToday)
+    if ((progress.field && progress.visitCount === 0) || visitedToday)
       tasks.push({ kind: 'visit', technician, department, onShiftNow, done: visitedToday, progress });
     if ((progress.meetingTarget > 0 && progress.attended.size === 0) || metToday)
       tasks.push({ kind: 'meeting', technician, department, onShiftNow, done: metToday, progress });

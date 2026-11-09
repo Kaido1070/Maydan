@@ -34,11 +34,15 @@ export type TechProgress = {
   visits: Visit[];
   visitCount: number;
   visitRemaining: number;
+  /** ميداني: له هدف زيارات. المكتبي اجتماعات فقط. */
+  field: boolean;
   attended: Set<string>;
   meetingTarget: number;
   meetingRemaining: number;
   missingMeetings: Meeting[];
 };
+
+export const isOffice = (tech: Technician) => tech.workplace === 'office';
 
 export function techProgress(ws: Workspace, technician: Technician, asOf: string): TechProgress {
   const year = Number(asOf.slice(0, 4));
@@ -50,7 +54,8 @@ export function techProgress(ws: Workspace, technician: Technician, asOf: string
     technician,
     visits,
     visitCount: visits.length,
-    visitRemaining: Math.max(0, ws.settings.visitTarget - visits.length),
+    visitRemaining: isOffice(technician) ? 0 : Math.max(0, ws.settings.visitTarget - visits.length),
+    field: !isOffice(technician),
     attended,
     meetingTarget: meetings.length,
     meetingRemaining: missingMeetings.length,
@@ -60,6 +65,8 @@ export function techProgress(ws: Workspace, technician: Technician, asOf: string
 
 export type Coverage = {
   people: number;
+  /** الميدانيون فقط (اللي لهم هدف زيارات). */
+  fieldPeople: number;
   visitRemaining: number;
   attendanceRemaining: number;
   visitComplete: number;
@@ -73,6 +80,7 @@ export function coverageOf(ws: Workspace, techs: Technician[], asOf: string): { 
   const meetings = yearMeetings(ws, Number(asOf.slice(0, 4)));
   const coverage: Coverage = {
     people: techs.length,
+    fieldPeople: 0,
     visitRemaining: 0,
     attendanceRemaining: 0,
     visitComplete: 0,
@@ -85,7 +93,10 @@ export function coverageOf(ws: Workspace, techs: Technician[], asOf: string): { 
     const progress = techProgress(ws, tech, asOf);
     coverage.visitRemaining += progress.visitRemaining;
     coverage.attendanceRemaining += progress.meetingRemaining;
-    coverage.visitComplete += Number(!progress.visitRemaining);
+    if (progress.field) {
+      coverage.fieldPeople++;
+      coverage.visitComplete += Number(!progress.visitRemaining);
+    }
     coverage.meetingComplete += Number(!progress.meetingRemaining);
     coverage.complete += Number(!progress.visitRemaining && !progress.meetingRemaining);
     meetings.forEach((meeting, index) => {

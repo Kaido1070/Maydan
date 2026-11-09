@@ -99,7 +99,7 @@ export function statusMix(ws: Workspace, asOf: string, departmentId: string | 'a
   const meetings: StatusMix = { none: 0, partial: 0, complete: 0 };
   for (const tech of activeTechnicians(ws).filter((t) => departmentId === 'all' || t.departmentId === departmentId)) {
     const progress = techProgress(ws, tech, asOf);
-    visits[progress.visitCount === 0 ? 'none' : progress.visitRemaining ? 'partial' : 'complete']++;
+    if (progress.field) visits[progress.visitCount === 0 ? 'none' : progress.visitRemaining ? 'partial' : 'complete']++;
     if (progress.meetingTarget)
       meetings[progress.attended.size === 0 ? 'none' : progress.meetingRemaining ? 'partial' : 'complete']++;
   }

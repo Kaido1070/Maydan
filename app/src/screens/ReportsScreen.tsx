@@ -154,7 +154,7 @@ export function ReportsScreen() {
         <ProgressRows
           testID="chart-dept-visits"
           color={CHART.visits}
-          rows={report.coverage.map((dept) => ({ label: dept.department.name, done: dept.coverage.visitComplete, total: dept.coverage.people }))}
+          rows={report.coverage.map((dept) => ({ label: dept.department.name, done: dept.coverage.visitComplete, total: dept.coverage.fieldPeople }))}
         />
         {report.meetingTitles.length ? (
           <>
@@ -180,7 +180,7 @@ export function ReportsScreen() {
             <Sub>{dept.coverage.people + ' فني'}</Sub>
           </Spread>
           <Row gap={8} style={{ marginTop: 8 }}>
-            <Metric label="الزيارات" remaining={dept.coverage.visitRemaining} total={dept.coverage.people * ws.settings.visitTarget} />
+            <Metric label="الزيارات" remaining={dept.coverage.visitRemaining} total={dept.coverage.fieldPeople * ws.settings.visitTarget} />
             <Metric label="مرات الحضور" remaining={dept.coverage.attendanceRemaining} total={dept.coverage.people * report.meetingTitles.length} />
           </Row>
           {report.meetingTitles.length ? (

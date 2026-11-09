@@ -34,7 +34,7 @@ export function migrate(state: AppState): AppState {
   const operations = defaultDepartments(riyadhNow().date).find((d) => d.id === 'f')!;
   const hasOps = (ws: Workspace) => ws.departments.some((d) => d.name === 'التشغيل');
   const liveOps = hasOps(live) ? live : { ...live, departments: [...live.departments, { ...operations, id: live.departments.some((d) => d.id === 'f') ? 'ops' : 'f', shifts: [{ id: 'ops-A', name: 'التشغيل' }] }] };
-  const demo = demoOld || !hasOps(state.demo) || !state.demo.places ? demoWorkspace(riyadhNow().date) : state.demo;
+  const demo = demoOld || !hasOps(state.demo) || !state.demo.places || !state.demo.technicians.some((t) => t.workplace) ? demoWorkspace(riyadhNow().date) : state.demo;
   return { ...state, demo, live: liveOps };
 }
 

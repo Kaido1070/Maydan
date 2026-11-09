@@ -40,7 +40,7 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
       sub={techTag(tech, true) + ' · ' + (department?.name ?? '—')}
       footer={
         <Row>
-          <Button testID="person-visit" style={{ flex: 1 }} icon="map-pin" label="تسجيل زيارة" onPress={recordVisit} />
+          {progress.field ? <Button testID="person-visit" style={{ flex: 1 }} icon="map-pin" label="تسجيل زيارة" onPress={recordVisit} /> : null}
           <Button testID="person-meeting" style={{ flex: 1 }} variant="secondary" icon="users" label="تسجيل حضور" onPress={recordMeeting} />
         </Row>
       }
@@ -55,6 +55,7 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
         <Button small variant="ghost" icon="repeat" label="نقل أو تكليف ليوم" style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => (onClose(), ui.openTechnician(tech.id))} />
       </View>
 
+      {progress.field ? (
       <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12, marginBottom: 10 }}>
         <Spread>
           <T style={{ fontWeight: '700' }}>{'الزيارات · آخر ' + ws.settings.visitWindowMonths + ' أشهر'}</T>
@@ -72,6 +73,12 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
         ))}
         {allVisits.length > progress.visits.length ? <Sub style={{ marginTop: 4 }}>{'وزيارات أقدم: ' + (allVisits.length - progress.visits.length)}</Sub> : null}
       </View>
+      ) : (
+        <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12, marginBottom: 10 }}>
+          <T style={{ fontWeight: '700' }}>موظف مكتبي</T>
+          <Sub>ما عليه زيارات ميدانية، بس لازم يحضر الاجتماعات عشان توصله الرسالة.</Sub>
+        </View>
+      )}
 
       <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12 }}>
         <Spread>

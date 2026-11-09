@@ -33,6 +33,8 @@ export type Technician = {
   kind?: EntryKind;
   /** اسم المقاول للفرق. */
   contractor?: string;
+  /** طبيعة العمل: ميداني (الافتراضي) أو مكتبي. المكتبي له اجتماعات بدون أهداف زيارات. */
+  workplace?: 'field' | 'office';
   name: string;
   departmentId: string;
   /** الشفت الأساسي الذي يتبعه الفني في الدورة. */

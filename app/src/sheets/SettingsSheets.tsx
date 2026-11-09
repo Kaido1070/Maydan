@@ -225,12 +225,14 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
   const [shiftId, setShiftId] = useState('');
   const [kind, setKind] = useState<EntryKind>('person');
   const [contractor, setContractor] = useState('');
+  const [workplace, setWorkplace] = useState<'field' | 'office'>('field');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!technicianId) return;
     setKind(existing?.kind ?? deptEntryKind(ws.departments.find((d) => d.id === (existing?.departmentId ?? ws.departments[0]?.id))));
     setContractor(existing?.contractor ?? '');
+    setWorkplace(existing?.workplace ?? 'field');
     const first = ws.departments[0];
     setName(existing?.name ?? '');
     setNumber(existing?.employeeNumber ?? '');
@@ -245,7 +247,7 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
 
   const save = () => {
     const failure = apply((current) =>
-      upsertTechnician(current, { id: existing?.id, name, employeeNumber: number, kind, contractor, departmentId, baseShiftId: shiftId, active: existing?.active ?? true }),
+      upsertTechnician(current, { id: existing?.id, name, employeeNumber: number, kind, contractor, workplace: kind === 'person' && workplace === 'office' ? 'office' : undefined, departmentId, baseShiftId: shiftId, active: existing?.active ?? true }),
     );
     if (failure) return setError(failure);
     onSaved(existing ? 'تم تحديث البيانات' : 'تمت إضافة ' + ENTRY_NOUN[kind]);
@@ -302,6 +304,20 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
         testID="tech-name"
         placeholder={kind === 'project' ? 'مثال: مشروع شبكة حي الروضة' : kind === 'team' ? 'مثال: فريق الحفريات 1' : ''}
       />
+      {kind === 'person' ? (
+        <View style={{ marginBottom: 10 }}>
+          <T style={{ fontWeight: '700', fontSize: 13, marginBottom: 6 }}>طبيعة العمل</T>
+          <Segmented
+            options={[
+              { value: 'field', label: 'ميداني' },
+              { value: 'office', label: 'مكتبي' },
+            ]}
+            value={workplace}
+            onChange={setWorkplace}
+          />
+          <Sub style={{ marginTop: 4 }}>{workplace === 'office' ? 'المكتبي يحضر الاجتماعات وتوصله الرسالة، بدون هدف زيارات ميدانية.' : 'الميداني له هدف زيارات واجتماعات.'}</Sub>
+        </View>
+      ) : null}
       {kind !== 'person' ? <Field label="اسم المقاول (اختياري)" value={contractor} onChangeText={setContractor} testID="tech-contractor" /> : null}
       <Field
         label={kind === 'project' ? 'رقم المشروع (اختياري)' : kind === 'team' ? 'رقم الفريق أو العقد (اختياري)' : 'الرقم الوظيفي'}
