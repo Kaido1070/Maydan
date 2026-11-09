@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { DailyTask, dailyTasks, taskReason } from '../domain/daily';
 import { formatDate } from '../domain/dates';
 import { currentSlot, periodRange, shiftLabel } from '../domain/shifts';
@@ -10,6 +10,7 @@ import { Button, C, Card, Chip, Empty, Icon, IconBox, KIND, Progress, Row, Secti
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 import { VisitPlanCard } from '../ui/VisitPlanCard';
+import { Touch } from '../ui/touch';
 
 type Filter = 'all' | 'visit' | 'meeting';
 const PAGE = 8;
@@ -168,7 +169,7 @@ export function TodayScreen() {
         const open = openDept === department.id;
         return (
           <Card key={department.id} style={{ paddingVertical: 10 }}>
-            <Pressable accessibilityRole="button" testID={'today-dept-' + department.id} onPress={() => setOpenDept(open ? null : department.id)}>
+            <Touch accessibilityRole="button" testID={'today-dept-' + department.id} onPress={() => setOpenDept(open ? null : department.id)}>
               <Spread>
                 <Row style={{ flex: 1 }}>
                   <IconBox name="users" size={32} />
@@ -183,7 +184,7 @@ export function TodayScreen() {
                   <Icon name={open ? 'chevron-up' : 'chevron-down'} color={C.muted} size={16} />
                 </Row>
               </Spread>
-            </Pressable>
+            </Touch>
             {open ? (
               <View style={{ marginTop: 8 }}>
                 {slot?.crew.length ? (
@@ -207,7 +208,7 @@ export function TodayScreen() {
         );
       })}
 
-      <Pressable accessibilityRole="button" onPress={() => ui.go('reports')} style={{ marginTop: 6 }}>
+      <Touch accessibilityRole="button" onPress={() => ui.go('reports')} style={{ marginTop: 6 }}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <IconBox name="bar-chart-2" size={34} />
           <View style={{ flex: 1 }}>
@@ -216,7 +217,7 @@ export function TodayScreen() {
           </View>
           <Icon name="chevron-left" size={16} color={C.muted} />
         </Card>
-      </Pressable>
+      </Touch>
 
     </View>
   );
@@ -227,7 +228,7 @@ function TaskRow({ task, first }: { task: DailyTask; first: boolean }) {
   const ui = useUi();
   const visit = task.kind === 'visit';
   return (
-    <Pressable
+    <Touch
       testID={'daily-' + task.kind + '-' + task.technician.id}
       accessibilityRole="button"
       accessibilityLabel={(visit ? 'زيارة ' : 'اجتماع ') + task.technician.name}
@@ -254,7 +255,7 @@ function TaskRow({ task, first }: { task: DailyTask; first: boolean }) {
         </Row>
       </View>
       <Icon name="chevron-left" size={16} color={C.muted} />
-    </Pressable>
+    </Touch>
   );
 }
 

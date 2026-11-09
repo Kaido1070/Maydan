@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, View } from 'react-native';
+import { Alert, Platform, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import { PLACE_NOUN, PLACE_WORK_TYPE } from '../domain/places';
 import { addVisit, deleteVisit, updateVisit, validateVisit, workTypeSuggestions } from '../domain/records';
@@ -7,6 +7,7 @@ import { activeTechnicians, shiftName, slotAt, techTag } from '../domain/shifts'
 import type { PlanItem } from '../domain/types';
 import { useApply, useStore } from '../store';
 import { Button, C, Checkbox, Chip, Field, KIND, Row, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
+import { Touch } from '../ui/touch';
 
 export type VisitTarget = { departmentId: string; visitId?: string; planItem?: PlanItem; date?: string; technicianIds?: string[]; placeId?: string } | null;
 
@@ -135,7 +136,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
         {workTypeSuggestions(ws).map((option) => {
           const on = option === workType.trim();
           return (
-            <Pressable
+            <Touch
               key={option}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
@@ -143,7 +144,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
               style={{ paddingHorizontal: 12, minHeight: 34, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: on ? KIND.visit.solid : C.line, backgroundColor: on ? KIND.visit.bg : C.white }}
             >
               <T style={{ fontSize: 13, color: on ? KIND.visit.fg : C.ink }}>{option}</T>
-            </Pressable>
+            </Touch>
           );
         })}
       </View>

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
 import { visitTitle } from '../domain/records';
 import { initials, shiftName, techTag } from '../domain/shifts';
 import { techProgress, tone, yearMeetings } from '../domain/stats';
 import type { Technician, Workspace } from '../domain/types';
 import { Avatar, C, Chip, Icon, ratio, Row, Sub, T } from './kit';
+import { Touch } from './touch';
 
 export function TechStatus({ ws, tech, asOf }: { ws: Workspace; tech: Technician; asOf: string }) {
   const progress = techProgress(ws, tech, asOf);
@@ -66,7 +67,7 @@ export function TechRow({
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: C.line, paddingVertical: 10 }}>
       <Row style={{ alignItems: 'flex-start' }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={'سجل ' + tech.name} onPress={() => setOpen(!open)} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
+        <Touch accessibilityRole="button" accessibilityLabel={'سجل ' + tech.name} onPress={() => setOpen(!open)} style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
           <Avatar text={initials(tech.name)} />
           <View style={{ flex: 1, gap: 3 }}>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
@@ -77,7 +78,7 @@ export function TechRow({
             <TechStatus ws={ws} tech={tech} asOf={asOf} />
           </View>
           <Icon name={open ? 'chevron-up' : 'chevron-down'} size={16} color={C.muted} />
-        </Pressable>
+        </Touch>
         {right}
       </Row>
       {open ? <TechDetails ws={ws} tech={tech} asOf={asOf} /> : null}

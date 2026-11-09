@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import {
   addFindingUpdate,
@@ -24,6 +24,7 @@ import { Button, C, Card, Chip, Empty, Field, Icon, Row, s, SectionTitle, Segmen
 import { PhotoField } from '../ui/PhotoField';
 import { useUi } from '../ui/ui';
 import { EquipmentScreen } from './EquipmentScreen';
+import { Touch } from '../ui/touch';
 
 type Section = 'observation' | 'violation' | 'equipment' | 'overtime';
 
@@ -117,7 +118,7 @@ function FindingCard({ finding, onPress }: { finding: Finding; onPress: () => vo
   const reason = lastDelayReason(finding);
   const closed = finding.status === 'closed';
   return (
-    <Pressable testID={'finding-' + finding.id} accessibilityRole="button" accessibilityLabel={finding.title} onPress={onPress}>
+    <Touch testID={'finding-' + finding.id} accessibilityRole="button" accessibilityLabel={finding.title} onPress={onPress}>
       <Card style={overdue ? { borderColor: '#f3b7c4', borderWidth: 1.5 } : undefined}>
         <Spread style={{ alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
@@ -139,7 +140,7 @@ function FindingCard({ finding, onPress }: { finding: Finding; onPress: () => vo
           </View>
         ) : null}
       </Card>
-    </Pressable>
+    </Touch>
   );
 }
 
@@ -360,7 +361,7 @@ function OvertimeList() {
       {entries.length ? (
         <Card style={{ paddingVertical: 4 }}>
           {entries.map((entry, index) => (
-            <Pressable key={entry.id} accessibilityRole="button" onPress={() => ui.openOvertime(entry.id)} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
+            <Touch key={entry.id} accessibilityRole="button" onPress={() => ui.openOvertime(entry.id)} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
               <Spread>
                 <View style={{ flex: 1 }}>
                   <T style={{ fontWeight: '700' }}>{entry.reason}</T>
@@ -368,7 +369,7 @@ function OvertimeList() {
                 </View>
                 <Chip tone="amber" icon="clock" label={formatDuration(durationMinutes(entry.start, entry.end))} />
               </Spread>
-            </Pressable>
+            </Touch>
           ))}
         </Card>
       ) : (

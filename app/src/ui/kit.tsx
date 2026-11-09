@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Tone } from '../domain/stats';
 import { FONTS, fontFor, MIN_FONT_SIZE } from './fonts';
+import { Touch } from './touch';
 
 export const C = {
   bg: '#f6f5f9',
@@ -147,13 +147,14 @@ export function Button({
   };
   const [fg, bg] = colors[variant];
   return (
-    <Pressable
+    <Touch
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
+      feedback={variant === 'ghost' ? 'none' : 'tap'}
       style={({ pressed }) => [
         s.button,
         small && s.buttonSmall,
@@ -163,7 +164,7 @@ export function Button({
     >
       {icon ? <Icon name={icon} size={small ? 13 : 15} color={fg} /> : null}
       <AppText style={[s.buttonText, small && { fontSize: 13 }, { color: fg }]}>{label}</AppText>
-    </Pressable>
+    </Touch>
   );
 }
 
@@ -200,7 +201,7 @@ export function Progress({ value, max, color = '#7653e2', track = '#eeeaf6', hei
 
 export function Checkbox({ checked, onChange, label, disabled, testID }: { checked: boolean; onChange: (value: boolean) => void; label?: string; disabled?: boolean; testID?: string }) {
   return (
-    <Pressable
+    <Touch
       testID={testID}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled: !!disabled }}
@@ -208,11 +209,13 @@ export function Checkbox({ checked, onChange, label, disabled, testID }: { check
       accessibilityLabel={label}
       disabled={disabled}
       onPress={() => onChange(!checked)}
-      hitSlop={6}
+      feedback="select"
+      scaleTo={0.88}
+      hitSlop={8}
       style={[s.checkbox, checked && s.checkboxOn, disabled && { opacity: 0.4 }]}
     >
       {checked ? <Icon name="check" size={15} color={C.white} /> : null}
-    </Pressable>
+    </Touch>
   );
 }
 
@@ -222,15 +225,16 @@ export function Segmented<V extends string | number>({ options, value, onChange,
       {options.map((option) => {
         const active = option.value === value;
         return (
-          <Pressable
+          <Touch
             key={String(option.value)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
+            feedback="select"
             style={[s.segment, wrap && { flexGrow: 0, flexBasis: 'auto' }, active && s.segmentOn]}
           >
             <AppText numberOfLines={wrap ? undefined : 1} style={[s.segmentText, !wrap && options.length >= 3 && { fontSize: 13 }, active && { color: C.white }]}>{option.label}</AppText>
-          </Pressable>
+          </Touch>
         );
       })}
     </View>
@@ -249,13 +253,13 @@ export function Field({ label, style, ...props }: TextInputProps & { label: stri
 export function Stepper({ label, onPrev, onNext, prevDisabled, nextDisabled }: { label: string; onPrev: () => void; onNext: () => void; prevDisabled?: boolean; nextDisabled?: boolean }) {
   return (
     <Row gap={6}>
-      <Pressable accessibilityLabel="السابق" accessibilityRole="button" disabled={prevDisabled} onPress={onPrev} style={[s.stepBtn, prevDisabled && { opacity: 0.4 }]}>
+      <Touch accessibilityLabel="السابق" accessibilityRole="button" disabled={prevDisabled} onPress={onPrev} feedback="select" hitSlop={8} style={[s.stepBtn, prevDisabled && { opacity: 0.4 }]}>
         <Icon name="chevron-right" size={16} color={C.ink} />
-      </Pressable>
+      </Touch>
       <T style={{ fontSize: 13, minWidth: 70, textAlign: 'center' }}>{label}</T>
-      <Pressable accessibilityLabel="التالي" accessibilityRole="button" disabled={nextDisabled} onPress={onNext} style={[s.stepBtn, nextDisabled && { opacity: 0.4 }]}>
+      <Touch accessibilityLabel="التالي" accessibilityRole="button" disabled={nextDisabled} onPress={onNext} feedback="select" hitSlop={8} style={[s.stepBtn, nextDisabled && { opacity: 0.4 }]}>
         <Icon name="chevron-left" size={16} color={C.ink} />
-      </Pressable>
+      </Touch>
     </Row>
   );
 }
@@ -288,11 +292,11 @@ export function Sheet({ visible, title, sub, onClose, children, footer }: { visi
               <T style={s.h2}>{title}</T>
               {sub ? <Sub>{sub}</Sub> : null}
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="إغلاق" onPress={onClose} style={s.stepBtn} testID="sheet-close">
+            <Touch accessibilityRole="button" accessibilityLabel="إغلاق" onPress={onClose} style={s.stepBtn} testID="sheet-close">
               <Icon name="x" size={18} color={C.ink} />
-            </Pressable>
+            </Touch>
           </Spread>
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
             {children}
           </ScrollView>
           {footer ? <View style={[s.sheetFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>{footer}</View> : null}

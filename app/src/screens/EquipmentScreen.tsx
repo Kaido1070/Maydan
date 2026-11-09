@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Modal, Pressable, TextInput, View } from 'react-native';
+import { Image, Modal, TextInput, View } from 'react-native';
 import { addDays, formatDate } from '../domain/dates';
 import { deleteEquipment, equipmentOf, EquipmentInput, saveEquipment, validateEquipment } from '../domain/equipment';
 import type { EquipmentRecord, Photo } from '../domain/types';
@@ -8,6 +8,7 @@ import { confirm } from '../sheets/VisitSheet';
 import { useApply, useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Field, Icon, Row, s, SectionTitle, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
+import { Touch } from '../ui/touch';
 
 export function EquipmentScreen() {
   const { ws } = useStore();
@@ -47,7 +48,7 @@ function EquipmentCard({ record, onPress }: { record: EquipmentRecord; onPress: 
     </View>
   );
   return (
-    <Pressable testID={'equipment-' + record.id} accessibilityRole="button" accessibilityLabel={record.name} onPress={onPress}>
+    <Touch testID={'equipment-' + record.id} accessibilityRole="button" accessibilityLabel={record.name} onPress={onPress}>
       <Card>
         <Spread style={{ alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
@@ -64,7 +65,7 @@ function EquipmentCard({ record, onPress }: { record: EquipmentRecord; onPress: 
           {cover(record.after, 'بعد')}
         </Row>
       </Card>
-    </Pressable>
+    </Touch>
   );
 }
 
@@ -144,10 +145,10 @@ function EquipmentSheet({ recordId, onClose }: { recordId: string | 'new' | null
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
         {draft[side].map((photo) => (
           <View key={photo.id} style={{ width: '31%' }}>
-            <Pressable accessibilityRole="imagebutton" accessibilityLabel={'عرض صورة ' + title} onPress={() => setViewer(photo)}>
+            <Touch accessibilityRole="imagebutton" accessibilityLabel={'عرض صورة ' + title} onPress={() => setViewer(photo)}>
               <Image source={{ uri: photoSrc(photo) }} style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#eee' }} />
-            </Pressable>
-            <Pressable
+            </Touch>
+            <Touch
               accessibilityRole="button"
               accessibilityLabel="حذف الصورة"
               onPress={() => remove(side, photo)}
@@ -155,7 +156,7 @@ function EquipmentSheet({ recordId, onClose }: { recordId: string | 'new' | null
               style={{ position: 'absolute', top: 4, left: 4, width: 26, height: 26, borderRadius: 13, backgroundColor: '#000a', alignItems: 'center', justifyContent: 'center' }}
             >
               <Icon name="x" size={14} color="#fff" />
-            </Pressable>
+            </Touch>
           </View>
         ))}
       </View>
@@ -207,10 +208,10 @@ function EquipmentSheet({ recordId, onClose }: { recordId: string | 'new' | null
       />
 
       <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
-        <Pressable accessibilityRole="button" accessibilityLabel="إغلاق الصورة" onPress={() => setViewer(null)} style={{ flex: 1, backgroundColor: '#000e', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+        <Touch accessibilityRole="button" accessibilityLabel="إغلاق الصورة" onPress={() => setViewer(null)} style={{ flex: 1, backgroundColor: '#000e', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
           {viewer ? <Image source={{ uri: photoSrc(viewer) }} resizeMode="contain" style={{ width: '100%', height: '85%' }} /> : null}
           <Sub style={{ color: '#fff', marginTop: 10 }}>اضغط للإغلاق</Sub>
-        </Pressable>
+        </Touch>
       </Modal>
     </Sheet>
   );

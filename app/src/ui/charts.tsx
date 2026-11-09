@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { C, Icon, IconName, Row, Spread, Sub, T } from './kit';
+import { Touch } from './touch';
 
 /** ألوان الرسوم (تم التحقق منها لعمى الألوان): الزيارات أزرق، الاجتماعات برتقالي. */
 export const CHART = {
@@ -82,7 +83,7 @@ export function ColumnChart({ buckets, series, height = 170 }: { buckets: { labe
             {buckets.map((bucket, index) => {
               const active = index === focus;
               return (
-                <Pressable
+                <Touch
                   key={bucket.label}
                   accessibilityRole="button"
                   accessibilityLabel={bucket.label + ': ' + series.map((item, i) => item.name + ' ' + bucket.values[i]).join('، ')}
@@ -107,7 +108,7 @@ export function ColumnChart({ buckets, series, height = 170 }: { buckets: { labe
                   <Sub numberOfLines={1} style={{ fontSize: 11, lineHeight: 16, color: active ? C.ink : CHART.muted, fontWeight: active ? '700' : '400' }}>
                     {buckets.length > 6 ? String(index + 1) : bucket.label}
                   </Sub>
-                </Pressable>
+                </Touch>
               );
             })}
           </View>

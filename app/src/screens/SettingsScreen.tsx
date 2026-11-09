@@ -23,6 +23,7 @@ import { useApply, useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Field, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
 import { CHANGELOG, versionLabel } from '../version';
+import { Touch } from '../ui/touch';
 
 export function SettingsScreen() {
   const store = useStore();
@@ -297,7 +298,7 @@ function WorkScheduleCard() {
         {WEEKDAYS_AR.map((name, day) => {
           const on = schedule.days.includes(day);
           return (
-            <Pressable
+            <Touch
               key={day}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
@@ -305,7 +306,7 @@ function WorkScheduleCard() {
               style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
             >
               <T style={{ color: on ? C.white : C.ink, fontSize: 14 }}>{name}</T>
-            </Pressable>
+            </Touch>
           );
         })}
       </View>
