@@ -13,9 +13,13 @@ export type Rotation =
 
 export type Shift = { id: string; name: string };
 
+export type EntryKind = 'person' | 'team' | 'project';
+
 export type Department = {
   id: string;
   name: string;
+  /** نوع السجلات الافتراضي في القسم: فنيون، أو مشاريع (مثل الإنشاءات). */
+  entryKind?: 'person' | 'project';
   shifts: Shift[];
   periods: PeriodDef[];
   rotation: Rotation;
@@ -23,10 +27,10 @@ export type Department = {
 
 export type Technician = {
   id: string;
-  /** للفريق: رقم الفريق أو العقد (اختياري). */
+  /** للفريق: رقم الفريق أو العقد، وللمشروع: رقم المشروع (اختياري لهما). */
   employeeNumber: string;
-  /** فني باسمه، أو فريق/مقاول (شائع في الإنشاءات والصيانة). الافتراضي فني. */
-  kind?: 'person' | 'team';
+  /** فني باسمه، أو فريق/مقاول، أو مشروع (الإنشاءات). الافتراضي فني. */
+  kind?: EntryKind;
   /** اسم المقاول للفرق. */
   contractor?: string;
   name: string;
@@ -76,6 +80,23 @@ export type PlanItem = {
   meetingId?: string;
 };
 
+/** صورة محفوظة على الجهاز (أو data URI في نسخة الويب). */
+export type Photo = { id: string; uri: string; takenAt: string };
+
+/** سجل معدة توزيع: صور قبل وبعد، تُستخدم لاحقًا في التقرير. */
+export type EquipmentRecord = {
+  id: string;
+  /** اسم المعدة أو رقمها (مثل محول، لوحة توزيع، رقم الأصل). */
+  name: string;
+  location: string;
+  notes: string;
+  date: string;
+  before: Photo[];
+  after: Photo[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Settings = {
   engineerName: string;
   dailyVisitGoal: number;
@@ -94,6 +115,8 @@ export type Workspace = {
   overrides: Record<string, SlotOverride>;
   visits: Visit[];
   attendance: MeetingAttendance[];
+  /** سجلات معدات التوزيع (اختياري للبيانات القديمة). */
+  equipment?: EquipmentRecord[];
 };
 
 export type Mode = 'demo' | 'live';

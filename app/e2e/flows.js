@@ -117,6 +117,20 @@ const OUT = process.env.SHOTS || null;
   await id('dept-b').click();
   assert((await page.locator('body').innerText()).includes('موقع الاختبار الأول'), 'البيانات محفوظة بعد إعادة التشغيل');
 
+  // مهام اليوم: تذكير زيارة → تفاصيل الفني → تسجيل زيارة له → تصير منجزة
+  await id('tab-day').click();
+  const dailyTask = page.locator('[data-testid^="daily-visit-"]').first();
+  const techId = (await dailyTask.getAttribute('data-testid')).replace('daily-visit-', '');
+  assert((await dailyTask.innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر');
+  await dailyTask.click();
+  await page.waitForSelector('text=الزيارات · آخر 6 أشهر');
+  await id('person-visit').click();
+  assert(await id('visit-tech-' + techId).getAttribute('aria-checked') === 'true', 'الفني محدد مسبقًا في الزيارة');
+  await id('visit-site').fill('زيارة من مهام اليوم');
+  await id('visit-save').click();
+  await page.waitForTimeout(200);
+  assert((await page.locator('body').innerText()).includes('انسجلت له زيارة اليوم'), 'المهمة صارت منجزة');
+
   // وضع العمل منفصل عن وضع التجربة
   await id('open-settings').click();
   await page.getByText('بيانات العمل').first().click();

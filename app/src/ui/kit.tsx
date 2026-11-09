@@ -191,6 +191,7 @@ export function Checkbox({ checked, onChange, label, disabled, testID }: { check
       testID={testID}
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled: !!disabled }}
+      aria-checked={checked}
       accessibilityLabel={label}
       disabled={disabled}
       onPress={() => onChange(!checked)}

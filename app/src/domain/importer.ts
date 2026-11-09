@@ -1,14 +1,14 @@
 import { normalizeDigits } from './dates';
 import { newId } from './records';
-import { shiftName } from './shifts';
-import type { Technician, Workspace } from './types';
+import { deptEntryKind, ENTRY_NOUN, shiftName } from './shifts';
+import type { EntryKind, Technician, Workspace } from './types';
 
 /** أعمدة ملف الفنيين بالترتيب. */
 export const TECH_COLUMNS = ['الاسم', 'النوع', 'الرقم الوظيفي', 'المقاول', 'القسم', 'الشفت الأساسي', 'الحالة'] as const;
 
 const HEADER_ALIASES: Record<'name' | 'number' | 'department' | 'shift' | 'status' | 'kind' | 'contractor', string[]> = {
-  name: ['الاسم', 'اسم الفني', 'اسم الموظف', 'الاسم الكامل', 'اسم الفني او الفريق', 'اسم الفريق', 'name', 'full name'],
-  number: ['الرقم الوظيفي', 'رقم وظيفي', 'الرقم', 'رقم الموظف', 'رقم الفريق', 'رقم العقد', 'employee number', 'employee no', 'emp no', 'id'],
+  name: ['الاسم', 'اسم الفني', 'اسم الموظف', 'الاسم الكامل', 'اسم الفني او الفريق', 'اسم الفريق', 'اسم المشروع', 'المشروع', 'name', 'full name', 'project'],
+  number: ['الرقم الوظيفي', 'رقم وظيفي', 'الرقم', 'رقم الموظف', 'رقم الفريق', 'رقم العقد', 'رقم المشروع', 'employee number', 'employee no', 'emp no', 'id'],
   kind: ['النوع', 'نوع', 'فني او فريق', 'type'],
   contractor: ['المقاول', 'اسم المقاول', 'الشركه', 'المؤسسه', 'contractor', 'company'],
   department: ['القسم', 'الإدارة', 'department', 'section'],
@@ -40,7 +40,7 @@ export type ImportRow = {
   line: number; // رقم السطر في الملف (يبدأ من 1)
   name: string;
   employeeNumber: string;
-  kind: 'person' | 'team';
+  kind: EntryKind;
   contractor: string;
   departmentId?: string;
   departmentName: string;
@@ -62,6 +62,8 @@ export type ImportPreview = {
 };
 
 const TEAM_WORDS = ['فريق', 'مقاول', 'فريق مقاول', 'شركه', 'team', 'contractor', 'crew'].map(normalizeKey);
+const PROJECT_WORDS = ['مشروع', 'project'].map(normalizeKey);
+const PERSON_WORDS = ['فني', 'موظف', 'person', 'technician'].map(normalizeKey);
 
 /** مفتاح المطابقة: الرقم إن وجد، وإلا اسم الفريق داخل قسمه. */
 const identity = (number: string, departmentId: string, name: string) =>
@@ -99,21 +101,31 @@ export function previewTechnicianImport(ws: Workspace, table: unknown[][]): Impo
     const shiftLabel = cellText(cell(cells, 'shift'));
     const contractor = cellText(cell(cells, 'contractor'));
     const kindText = normalizeKey(cell(cells, 'kind'));
-    // النوع الفاضي: فريق إذا ما فيه رقم وفيه مقاول، وإلا فني.
-    const kind: 'person' | 'team' = TEAM_WORDS.includes(kindText) || (!kindText && !employeeNumber && !!contractor) ? 'team' : 'person';
-    const status = normalizeKey(cell(cells, 'status'));
-    const row: ImportRow = { line, name, employeeNumber, kind, contractor: kind === 'team' ? contractor : '', departmentName, shiftName: shiftLabel, active: !INACTIVE.includes(status), action: 'add' };
-
     const department = ws.departments.find((item) => normalizeKey(item.name) === normalizeKey(departmentName));
+    // النوع الفاضي: مشروع في أقسام المشاريع، وفريق إذا ما فيه رقم وفيه مقاول، وإلا فني.
+    const kind: EntryKind = PROJECT_WORDS.includes(kindText)
+      ? 'project'
+      : TEAM_WORDS.includes(kindText)
+        ? 'team'
+        : PERSON_WORDS.includes(kindText)
+          ? 'person'
+          : deptEntryKind(department) === 'project'
+            ? 'project'
+            : !employeeNumber && contractor
+              ? 'team'
+              : 'person';
+    const status = normalizeKey(cell(cells, 'status'));
+    const row: ImportRow = { line, name, employeeNumber, kind, contractor: kind === 'person' ? '' : contractor, departmentName, shiftName: shiftLabel, active: !INACTIVE.includes(status), action: 'add' };
+
     // الشفت اختياري إذا كان للقسم شفت واحد فقط.
     const shift = !shiftLabel && department?.shifts.length === 1 ? department.shifts[0] : department?.shifts.find((item) => normalizeKey(item.name) === normalizeKey(shiftLabel));
     if (shift && !shiftLabel) row.shiftName = shift.name;
     const key = department ? identity(employeeNumber, department.id, name) : '';
-    if (!name) row.error = kind === 'team' ? 'اسم الفريق فاضي' : 'الاسم فاضي';
-    else if (!employeeNumber && kind === 'person') row.error = 'الرقم الوظيفي فاضي (للفرق اكتب في النوع: فريق)';
+    if (!name) row.error = 'اسم ال' + ENTRY_NOUN[kind] + ' فاضي';
+    else if (!employeeNumber && kind === 'person') row.error = 'الرقم الوظيفي فاضي (للفرق والمشاريع اكتب النوع: فريق أو مشروع)';
     else if (!department) row.error = 'القسم «' + departmentName + '» غير موجود. الأقسام: ' + ws.departments.map((d) => d.name).join('، ');
     else if (!shift) row.error = (shiftLabel ? 'الشفت «' + shiftLabel + '» غير موجود في ' + department.name : 'اكتب الشفت الأساسي') + '. الشفتات: ' + department.shifts.map((s) => s.name).join('، ');
-    else if (seen.has(key)) row.error = (employeeNumber ? 'الرقم مكرر' : 'الفريق مكرر') + ' مع السطر ' + seen.get(key);
+    else if (seen.has(key)) row.error = (employeeNumber ? 'الرقم مكرر' : ENTRY_NOUN[kind] + ' مكرر') + ' مع السطر ' + seen.get(key);
 
     if (key && !seen.has(key)) seen.set(key, line);
     if (row.error) {
@@ -176,7 +188,7 @@ export function technicianTable(ws: Workspace): (string | number)[][] {
     [...TECH_COLUMNS],
     ...ws.technicians.map((tech) => [
       tech.name,
-      tech.kind === 'team' ? 'فريق' : 'فني',
+      ENTRY_NOUN[tech.kind ?? 'person'],
       tech.employeeNumber,
       tech.contractor ?? '',
       ws.departments.find((d) => d.id === tech.departmentId)?.name ?? '',
@@ -191,9 +203,9 @@ export function instructionsTable(ws: Workspace): string[][] {
   return [
     ['تعليمات الاستيراد'],
     ['عبّئ ورقة «الفنيين» بدون تغيير عناوين الأعمدة. كل صف فني واحد.'],
-    ['النوع: «فني» لموظف باسمه ورقمه الوظيفي، أو «فريق» للفرق والمقاولين (شائع في الإنشاءات والصيانة). الفارغ يعني فني.'],
-    ['الفني يُعرف برقمه الوظيفي. الفريق يُعرف برقمه إن وُجد، وإلا باسمه داخل القسم. الموجود تتحدث بياناته والجديد ينضاف.'],
-    ['الرقم الوظيفي إلزامي للفني واختياري للفريق (رقم الفريق أو العقد). المقاول اختياري.'],
+    ['النوع: «فني» لموظف باسمه، أو «فريق» للفرق والمقاولين، أو «مشروع» (الإنشاءات). الفارغ = النوع الافتراضي للقسم (الإنشاءات = مشروع، والباقي فني).'],
+    ['الفني يُعرف برقمه الوظيفي. الفريق والمشروع يُعرفان برقمهما إن وُجد، وإلا بالاسم داخل القسم. الموجود تتحدث بياناته والجديد ينضاف.'],
+    ['الرقم الوظيفي إلزامي للفني، واختياري للفريق (رقم الفريق أو العقد) وللمشروع (رقم المشروع). المقاول اختياري.'],
     ['اكتب القسم والشفت الأساسي بنفس الأسماء الموجودة تحت. الشفت اختياري للأقسام اللي لها شفت واحد.'],
     ['الحالة اختيارية: اكتب «غير نشط» لإيقاف فني. الفارغ يعني نشط.'],
     [],

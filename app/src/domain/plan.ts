@@ -46,8 +46,8 @@ export const plannedVisit = (ws: Workspace, item: PlanItem, date: string) =>
 export function upsertTechnician(ws: Workspace, tech: Omit<Technician, 'id'> & { id?: string }): Workspace {
   const name = tech.name.trim();
   const employeeNumber = tech.employeeNumber.trim();
-  const team = tech.kind === 'team';
-  if (!name) throw new Error(team ? 'اكتب اسم الفريق أو المقاول' : 'اكتب اسم الفني');
+  const team = tech.kind === 'team' || tech.kind === 'project';
+  if (!name) throw new Error(tech.kind === 'project' ? 'اكتب اسم المشروع' : team ? 'اكتب اسم الفريق أو المقاول' : 'اكتب اسم الفني');
   if (!employeeNumber && !team) throw new Error('اكتب الرقم الوظيفي');
   if (employeeNumber && ws.technicians.some((item) => item.employeeNumber === employeeNumber && item.id !== tech.id))
     throw new Error('الرقم مستخدم لفني أو فريق آخر');

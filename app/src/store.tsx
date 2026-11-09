@@ -22,6 +22,17 @@ type Store = {
 
 const StoreContext = createContext<Store | null>(null);
 
+/** ترقية بيانات الإصدارات السابقة. */
+export function migrate(state: AppState): AppState {
+  // 1.3.0: الإنشاءات صارت مشاريع. بيانات التجربة تتجدد، وبيانات العمل يتحدث فيها نوع القسم فقط.
+  const construction = (ws: Workspace) => ws.departments.find((d) => d.id === 'e' && d.name.includes('الإنشاءات'));
+  const demoOld = construction(state.demo) && construction(state.demo)!.entryKind === undefined;
+  const live = construction(state.live) && construction(state.live)!.entryKind === undefined
+    ? { ...state.live, departments: state.live.departments.map((d) => (d === construction(state.live) ? { ...d, entryKind: 'project' as const } : d)) }
+    : state.live;
+  return { ...state, demo: demoOld ? demoWorkspace(riyadhNow().date) : state.demo, live };
+}
+
 function initialState(today: string): AppState {
   return { version: 1, mode: 'demo', demo: demoWorkspace(today), live: emptyWorkspace(today) };
 }
@@ -37,7 +48,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .then((raw) => {
         if (!raw) return;
         const parsed = JSON.parse(raw) as AppState;
-        if (parsed?.version === 1 && parsed.demo && parsed.live) setState(parsed);
+        if (parsed?.version === 1 && parsed.demo && parsed.live) setState(migrate(parsed));
       })
       .catch(() => {})
       .finally(() => setReady(true));

@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 import type { SlotTarget } from '../sheets/ShiftSheets';
 import type { VisitTarget } from '../sheets/VisitSheet';
 
-export type Tab = 'day' | 'visits' | 'meetings' | 'reports' | 'roster' | 'settings';
+export type Tab = 'day' | 'visits' | 'meetings' | 'equipment' | 'reports' | 'roster' | 'settings';
 
 export type Ui = {
   tab: Tab;
@@ -13,6 +13,8 @@ export type Ui = {
   openTechnician: (id: string, date?: string) => void;
   openSlot: (target: NonNullable<SlotTarget>) => void;
   openChangelog: () => void;
+  /** تفاصيل فني أو فريق: سجله وأزرار التسجيل. */
+  openPerson: (id: string) => void;
   /** القسم المختار المشترك بين شاشتي الزيارات والاجتماعات */
   departmentId: string | null;
   setDepartmentId: (id: string | null) => void;

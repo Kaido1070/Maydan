@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { formatDate, WEEKDAYS_AR } from '../domain/dates';
-import { removePlanItem } from '../domain/plan';
+import { formatDate } from '../domain/dates';
 import { deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName, techTag } from '../domain/shifts';
 import type { Settings, Workspace } from '../domain/types';
@@ -11,7 +10,7 @@ import { shareBytes, shareText } from '../exporting';
 import { ImportSheet } from '../sheets/ImportSheet';
 import { DepartmentPicker } from './DepartmentPicker';
 import { rotationText } from './RosterScreen';
-import { DepartmentSheet, IconLine, PlanItemSheet, TechnicianEditSheet } from '../sheets/SettingsSheets';
+import { DepartmentSheet, IconLine, TechnicianEditSheet } from '../sheets/SettingsSheets';
 import { confirm } from '../sheets/VisitSheet';
 import { useApply, useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Field, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
@@ -25,7 +24,6 @@ export function SettingsScreen() {
   const ui = useUi();
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [techSheet, setTechSheet] = useState<string | null>(null);
-  const [planSheet, setPlanSheet] = useState(false);
   const [techDept, setTechDept] = useState<string | null>(ws.departments[0]?.id ?? null);
   const [importText, setImportText] = useState('');
   const [excel, setExcel] = useState<{ file: string; preview: ImportPreview } | null>(null);
@@ -182,25 +180,6 @@ export function SettingsScreen() {
         )}
       </Card>
 
-      <SectionTitle title="الخطة الأسبوعية" sub="مهام تظهر في جدول أعمال اليوم" right={<Button small icon="plus" label="مهمة" onPress={() => setPlanSheet(true)} />} />
-      <Card style={{ paddingVertical: 4 }}>
-        {ws.plan.length ? (
-          [...ws.plan]
-            .sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time))
-            .map((item, index) => (
-              <Spread key={item.id} style={{ paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
-                <View style={{ flex: 1 }}>
-                  <T style={{ fontSize: 13, fontWeight: '700' }}>{item.title}</T>
-                  <Sub>{WEEKDAYS_AR[item.weekday] + ' · ' + item.time + ' · ' + (ws.departments.find((d) => d.id === item.departmentId)?.name ?? '—')}</Sub>
-                </View>
-                <Chip tone={item.kind === 'visit' ? 'purple' : 'amber'} label={item.kind === 'visit' ? 'زيارة' : 'اجتماع'} />
-                <Button small variant="danger" label="حذف" onPress={() => apply((c) => removePlanItem(c, item.id))} />
-              </Spread>
-            ))
-        ) : (
-          <Empty text="ما فيه مهام في الخطة الأسبوعية." />
-        )}
-      </Card>
 
       {mode === 'live' ? (
         <>
@@ -238,7 +217,6 @@ export function SettingsScreen() {
       />
       <DepartmentSheet departmentId={deptSheet} onClose={() => setDeptSheet(null)} onSaved={(m) => (setDeptSheet(null), saved(m))} />
       <TechnicianEditSheet technicianId={techSheet} onClose={() => setTechSheet(null)} onSaved={(m) => (setTechSheet(null), saved(m))} />
-      <PlanItemSheet visible={planSheet} onClose={() => setPlanSheet(false)} onSaved={(m) => (setPlanSheet(false), saved(m))} />
     </View>
   );
 }

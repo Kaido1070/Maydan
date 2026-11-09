@@ -3,8 +3,8 @@ import { Pressable, View } from 'react-native';
 import { addDays, formatDate, isDateKey, isTime, WEEKDAYS_AR } from '../domain/dates';
 import { addPlanItem, removeTechnician, updateDepartment, upsertTechnician } from '../domain/plan';
 import { newId } from '../domain/records';
-import { OFF } from '../domain/shifts';
-import type { Department, PlanItem, Rotation } from '../domain/types';
+import { deptEntryKind, ENTRY_NOUN, OFF } from '../domain/shifts';
+import type { Department, EntryKind, PlanItem, Rotation } from '../domain/types';
 import { useApply, useStore } from '../store';
 import { Button, C, Divider, Field, Icon, Row, Segmented, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
 import { confirm } from './VisitSheet';
@@ -57,6 +57,16 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
       }
     >
       <Field label="اسم القسم" value={draft.name} onChangeText={(name) => set({ name })} />
+      <T style={{ fontWeight: '700', fontSize: 13, marginBottom: 6 }}>السجلات في هذا القسم</T>
+      <Segmented
+        options={[
+          { value: 'person', label: 'فنيون وفرق' },
+          { value: 'project', label: 'مشاريع' },
+        ]}
+        value={draft.entryKind ?? 'person'}
+        onChange={(entryKind) => set({ entryKind })}
+      />
+      <Sub style={{ marginTop: 4, marginBottom: 10 }}>يحدد النوع الافتراضي عند الإضافة والاستيراد. الإنشاءات غالبًا مشاريع.</Sub>
 
       <Spread style={{ marginTop: 6 }}>
         <T style={{ fontWeight: '800' }}>الشفتات</T>
@@ -213,13 +223,13 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
   const [number, setNumber] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [shiftId, setShiftId] = useState('');
-  const [kind, setKind] = useState<'person' | 'team'>('person');
+  const [kind, setKind] = useState<EntryKind>('person');
   const [contractor, setContractor] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!technicianId) return;
-    setKind(existing?.kind ?? 'person');
+    setKind(existing?.kind ?? deptEntryKind(ws.departments.find((d) => d.id === (existing?.departmentId ?? ws.departments[0]?.id))));
     setContractor(existing?.contractor ?? '');
     const first = ws.departments[0];
     setName(existing?.name ?? '');
@@ -238,14 +248,14 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
       upsertTechnician(current, { id: existing?.id, name, employeeNumber: number, kind, contractor, departmentId, baseShiftId: shiftId, active: existing?.active ?? true }),
     );
     if (failure) return setError(failure);
-    onSaved(existing ? 'تم تحديث البيانات' : kind === 'team' ? 'تمت إضافة الفريق' : 'تمت إضافة الفني');
+    onSaved(existing ? 'تم تحديث البيانات' : 'تمت إضافة ' + ENTRY_NOUN[kind]);
   };
 
   return (
     <Sheet
       visible
       onClose={onClose}
-      title={existing ? 'تعديل' : 'إضافة فني أو فريق'}
+      title={existing ? 'تعديل' : 'إضافة فني أو فريق أو مشروع'}
       footer={
         <>
           {error ? <T style={{ color: C.red, fontSize: 13 }}>{error}</T> : null}
@@ -273,20 +283,31 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
         options={[
           { value: 'person', label: 'فني' },
           { value: 'team', label: 'فريق / مقاول' },
+          { value: 'project', label: 'مشروع' },
         ]}
         value={kind}
         onChange={setKind}
       />
       <Sub style={{ marginVertical: 8 }}>
-        {kind === 'team' ? 'للإنشاءات والصيانة: سجّل الفريق باسمه أو باسم المقاول. يُحسب له هدف الزيارات والاجتماعات مثل الفني.' : 'فني باسمه ورقمه الوظيفي.'}
+        {kind === 'project'
+          ? 'للإنشاءات: سجّل المشروع باسمه، ومعه المقاول ورقم المشروع إن وجد. يُحسب له هدف الزيارات والاجتماعات.'
+          : kind === 'team'
+            ? 'للصيانة وغيرها: سجّل الفريق باسمه أو باسم المقاول. يُحسب له هدف الزيارات والاجتماعات مثل الفني.'
+            : 'فني باسمه ورقمه الوظيفي.'}
       </Sub>
-      <Field label={kind === 'team' ? 'اسم الفريق' : 'اسم الفني'} value={name} onChangeText={setName} testID="tech-name" placeholder={kind === 'team' ? 'مثال: فريق الحفريات 1' : ''} />
-      {kind === 'team' ? <Field label="اسم المقاول (اختياري)" value={contractor} onChangeText={setContractor} testID="tech-contractor" /> : null}
       <Field
-        label={kind === 'team' ? 'رقم الفريق أو العقد (اختياري)' : 'الرقم الوظيفي'}
+        label={kind === 'project' ? 'اسم المشروع' : kind === 'team' ? 'اسم الفريق' : 'اسم الفني'}
+        value={name}
+        onChangeText={setName}
+        testID="tech-name"
+        placeholder={kind === 'project' ? 'مثال: مشروع شبكة حي الروضة' : kind === 'team' ? 'مثال: فريق الحفريات 1' : ''}
+      />
+      {kind !== 'person' ? <Field label="اسم المقاول (اختياري)" value={contractor} onChangeText={setContractor} testID="tech-contractor" /> : null}
+      <Field
+        label={kind === 'project' ? 'رقم المشروع (اختياري)' : kind === 'team' ? 'رقم الفريق أو العقد (اختياري)' : 'الرقم الوظيفي'}
         value={number}
         onChangeText={setNumber}
-        keyboardType={kind === 'team' ? 'default' : 'number-pad'}
+        keyboardType={kind === 'person' ? 'number-pad' : 'default'}
         testID="tech-number"
       />
       <T style={{ fontWeight: '700', fontSize: 12, marginBottom: 6 }}>القسم</T>
@@ -297,6 +318,7 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
         onChange={(id) => {
           setDepartmentId(id);
           setShiftId(ws.departments.find((d) => d.id === id)?.shifts[0]?.id ?? '');
+          if (!existing) setKind(deptEntryKind(ws.departments.find((d) => d.id === id)));
         }}
       />
       <T style={{ fontWeight: '700', fontSize: 12, marginVertical: 6 }}>الشفت الأساسي</T>

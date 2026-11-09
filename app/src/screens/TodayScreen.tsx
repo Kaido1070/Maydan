@@ -1,40 +1,38 @@
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { addDays, formatDate } from '../domain/dates';
-import { plannedVisit, tasksOn } from '../domain/plan';
+import { DailyTask, dailyTasks, taskReason } from '../domain/daily';
 import { activeTechnicians, currentSlot, periodRange, shiftLabel } from '../domain/shifts';
-import { coverageOf, dayProgress, followUpList, technicianVisits, tone, xpSummary } from '../domain/stats';
+import { coverageOf, dayProgress, followUpList, tone, xpSummary } from '../domain/stats';
 import { useStore } from '../store';
-import { Button, C, Card, Chip, Empty, Icon, IconBox, Progress, ratio, Row, SectionTitle, Spread, Stepper, Sub, T } from '../ui/kit';
+import { Button, C, Card, Chip, Empty, Icon, IconBox, Progress, ratio, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 
-const WINDOW = 7;
+type Filter = 'all' | 'visit' | 'meeting';
+const PAGE = 8;
 
 export function TodayScreen() {
   const { ws, now } = useStore();
   const ui = useUi();
-  const [offset, setOffset] = useState(0);
   const [openDept, setOpenDept] = useState<string | null>(null);
-  const date = addDays(now.date, offset);
-  const tasks = tasksOn(ws, date);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [limit, setLimit] = useState(PAGE);
   const xp = xpSummary(ws);
   const today = dayProgress(ws, now.date);
-  const todayTasks = tasksOn(ws, now.date);
-  const meetingGoal = todayTasks.filter((task) => task.item.kind === 'meeting').length;
-  const meetingsDone = todayTasks.filter((task) => task.item.kind === 'meeting' && task.done).length;
+  const all = dailyTasks(ws, now);
+  const tasks = all.filter((task) => filter === 'all' || task.kind === filter);
+  const pending = tasks.filter((task) => !task.done);
+  const done = tasks.filter((task) => task.done);
+  const open = all.filter((task) => !task.done);
+  const visitsOpen = open.filter((task) => task.kind === 'visit').length;
+  const meetingsOpen = open.filter((task) => task.kind === 'meeting').length;
   const name = ws.settings.engineerName.trim();
   const overall = coverageOf(ws, activeTechnicians(ws), now.date).coverage;
   const followUps = followUpList(ws, now.date);
-  const priority = ws.departments.flatMap((department) =>
-    (currentSlot(ws, department, now)?.crew ?? [])
-      .filter((tech) => !technicianVisits(ws, tech.id, now.date).length)
-      .map((tech) => ({ tech, department })),
-  );
 
   const heroText =
     today.visits >= today.goal
-      ? 'أكملت هدف الزيارات اليوم. تقدر تراجع سجل الفرق أو تسجل اجتماعك.'
+      ? 'أكملت هدف الزيارات اليوم. تقدر تكمل الاجتماعات أو تراجع الفنيين الباقين.'
       : 'هدفك اليوم ' + today.goal + ' زيارات ميدانية. كل زيارة تسجلها تقربك من المستوى التالي.';
 
   return (
@@ -54,14 +52,14 @@ export function TodayScreen() {
             <T style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>{xp.level}</T>
           </Spread>
           <Progress value={xp.levelXp} max={100} color="#d4c0ff" track="#ffffff2b" />
-          <T style={{ color: '#e3d7ff', fontSize: 10 }}>{'⁦' + xp.levelXp + ' / 100 XP⁩'}</T>
+          <T style={{ color: '#e3d7ff', fontSize: 10 }}>{'\u2066' + xp.levelXp + ' / 100 XP\u2069'}</T>
         </View>
       </View>
 
       <Row style={{ marginTop: 10 }} gap={8}>
         <Stat icon="map-pin" label="زيارات اليوم" value={ratio(today.visits, today.goal)} tone={tone(today.visits, today.goal)} />
-        <Stat icon="check" label="مهام مكتملة" value={ratio(tasks.filter((t) => t.done).length, tasks.length)} />
-        <Stat icon="zap" label="إجمالي الخبرة" value={'⁦' + xp.xp + ' XP⁩'} />
+        <Stat icon="check" label="مهام منجزة" value={ratio(all.length - open.length, all.length)} />
+        <Stat icon="zap" label="إجمالي الخبرة" value={'\u2066' + xp.xp + ' XP\u2069'} />
       </Row>
 
       <Card style={{ marginTop: 10 }}>
@@ -69,7 +67,7 @@ export function TodayScreen() {
           <IconBox name="target" />
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '800', fontSize: 15 }}>تحدي اليوم</T>
-            <Sub>{today.visits >= today.goal && meetingsDone >= meetingGoal ? 'حققت هدف اليوم 🎉' : 'تابع إنجازك خطوة بخطوة'}</Sub>
+            <Sub>{today.visits >= today.goal ? 'حققت هدف الزيارات اليوم 🎉' : 'تابع إنجازك خطوة بخطوة'}</Sub>
           </View>
         </Row>
         <Spread style={{ marginTop: 10 }}>
@@ -77,66 +75,54 @@ export function TodayScreen() {
           <T style={{ fontWeight: '800' }}>{ratio(today.visits, today.goal)}</T>
         </Spread>
         <Progress value={today.visits} max={today.goal} />
-        {meetingGoal ? (
-          <>
-            <Spread>
-              <T style={{ fontSize: 13 }}>اجتماعات مجدولة</T>
-              <T style={{ fontWeight: '800' }}>{ratio(meetingsDone, meetingGoal)}</T>
-            </Spread>
-            <Progress value={meetingsDone} max={meetingGoal} color="#278969" />
-          </>
-        ) : null}
-        <Button testID="quick-visit" style={{ marginTop: 6 }} icon="plus" label="تسجيل زيارة" onPress={() => ui.go('visits')} variant="secondary" />
+        <Spread>
+          <T style={{ fontSize: 13 }}>حضور اجتماعات اليوم</T>
+          <T style={{ fontWeight: '800' }}>{today.meetings}</T>
+        </Spread>
       </Card>
 
       <SectionTitle
-        title={offset === 0 ? 'جدول أعمال اليوم' : 'جدول ' + formatDate(date, { weekday: true })}
-        sub="لون الشفت يعكس أقل سجل بين فنييه"
-        right={<Stepper label={formatDate(date)} onPrev={() => setOffset(offset - 1)} onNext={() => setOffset(offset + 1)} prevDisabled={offset <= -WINDOW} nextDisabled={offset >= WINDOW} />}
+        title="مهام اليوم"
+        sub={open.length ? 'تذكير بالفنيين اللي يداومون اليوم وباقي عليهم زيارة أو اجتماع. اضغط على أي فني لتفاصيله.' : 'ما فيه مهام باقية اليوم.'}
       />
+      <View style={{ marginBottom: 10 }}>
+        <Segmented
+          options={[
+            { value: 'all', label: 'الكل · ' + open.length },
+            { value: 'visit', label: 'زيارات · ' + visitsOpen },
+            { value: 'meeting', label: 'اجتماعات · ' + meetingsOpen },
+          ]}
+          value={filter}
+          onChange={(value) => {
+            setFilter(value);
+            setLimit(PAGE);
+          }}
+        />
+      </View>
       <Card style={{ paddingVertical: 4 }}>
-        {tasks.length ? (
-          tasks.map((task, index) => {
-            const visit = task.item.kind === 'visit';
-            const future = task.date > now.date;
-            const minVisits = Math.min(...(task.slot?.crew ?? []).map((tech) => technicianVisits(ws, tech.id, task.date).length), Infinity);
-            return (
-              <View key={task.item.id} style={{ flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 12, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
-                <IconBox name={visit ? 'map-pin' : 'calendar'} tone={visit ? 'purple' : 'amber'} size={34} />
-                <View style={{ flex: 1, gap: 3 }}>
-                  <Row gap={6} style={{ flexWrap: 'wrap' }}>
-                    <T style={{ fontWeight: '700' }}>{task.item.title}</T>
-                    <Chip tone={visit ? 'purple' : 'amber'} label={visit ? 'زيارة' : 'اجتماع'} />
-                  </Row>
-                  <Sub>{task.department.name + ' · ' + shiftLabel(task.slot) + ' · ' + task.item.time}</Sub>
-                  {task.slot?.crew.length ? (
-                    <Chip tone={tone(minVisits, ws.settings.visitTarget)} label={task.slot.crew.length + ' فني · أقل سجل زيارات ' + ratio(minVisits, ws.settings.visitTarget)} />
-                  ) : (
-                    <Sub>حدد الفنيين من جدول الشفتات</Sub>
-                  )}
-                </View>
-                <View style={{ alignItems: 'center', gap: 3 }}>
-                  <Button
-                    small
-                    testID={'task-' + task.item.id}
-                    variant={task.done ? 'done' : future ? 'secondary' : 'primary'}
-                    disabled={future}
-                    label={task.done ? 'تم الإنجاز' : future ? 'قادمة' : 'سجل الإنجاز'}
-                    onPress={() => {
-                      if (!visit) return ui.go('meetings', { departmentId: task.department.id, meetingId: task.item.meetingId });
-                      const existing = plannedVisit(ws, task.item, task.date);
-                      ui.openVisit(existing ? { departmentId: task.department.id, visitId: existing.id } : { departmentId: task.department.id, planItem: task.item, date: task.date });
-                    }}
-                  />
-                  <T style={{ color: C.purple, fontSize: 10, fontWeight: '700' }}>{'⁦+' + task.xp + ' XP⁩'}</T>
-                </View>
-              </View>
-            );
-          })
+        {pending.length ? (
+          pending.slice(0, limit).map((task, index) => <TaskRow key={task.kind + task.technician.id} task={task} first={!index} />)
         ) : (
-          <Empty text={ws.plan.length ? 'ما فيه مهام مجدولة في هذا اليوم.' : 'أضف الخطة الأسبوعية من الإعدادات لتظهر مهام كل يوم هنا.'} />
+          <Empty
+            text={
+              !ws.technicians.length
+                ? 'أضف الفنيين من الإعدادات لتظهر مهام اليوم.'
+                : done.length
+                  ? 'خلّصت كل مهام اليوم 👏'
+                  : 'ما فيه أحد يداوم اليوم باقي عليه زيارة أو اجتماع 👏'
+            }
+          />
         )}
+        {pending.length > limit ? <Button small variant="ghost" label={'عرض المزيد · ' + (pending.length - limit)} onPress={() => setLimit(limit + PAGE * 2)} /> : null}
       </Card>
+      {done.length ? (
+        <Card style={{ paddingVertical: 4 }}>
+          <Sub style={{ fontWeight: '700', paddingTop: 8 }}>{'منجز اليوم · ' + done.length}</Sub>
+          {done.map((task, index) => (
+            <TaskRow key={task.kind + task.technician.id} task={task} first={!index} />
+          ))}
+        </Card>
+      ) : null}
 
       <SectionTitle title="الشفت الحالي" sub={'بتوقيت السعودية · ' + now.time} />
       {ws.departments.map((department) => {
@@ -208,27 +194,40 @@ export function TodayScreen() {
         {followUps.length > 5 ? <Button small variant="secondary" label={'عرض الكل · ' + followUps.length + ' فني'} onPress={() => ui.go('reports')} style={{ marginTop: 6 }} /> : null}
       </Card>
 
-      <Card style={{ backgroundColor: '#fcfbff' }}>
-        <T style={{ fontWeight: '800' }}>أولوية الزيارة الآن</T>
-        <Sub>فنيون على رأس العمل بدون زيارة آخر {ws.settings.visitWindowMonths} أشهر</Sub>
-        {priority.length ? (
-          priority.map(({ tech, department }) => (
-            <Row key={tech.id} style={{ marginTop: 8 }}>
-              <Icon name="map-pin" size={14} />
-              <T style={{ fontSize: 13 }}>
-                <T style={{ fontWeight: '700', fontSize: 13 }}>{tech.name}</T>
-                {' · ' + department.name}
-              </T>
-            </Row>
-          ))
-        ) : (
-          <Row style={{ marginTop: 8 }}>
-            <Icon name="check" size={14} color={C.green} />
-            <Sub>ما فيه فنيون في الشفت الحالي بدون زيارة</Sub>
-          </Row>
-        )}
-      </Card>
     </View>
+  );
+}
+
+function TaskRow({ task, first }: { task: DailyTask; first: boolean }) {
+  const { ws } = useStore();
+  const ui = useUi();
+  const visit = task.kind === 'visit';
+  return (
+    <Pressable
+      testID={'daily-' + task.kind + '-' + task.technician.id}
+      accessibilityRole="button"
+      accessibilityLabel={(visit ? 'زيارة ' : 'اجتماع ') + task.technician.name}
+      onPress={() => ui.openPerson(task.technician.id)}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        gap: 10,
+        alignItems: 'center',
+        paddingVertical: 11,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: C.line,
+        opacity: pressed ? 0.6 : task.done ? 0.6 : 1,
+      })}
+    >
+      <IconBox name={task.done ? 'check' : visit ? 'map-pin' : 'users'} tone={task.done ? 'green' : visit ? 'purple' : 'amber'} size={34} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Row gap={6} style={{ flexWrap: 'wrap' }}>
+          <Chip tone={task.done ? 'green' : visit ? 'purple' : 'amber'} label={visit ? 'زيارة' : 'اجتماع'} />
+          <T style={{ fontWeight: '700' }}>{task.technician.name}</T>
+        </Row>
+        <Sub>{taskReason(task, ws.settings) + ' · ' + task.department.name + (task.onShiftNow ? ' · على رأس العمل' : '')}</Sub>
+      </View>
+      <Icon name="chevron-left" size={16} color={C.muted} />
+    </Pressable>
   );
 }
 

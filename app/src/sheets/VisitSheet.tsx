@@ -7,7 +7,7 @@ import type { PlanItem } from '../domain/types';
 import { useApply, useStore } from '../store';
 import { Button, C, Checkbox, Chip, Field, Row, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
 
-export type VisitTarget = { departmentId: string; visitId?: string; planItem?: PlanItem; date?: string } | null;
+export type VisitTarget = { departmentId: string; visitId?: string; planItem?: PlanItem; date?: string; technicianIds?: string[] } | null;
 
 export function confirm(message: string, onYes: () => void) {
   if (Platform.OS === 'web') {
@@ -48,7 +48,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       setTime(time);
       setSite(target.planItem?.title ?? '');
       const slot = department && isTime(time) ? slotAt(ws, department, date, time) : null;
-      setPeople(target.planItem ? (slot?.crew ?? []).map((tech) => tech.id) : []);
+      setPeople(target.technicianIds ?? (target.planItem ? (slot?.crew ?? []).map((tech) => tech.id) : []));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);

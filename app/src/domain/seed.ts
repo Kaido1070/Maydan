@@ -47,7 +47,7 @@ export function defaultDepartments(anchorDate: string): Department[] {
     },
     office('c', 'مساح', 'المسح الميداني'),
     office('d', 'صيانة', 'الصيانة الميدانية'),
-    office('e', 'الإنشاءات', 'الإنشاءات الميدانية'),
+    { ...office('e', 'الإنشاءات', 'الإنشاءات الميدانية'), entryKind: 'project' },
   ];
 }
 
@@ -75,7 +75,7 @@ const DEMO_CREW: Record<string, string[][]> = {
   'b-D': [['b8', 'عمر حسين'], ['b9', 'ياسر أحمد'], ['b18', 'راكان إبراهيم'], ['b19', 'طارق يحيى حمدي'], ['b20', 'منصور سالم']],
   'c-A': [['c1', 'إبراهيم أحمد'], ['c2', 'يحيى سالم'], ['c3', 'مهند علي'], ['c4', 'مالك محمد هزازي'], ['c5', 'صالح أحمد'], ['c6', 'عماد عبدالرحمن']],
   'd-A': [['d1', 'سالم حسين'], ['d2', 'عبدالله علي'], ['d3', 'محمد عبداللطيف صميلي'], ['d4', 'سامي حسن'], ['d5', 'أنس إبراهيم'], ['d6', 'معاذ يحيى جابري'], ['d7', 'حمد محمد']],
-  'e-A': [['e1', 'بندر علي'], ['e2', 'عادل حسين'], ['e3', 'تركي محمد'], ['e4', 'مروان أحمد'], ['e5', 'سيف عبدالله'], ['e6', 'إياد حسن']],
+  'e-A': [['e1', 'مشروع شبكة حي الروضة'], ['e2', 'مشروع محطة التحويل الشمالية'], ['e3', 'مشروع تمديد كابلات الطريق الدائري'], ['e4', 'مشروع إنارة المخطط الصناعي'], ['e5', 'مشروع توسعة محطة الجنوب'], ['e6', 'مشروع شبكة حي النخيل']],
 };
 
 /** أيام الزيارات السابقة لكل فني (بالأيام قبل اليوم). */
@@ -110,6 +110,8 @@ const DEMO_PLAN: [number, string, string, string, 'visit' | 'meeting'][] = [
 
 export const DEMO_ANCHOR = '2026-11-09';
 
+const DEMO_CONTRACTORS = ['مؤسسة البناء التجريبية', 'شركة الإنشاء التجريبية', 'مقاول تجريبي'];
+
 export const demoEmployeeNumber = (id: string) => String(1100 + (id.charCodeAt(0) - 97) * 100 + Number(id.slice(1)));
 
 export function demoWorkspace(today: string): Workspace {
@@ -119,7 +121,11 @@ export function demoWorkspace(today: string): Workspace {
       : department,
   );
   const technicians: Technician[] = Object.entries(DEMO_CREW).flatMap(([shiftId, crew]) =>
-    crew.map(([id, name]) => ({ id, name, employeeNumber: demoEmployeeNumber(id), departmentId: shiftId[0], baseShiftId: shiftId })),
+    crew.map(([id, name]) =>
+      shiftId[0] === 'e'
+        ? { id, name, employeeNumber: 'P-' + demoEmployeeNumber(id), kind: 'project' as const, contractor: DEMO_CONTRACTORS[Number(id.slice(1)) % DEMO_CONTRACTORS.length], departmentId: 'e', baseShiftId: shiftId }
+        : { id, name, employeeNumber: demoEmployeeNumber(id), departmentId: shiftId[0], baseShiftId: shiftId },
+    ),
   );
   const stamp = today + 'T09:00:00.000Z';
 
