@@ -3,7 +3,7 @@ import { TextInput, View } from 'react-native';
 import { formatDate, MONTHS_AR, normalizeDigits } from '../domain/dates';
 import { buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
 import { shiftName, techTag } from '../domain/shifts';
-import { findByEmployeeNumber, techProgress, tone } from '../domain/stats';
+import { searchTechnicians, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
 import { formatDuration } from '../domain/worktime';
 import { useStore } from '../store';
@@ -52,6 +52,8 @@ export function ReportsScreen() {
 
   return (
     <View>
+      <EmployeeSearch />
+
       <SectionTitle title="تقرير الإنجاز حسب الفترة" sub="اختر الفترة والقسم لمراجعة النشاط المسجل والمتبقي." />
       <Card style={{ gap: 10 }}>
         <Segmented options={(Object.keys(REPORT_MODES) as ReportMode[]).map((mode) => ({ value: mode, label: REPORT_MODES[mode] }))} value={params.mode} onChange={(mode) => set({ mode })} />
@@ -226,7 +228,6 @@ export function ReportsScreen() {
         {report.pending.length > 8 ? <Button small variant="ghost" label={showAll ? 'عرض أقل' : 'عرض باقي الفنيين · ' + (report.pending.length - 8)} onPress={() => setShowAll(!showAll)} /> : null}
       </Card>
 
-      <EmployeeSearch />
     </View>
   );
 }
@@ -236,15 +237,20 @@ function EmployeeSearch() {
   const ui = useUi();
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState('');
-  const tech = searched ? findByEmployeeNumber(ws, searched) : undefined;
+  const [picked, setPicked] = useState<string | null>(null);
+  const matches = searched ? searchTechnicians(ws, searched) : [];
+  const tech = matches.length === 1 ? matches[0] : matches.find((item) => item.id === picked);
   const progress = tech ? techProgress(ws, tech, now.date) : null;
   const allVisits = tech ? ws.visits.filter((v) => v.technicianIds.includes(tech.id)).length : 0;
-  const search = () => setSearched(normalizeDigits(query));
+  const search = () => {
+    setSearched(normalizeDigits(query));
+    setPicked(null);
+  };
   const example = ws.technicians.find((t) => t.employeeNumber)?.employeeNumber;
 
   return (
     <>
-      <SectionTitle title="البحث بالرقم الوظيفي" sub="يعرض سجل الموظف من زيارات واجتماعات" />
+      <SectionTitle title="البحث عن موظف" sub="بالرقم الوظيفي أو الاسم: يعرض سجله من زيارات واجتماعات" />
       <Card>
         <Row>
           <TextInput
@@ -252,16 +258,29 @@ function EmployeeSearch() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={search}
-            keyboardType="number-pad"
             returnKeyType="search"
-            placeholder={example ? 'مثال: ' + example : 'الرقم الوظيفي'}
+            placeholder={example ? 'الرقم الوظيفي أو الاسم، مثل ' + example : 'الرقم الوظيفي أو الاسم'}
             placeholderTextColor="#a29db3"
             style={[s.input, { flex: 1, minWidth: 0 }]}
           />
           <Button testID="employee-search-go" label="بحث" icon="search" onPress={search} disabled={!query.trim()} />
         </Row>
-        {!searched ? null : !tech || !progress ? (
-          <Sub style={{ marginTop: 10 }}>ما فيه موظف بهذا الرقم الوظيفي.</Sub>
+        {!searched ? null : !matches.length ? (
+          <Sub style={{ marginTop: 10 }}>ما فيه موظف بهذا الرقم أو الاسم.</Sub>
+        ) : !tech || !progress ? (
+          <View style={{ marginTop: 8 }}>
+            <Sub>{matches.length + ' نتيجة، اختر الموظف:'}</Sub>
+            {matches.map((item, index) => (
+              <Button
+                key={item.id}
+                small
+                variant="ghost"
+                label={item.name + (item.employeeNumber ? ' · ' + item.employeeNumber : '')}
+                onPress={() => setPicked(item.id)}
+                style={{ justifyContent: 'flex-start', borderTopWidth: index ? 1 : 0, borderTopColor: C.line, borderRadius: 0 }}
+              />
+            ))}
+          </View>
         ) : (
           <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10 }}>
             <Spread>

@@ -198,3 +198,25 @@ export function meetingRemaining(ws: Workspace, meetingId: string, departmentId:
   const remaining = people.filter((tech) => !attendedIds.has(tech.id)).sort((a, b) => a.departmentId.localeCompare(b.departmentId) || a.name.localeCompare(b.name, 'ar'));
   return { remaining, attended: people.length - remaining.length, total: people.length };
 }
+
+const searchKey = (value: string) =>
+  value
+    .replace(/[ً-ْـ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+/** البحث بالرقم الوظيفي (تطابق كامل) أو بجزء من الاسم أو اسم المقاول. */
+export function searchTechnicians(ws: Workspace, query: string): Technician[] {
+  const key = searchKey(query);
+  if (!key) return [];
+  const byNumber = ws.technicians.filter((tech) => tech.employeeNumber && tech.employeeNumber === query.trim());
+  if (byNumber.length) return byNumber;
+  return ws.technicians
+    .filter((tech) => searchKey(tech.name).includes(key) || (tech.contractor && searchKey(tech.contractor).includes(key)))
+    .sort((a, b) => Number(a.active === false) - Number(b.active === false) || a.name.localeCompare(b.name, 'ar'))
+    .slice(0, 20);
+}
