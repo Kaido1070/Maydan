@@ -10,6 +10,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { VisitsScreen } from './src/screens/VisitsScreen';
 import { ChangelogSheet, WhatsNewSheet } from './src/sheets/ChangelogSheet';
+import { PersonSheet } from './src/sheets/PersonSheet';
 import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftSheets';
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { StoreProvider, useStore } from './src/store';
@@ -53,6 +54,7 @@ function Shell() {
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [whatsNew, setWhatsNew] = useState<Release[]>([]);
   const [changelog, setChangelog] = useState(false);
+  const [person, setPerson] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(SEEN_VERSION_KEY)
@@ -83,6 +85,7 @@ function Shell() {
       openTechnician: (id, date) => setTechnician({ id, date }),
       openSlot: setSlot,
       openChangelog: () => setChangelog(true),
+      openPerson: setPerson,
       focusMeetingId,
       departmentId,
       setDepartmentId,
@@ -180,6 +183,7 @@ function Shell() {
           }}
         />
         <ChangelogSheet visible={changelog} onClose={() => setChangelog(false)} />
+        <PersonSheet technicianId={person} onClose={() => setPerson(null)} />
         <SlotSheet
           target={slot}
           onClose={() => setSlot(null)}

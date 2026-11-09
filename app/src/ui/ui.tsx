@@ -13,6 +13,8 @@ export type Ui = {
   openTechnician: (id: string, date?: string) => void;
   openSlot: (target: NonNullable<SlotTarget>) => void;
   openChangelog: () => void;
+  /** تفاصيل فني أو فريق: سجله وأزرار التسجيل. */
+  openPerson: (id: string) => void;
   /** القسم المختار المشترك بين شاشتي الزيارات والاجتماعات */
   departmentId: string | null;
   setDepartmentId: (id: string | null) => void;
