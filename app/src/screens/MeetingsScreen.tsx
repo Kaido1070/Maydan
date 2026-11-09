@@ -8,6 +8,7 @@ import { useApply, useStore } from '../store';
 import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, KIND, Progress, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
+import { TalkCard } from '../ui/TalkCard';
 import { DepartmentPicker } from './DepartmentPicker';
 
 export function MeetingsScreen() {
@@ -102,6 +103,8 @@ export function MeetingsScreen() {
   return (
     <View>
       <SectionTitle title="الاجتماعات" sub="حدد اجتماعًا أو أكثر واختر القسم، ثم علّم على حضور كل فني واحفظ دفعة واحدة." />
+      <TalkCard onAdopt={(id) => setSelected((list) => (list.includes(id) ? list : [...list, id]))} />
+
 
       <Card>
         <T style={{ fontWeight: '800', marginBottom: 6 }}>إضافة عنوان اجتماع</T>

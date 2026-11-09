@@ -79,6 +79,25 @@ async function overflow(page) {
 
     await id('tab-reports').click();
     assert((await id('report-follow').innerText()).includes('ملاحظات'), 'التقرير فيه الملاحظات وخارج الدوام');
+
+    // خطة الزيارات: «ابدأ» يفتح الزيارة والفنيين محددين
+    await id('tab-day').click();
+    await page.clock.setFixedTime(new Date('2026-11-10T05:30:00Z')); // الثلاثاء 8:30 صباحًا
+    await page.reload();
+    await id('open-week-plan').click();
+    assert((await page.locator('body').innerText()).includes('خطة الأسبوع'), 'نافذة خطة الأسبوع');
+    await page.getByRole('button', { name: 'ابدأ' }).last().click(); // داخل نافذة الأسبوع
+    assert((await page.locator('[aria-checked="true"]').count()) >= 1, 'الفنيون محددون من الخطة');
+    await id('sheet-close').click();
+
+    // موضوع الاجتماع: اعتماده يضيفه كاجتماع ويحدده
+    await id('tab-meetings').click();
+    const topic = await id('talk-title').innerText();
+    await id('talk-adopt').click();
+    await page.waitForTimeout(200);
+    assert((await page.locator('body').innerText()).includes('تم اختيار «' + topic + '»'), 'الموضوع انعتمد كاجتماع');
+    await id('talk-next').click();
+    assert((await id('talk-title').innerText()) !== topic, 'اقتراح ثاني يغيّر الموضوع');
     await context.close();
   }
 

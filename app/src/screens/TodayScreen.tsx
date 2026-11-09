@@ -9,6 +9,7 @@ import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Icon, IconBox, KIND, Progress, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
+import { VisitPlanCard } from '../ui/VisitPlanCard';
 
 type Filter = 'all' | 'visit' | 'meeting';
 const PAGE = 8;
@@ -117,6 +118,8 @@ export function TodayScreen() {
           </Row>
         </View>
       ) : null}
+
+      <VisitPlanCard />
 
       {open.length > 1 ? (
         <>
