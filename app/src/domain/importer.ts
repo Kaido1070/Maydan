@@ -4,9 +4,10 @@ import { deptEntryKind, ENTRY_NOUN, shiftName } from './shifts';
 import type { EntryKind, Technician, Workspace } from './types';
 
 /** أعمدة ملف الفنيين بالترتيب. */
-export const TECH_COLUMNS = ['الاسم', 'النوع', 'الرقم الوظيفي', 'المقاول', 'القسم', 'الشفت الأساسي', 'الحالة'] as const;
+export const TECH_COLUMNS = ['الاسم', 'النوع', 'الرقم الوظيفي', 'المقاول', 'القسم', 'الشفت الأساسي', 'طبيعة العمل', 'الحالة'] as const;
 
-const HEADER_ALIASES: Record<'name' | 'number' | 'department' | 'shift' | 'status' | 'kind' | 'contractor', string[]> = {
+const HEADER_ALIASES: Record<'name' | 'number' | 'department' | 'shift' | 'status' | 'kind' | 'contractor' | 'workplace', string[]> = {
+  workplace: ['طبيعه العمل', 'مكان العمل', 'ميداني او مكتبي', 'مكتبي', 'workplace'],
   name: ['الاسم', 'اسم الفني', 'اسم الموظف', 'الاسم الكامل', 'اسم الفني او الفريق', 'اسم الفريق', 'اسم المشروع', 'المشروع', 'name', 'full name', 'project'],
   number: ['الرقم الوظيفي', 'رقم وظيفي', 'الرقم', 'رقم الموظف', 'رقم الفريق', 'رقم العقد', 'رقم المشروع', 'employee number', 'employee no', 'emp no', 'id'],
   kind: ['النوع', 'نوع', 'فني او فريق', 'type'],
@@ -42,6 +43,7 @@ export type ImportRow = {
   employeeNumber: string;
   kind: EntryKind;
   contractor: string;
+  office: boolean;
   departmentId?: string;
   departmentName: string;
   shiftId?: string;
@@ -115,7 +117,8 @@ export function previewTechnicianImport(ws: Workspace, table: unknown[][]): Impo
               ? 'team'
               : 'person';
     const status = normalizeKey(cell(cells, 'status'));
-    const row: ImportRow = { line, name, employeeNumber, kind, contractor: kind === 'person' ? '' : contractor, departmentName, shiftName: shiftLabel, active: !INACTIVE.includes(status), action: 'add' };
+    const office = ['مكتبي', 'مكتب', 'office'].map(normalizeKey).includes(normalizeKey(cell(cells, 'workplace')));
+    const row: ImportRow = { line, name, employeeNumber, kind, contractor: kind === 'person' ? '' : contractor, office: kind === 'person' && office, departmentName, shiftName: shiftLabel, active: !INACTIVE.includes(status), action: 'add' };
 
     // الشفت اختياري إذا كان للقسم شفت واحد فقط.
     const shift = !shiftLabel && department?.shifts.length === 1 ? department.shifts[0] : department?.shifts.find((item) => normalizeKey(item.name) === normalizeKey(shiftLabel));
@@ -141,6 +144,7 @@ export function previewTechnicianImport(ws: Workspace, table: unknown[][]): Impo
           existing.baseShiftId === shift!.id &&
           (existing.kind ?? 'person') === kind &&
           (existing.contractor ?? '') === row.contractor &&
+          (existing.workplace === 'office') === row.office &&
           (existing.active !== false) === row.active;
         row.action = same ? 'same' : 'update';
       }
@@ -169,6 +173,7 @@ export function applyTechnicianImport(ws: Workspace, preview: ImportPreview): Wo
     employeeNumber: row.employeeNumber,
     kind: row.kind,
     contractor: row.contractor || undefined,
+    workplace: row.office ? ('office' as const) : undefined,
     departmentId: row.departmentId!,
     baseShiftId: row.shiftId!,
     active: row.active,
@@ -193,6 +198,7 @@ export function technicianTable(ws: Workspace): (string | number)[][] {
       tech.contractor ?? '',
       ws.departments.find((d) => d.id === tech.departmentId)?.name ?? '',
       shiftName(ws, tech),
+      tech.workplace === 'office' ? 'مكتبي' : 'ميداني',
       tech.active === false ? 'غير نشط' : 'نشط',
     ]),
   ];
@@ -207,6 +213,7 @@ export function instructionsTable(ws: Workspace): string[][] {
     ['الفني يُعرف برقمه الوظيفي. الفريق والمشروع يُعرفان برقمهما إن وُجد، وإلا بالاسم داخل القسم. الموجود تتحدث بياناته والجديد ينضاف.'],
     ['الرقم الوظيفي إلزامي للفني، واختياري للفريق (رقم الفريق أو العقد) وللمشروع (رقم المشروع). المقاول اختياري.'],
     ['اكتب القسم والشفت الأساسي بنفس الأسماء الموجودة تحت. الشفت اختياري للأقسام اللي لها شفت واحد.'],
+    ['طبيعة العمل: «ميداني» أو «مكتبي». المكتبي يحضر الاجتماعات بدون هدف زيارات. الفارغ = ميداني.'],
     ['الحالة اختيارية: اكتب «غير نشط» لإيقاف فني. الفارغ يعني نشط.'],
     [],
     ['القسم', 'الشفتات المقبولة'],

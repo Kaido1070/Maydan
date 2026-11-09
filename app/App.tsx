@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EquipmentScreen } from './src/screens/EquipmentScreen';
+import { FollowScreen, OvertimeSheet } from './src/screens/FollowScreen';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
 import { RosterScreen } from './src/screens/RosterScreen';
@@ -19,6 +19,8 @@ import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
 import { useAppFonts } from './src/ui/fonts';
 import { Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
+import { dailyTasks } from './src/domain/daily';
+import { weekProgress, xpSummary } from './src/domain/stats';
 
 /** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
 export const SEEN_VERSION_KEY = 'maydan-seen-version';
@@ -27,16 +29,15 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'day', label: 'اليوم', icon: 'grid' },
   { id: 'visits', label: 'الزيارات', icon: 'map-pin' },
   { id: 'meetings', label: 'الاجتماعات', icon: 'users' },
-  { id: 'equipment', label: 'المعدات', icon: 'tool' },
+  { id: 'follow', label: 'المتابعة', icon: 'flag' },
   { id: 'reports', label: 'التقارير', icon: 'bar-chart-2' },
-  { id: 'roster', label: 'الشفتات', icon: 'calendar' },
 ];
 
 const TITLES: Record<Tab, string> = {
   day: 'مهام اليوم',
   visits: 'الزيارات',
   meetings: 'الاجتماعات',
-  equipment: 'معدات التوزيع',
+  follow: 'المتابعة',
   reports: 'الإحصائيات والتقارير',
   roster: 'جدول الشفتات',
   settings: 'الإعدادات',
@@ -44,7 +45,7 @@ const TITLES: Record<Tab, string> = {
 
 function Shell() {
   const insets = useSafeAreaInsets();
-  const { mode, ready } = useStore();
+  const { mode, ready, ws, now } = useStore();
   const [tab, setTab] = useState<Tab>('day');
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [rosterDate, setRosterDate] = useState<string | null>(null);
@@ -58,6 +59,7 @@ function Shell() {
   const [whatsNew, setWhatsNew] = useState<Release[]>([]);
   const [changelog, setChangelog] = useState(false);
   const [person, setPerson] = useState<string | null>(null);
+  const [overtime, setOvertime] = useState<{ id: string | null } | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(SEEN_VERSION_KEY)
@@ -84,11 +86,18 @@ function Shell() {
         setToast(message);
         toastTimer.current = setTimeout(() => setToast(null), 3000);
       },
+      celebrateMilestone: (message) => {
+        // يُضاف تحت رسالة الحفظ الحالية بدل ما يمسحها.
+        clearTimeout(toastTimer.current);
+        setToast((current) => (current ? current + '\n' + message : message));
+        toastTimer.current = setTimeout(() => setToast(null), 4000);
+      },
       openVisit: setVisit,
       openTechnician: (id, date) => setTechnician({ id, date }),
       openSlot: setSlot,
       openChangelog: () => setChangelog(true),
       openPerson: setPerson,
+      openOvertime: (id) => setOvertime({ id }),
       focusMeetingId,
       departmentId,
       setDepartmentId,
@@ -98,7 +107,25 @@ function Shell() {
     [tab, departmentId, rosterDate, focusMeetingId],
   );
 
-  const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, equipment: EquipmentScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
+  // احتفالات الإنجاز: مستوى جديد، هدف الأسبوع، وكل مهام اليوم.
+  const level = xpSummary(ws).level;
+  const week = weekProgress(ws, now.date);
+  const daily = useMemo(() => dailyTasks(ws, now), [ws, now]);
+  const allDone = daily.length > 0 && daily.every((task) => task.done);
+  const milestones = useRef<{ level: number; week: boolean; allDone: boolean } | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    const prev = milestones.current;
+    const weekDone = week.visits >= week.goal;
+    milestones.current = { level, week: weekDone, allDone };
+    if (!prev) return;
+    if (level > prev.level) ui.celebrateMilestone('⭐ وصلت المستوى ' + level + '! استمر');
+    else if (allDone && !prev.allDone) ui.celebrateMilestone('🏆 خلّصت كل مهام اليوم! يوم ممتاز');
+    else if (weekDone && !prev.week) ui.celebrateMilestone('🏅 حققت هدف الأسبوع: ' + week.goal + ' زيارات');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, level, allDone, week.visits, week.goal]);
+
+  const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, follow: FollowScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
 
   return (
     <UiContext.Provider value={ui}>
@@ -164,9 +191,16 @@ function Shell() {
         </View>
 
         {toast ? (
+          celebrate(toast) ? (
+            <View pointerEvents="none" style={[styles.celebrate, { bottom: Math.max(insets.bottom, 8) + 80 }]} accessibilityLiveRegion="polite" testID="celebration">
+              <Text style={{ fontSize: 34, lineHeight: 42 }}>{celebrationEmoji(toast)}</Text>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>{toast.replace(/^[🎉⭐🏅🏆]\s*/u, '')}</Text>
+            </View>
+          ) : (
           <View pointerEvents="none" style={[styles.toast, { bottom: Math.max(insets.bottom, 8) + 74 }]} accessibilityLiveRegion="polite">
             <Text style={{ color: '#fff', fontSize: 13 }}>{toast}</Text>
           </View>
+          )
         ) : null}
 
         <VisitSheet
@@ -193,6 +227,7 @@ function Shell() {
         />
         <ChangelogSheet visible={changelog} onClose={() => setChangelog(false)} />
         <PersonSheet technicianId={person} onClose={() => setPerson(null)} />
+        <OvertimeSheet visible={!!overtime} entryId={overtime?.id ?? null} onClose={() => setOvertime(null)} />
         <SlotSheet
           target={slot}
           onClose={() => setSlot(null)}
@@ -205,6 +240,10 @@ function Shell() {
     </UiContext.Provider>
   );
 }
+
+/** رسائل الإنجاز تطلع كاحتفال كبير. */
+const celebrate = (message: string) => /XP|^[🎉⭐🏅🏆]/u.test(message);
+const celebrationEmoji = (message: string) => message.match(/^[🎉⭐🏅🏆]/u)?.[0] ?? '🎉';
 
 export default function App() {
   const fontsReady = useAppFonts();
@@ -233,7 +272,8 @@ const styles = StyleSheet.create({
   gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
   tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
-  tabIcon: { width: 40, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 11, color: '#5f5975' },
+  tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tabText: { fontSize: 12, color: '#5f5975' },
+  celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: '#4a2f9a', borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
 });

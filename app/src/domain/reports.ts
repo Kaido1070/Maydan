@@ -1,6 +1,9 @@
 import { addDays, dateOf, formatDate, MONTHS_AR } from './dates';
 import { techTag } from './shifts';
-import { coverageByDepartment, DepartmentCoverage, followUpList, FollowUp, yearMeetings } from './stats';
+import { activeTechnicians } from './shifts';
+import { findingStats, FindingStats } from './findings';
+import { formatDuration, overtimeSummary, OvertimeSummary } from './worktime';
+import { coverageByDepartment, DepartmentCoverage, followUpList, FollowUp, techProgress, yearMeetings } from './stats';
 import type { Workspace } from './types';
 
 export type ReportMode = 'month' | 'quarter' | 'year';
@@ -39,7 +42,14 @@ export type Report = {
   coverage: DepartmentCoverage[];
   pending: FollowUp[];
   meetingTitles: string[];
+  /** توزيع الفنيين: بدون / جزئي / مكتمل، للزيارات وللاجتماعات. */
+  statusMix: { visits: StatusMix; meetings: StatusMix };
+  /** الملاحظات والمخالفات المسجلة في الفترة، والعمل خارج الدوام. */
+  findings: { observation: FindingStats; violation: FindingStats };
+  overtime: OvertimeSummary;
 };
+
+export type StatusMix = { none: number; partial: number; complete: number };
 
 export function reportPeriod(params: ReportParams) {
   const startMonth = params.mode === 'year' ? 0 : params.mode === 'quarter' ? params.quarter * 3 : params.month;
@@ -83,6 +93,19 @@ function countEvents(ws: Workspace, start: string, end: string, departmentId: st
   };
 }
 
+/** كم فني ما عنده شي، وكم جزئي، وكم مكتمل (زيارات واجتماعات). */
+export function statusMix(ws: Workspace, asOf: string, departmentId: string | 'all'): { visits: StatusMix; meetings: StatusMix } {
+  const visits: StatusMix = { none: 0, partial: 0, complete: 0 };
+  const meetings: StatusMix = { none: 0, partial: 0, complete: 0 };
+  for (const tech of activeTechnicians(ws).filter((t) => departmentId === 'all' || t.departmentId === departmentId)) {
+    const progress = techProgress(ws, tech, asOf);
+    if (progress.field) visits[progress.visitCount === 0 ? 'none' : progress.visitRemaining ? 'partial' : 'complete']++;
+    if (progress.meetingTarget)
+      meetings[progress.attended.size === 0 ? 'none' : progress.meetingRemaining ? 'partial' : 'complete']++;
+  }
+  return { visits, meetings };
+}
+
 export function buildReport(ws: Workspace, params: ReportParams, today: string): Report {
   const period = reportPeriod(params);
   const last = addDays(period.end, -1);
@@ -105,6 +128,12 @@ export function buildReport(ws: Workspace, params: ReportParams, today: string):
     coverage: coverageByDepartment(ws, asOf, params.departmentId),
     pending: followUpList(ws, asOf, params.departmentId),
     meetingTitles: yearMeetings(ws, Number(asOf.slice(0, 4))).map((item) => item.title),
+    statusMix: statusMix(ws, asOf, params.departmentId),
+    findings: {
+      observation: findingStats(ws, 'observation', today, { start: period.start, end: period.end }),
+      violation: findingStats(ws, 'violation', today, { start: period.start, end: period.end }),
+    },
+    overtime: overtimeSummary(ws, period.start, period.end),
   };
 }
 
@@ -139,6 +168,13 @@ export function reportRows(report: Report): (string | number)[][] {
       [dept.department.name, 'الإجمالي', dept.coverage.people, dept.coverage.visitRemaining, dept.coverage.attendanceRemaining, dept.coverage.visitComplete, dept.coverage.meetingComplete],
     ]),
     [],
+    ['الملاحظات والمخالفات', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
+    ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
+    ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+    [],
+    ['العمل خارج الدوام', 'مرات مسجلة', 'الوقت', 'أيام', 'نشاط خارج الدوام'],
+    ['الفترة', report.overtime.entries, formatDuration(report.overtime.minutes), report.overtime.days, report.overtime.outOfHoursActivities],
+    [],
     ['الفنيون والفرق المتبقي عليهم', 'الرقم الوظيفي / الفريق', 'القسم', 'الشفت', 'زيارات متبقية', 'اجتماعات متبقية', 'الاجتماعات الناقصة'],
     ...report.pending.map((row) => [
       row.technician.name,
@@ -163,6 +199,50 @@ export const reportFileName = (report: Report, ext: 'csv' | 'pdf') =>
 const esc = (value: string | number) =>
   String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 
+const BLUE = '#2a78d6';
+const ORANGE = '#eb6834';
+const STATUS = { none: '#d03b3b', partial: '#fab219', complete: '#0ca30c' };
+
+/** رسوم بيانية بسيطة بـ HTML/CSS (تنطبع في PDF بدون مكتبات). */
+function chartsHtml(report: Report): string {
+  const peak = Math.max(1, ...report.buckets.flatMap((b) => [b.visits, b.meetingSessions]));
+  const many = report.buckets.length > 6;
+  const columns = report.buckets
+    .map(
+      (b, i) =>
+        '<div class="col"><div class="bars">' +
+        '<div class="bar" style="height:' + (100 * b.visits) / peak + '%;background:' + BLUE + '"><span>' + (b.visits || '') + '</span></div>' +
+        '<div class="bar" style="height:' + (100 * b.meetingSessions) / peak + '%;background:' + ORANGE + '"><span>' + (b.meetingSessions || '') + '</span></div>' +
+        '</div><div class="lbl">' + esc(many ? String(i + 1) : b.label) + '</div></div>',
+    )
+    .join('');
+  const stacked = (title: string, mix: StatusMix, labels: [string, string, string]) => {
+    const total = mix.none + mix.partial + mix.complete;
+    if (!total) return '';
+    const parts: [keyof StatusMix, string][] = [['none', labels[0]], ['partial', labels[1]], ['complete', labels[2]]];
+    return (
+      '<div class="stack-title">' + esc(title) + ' · ' + total + '</div><div class="stack">' +
+      parts.filter(([key]) => mix[key]).map(([key]) => '<div style="flex:' + mix[key] + ';background:' + STATUS[key] + '"></div>').join('') +
+      '</div><div class="stack-key">' +
+      parts.map(([key, label]) => '<span><i style="background:' + STATUS[key] + '"></i>' + esc(label) + ' ' + mix[key] + ' (' + Math.round((100 * mix[key]) / total) + '%)</span>').join('') +
+      '</div>'
+    );
+  };
+  return (
+    '<style>.chart{display:flex;align-items:flex-end;gap:6px;height:150px;border-bottom:1px solid #c3c2b7;padding-top:14px}' +
+    '.col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%}.bars{flex:1;display:flex;align-items:flex-end;gap:2px;width:100%;justify-content:center}' +
+    '.bar{width:40%;max-width:16px;border-radius:4px 4px 0 0;position:relative;min-height:0}.bar span{position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:9px;color:#52514e}' +
+    '.lbl{font-size:9px;color:#898781;margin-top:3px;white-space:nowrap}.key{display:flex;gap:14px;font-size:11px;margin:6px 0}.key i,.stack-key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-left:4px}' +
+    '.stack-title{font-weight:bold;margin-top:12px}.stack{display:flex;gap:2px;height:14px;border-radius:5px;overflow:hidden;margin:5px 0}.stack-key{display:flex;gap:14px;font-size:11px}</style>' +
+    '<h2>' + (report.params.mode === 'month' ? 'الإنجاز أسبوعًا بأسبوع' : 'الإنجاز شهرًا بشهر') + '</h2>' +
+    '<div class="key"><span><i style="background:' + BLUE + '"></i>زيارات</span><span><i style="background:' + ORANGE + '"></i>تسجيلات اجتماعات</span></div>' +
+    '<div class="chart">' + columns + '</div>' +
+    '<h2>صورة التغطية</h2>' +
+    stacked('الزيارات', report.statusMix.visits, ['بدون زيارة', 'جزئي', 'مكتمل']) +
+    stacked('الاجتماعات', report.statusMix.meetings, ['ما حضر', 'جزئي', 'حضر الكل'])
+  );
+}
+
 /** HTML بسيط بالعربية لتحويله إلى PDF عبر expo-print. */
 export function reportHtml(report: Report, engineerName: string): string {
   const table = (head: (string | number)[], rows: (string | number)[][]) =>
@@ -182,6 +262,7 @@ export function reportHtml(report: Report, engineerName: string): string {
     (engineerName ? ' · ' + esc(engineerName) : '') + '</p>' +
     '<div class="kpis">' + kpi('زيارات', report.totals.visits) + kpi('زيارات الفنيين', report.totals.technicianVisits) +
     kpi('تسجيلات اجتماعات', report.totals.meetingSessions) + kpi('مرات حضور', report.totals.attendance) + '</div>' +
+    chartsHtml(report) +
     '<h2>التوزيع حسب القسم</h2>' + table(['القسم', ...COUNT_HEADINGS], report.sections.map((row) => [row.name, ...countValues(row)])) +
     '<h2>الإنجاز عبر الفترة</h2>' + table(['الفترة', ...COUNT_HEADINGS], report.buckets.map((row) => [row.label, ...countValues(row)])) +
     '<h2>المتبقي حسب القسم والشفت (حتى ' + formatDate(report.asOf, { year: true }) + ')</h2>' +
@@ -191,6 +272,16 @@ export function reportHtml(report: Report, engineerName: string): string {
         dept.shifts.map((row) => [dept.department.name, row.shift.name, row.coverage.people, row.coverage.visitRemaining, row.coverage.attendanceRemaining]),
       ),
     ) +
+    '<h2>الملاحظات والمخالفات</h2>' +
+    table(
+      ['', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
+      [
+        ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
+        ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+      ],
+    ) +
+    '<h2>العمل خارج الدوام</h2>' +
+    table(['مرات مسجلة', 'الوقت', 'أيام', 'نشاط خارج الدوام'], [[report.overtime.entries, formatDuration(report.overtime.minutes), report.overtime.days, report.overtime.outOfHoursActivities]]) +
     '<h2>الفنيون المتبقي عليهم (' + report.pending.length + ')</h2>' +
     (report.pending.length
       ? table(

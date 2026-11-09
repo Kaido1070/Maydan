@@ -11,18 +11,56 @@ export type VisitInput = {
   departmentId: string;
   date: string;
   time: string;
+  workType?: string;
+  location?: string;
+  taskNumber?: string;
+  /** وصف إضافي (اختياري). */
   site: string;
   technicianIds: string[];
   planItemId?: string;
+  placeId?: string;
 };
 
+const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
+
+/** الحقول المنظفة للزيارة: نوع المهمة، الموقع، الرقم، الوصف. */
+function visitFields(input: VisitInput) {
+  return {
+    workType: clean(input.workType),
+    location: clean(input.location),
+    taskNumber: clean(input.taskNumber),
+    site: input.site.trim(),
+  };
+}
+
+/** عنوان الزيارة في القوائم: نوع المهمة، وإلا الموقع، وإلا الوصف. */
+export const visitTitle = (visit: Pick<Visit, 'workType' | 'location' | 'site'>) => visit.workType || visit.location || visit.site || 'زيارة';
+
+/** تفاصيل الزيارة تحت العنوان: الموقع ورقم المهمة والوصف (بدون تكرار العنوان). */
+export function visitDetails(visit: Pick<Visit, 'workType' | 'location' | 'site' | 'taskNumber'>): string {
+  const title = visitTitle(visit);
+  return [visit.location !== title ? visit.location : '', visit.taskNumber ? 'رقم ' + visit.taskNumber : '', visit.site && visit.site !== title ? visit.site : '']
+    .filter(Boolean)
+    .join(' · ');
+}
+
+export const DEFAULT_WORK_TYPES = ['صيانة', 'تمديد كابلات', 'توصيلات', 'طوارئ', 'فحص معدات', 'إنشاءات', 'تشغيل'];
+
+/** اقتراحات نوع المهمة: آخر الأنواع المستخدمة ثم الافتراضية. */
+export function workTypeSuggestions(ws: Workspace, limit = 8): string[] {
+  const used = [...ws.visits].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).map((v) => v.workType).filter((v): v is string => !!v);
+  return [...new Set([...used, ...DEFAULT_WORK_TYPES])].slice(0, limit);
+}
+
 export function validateVisit(ws: Workspace, input: VisitInput, today: string): string | null {
-  if (!ws.departments.some((item) => item.id === input.departmentId)) return 'اختر القسم';
+  const place = input.placeId ? (ws.places ?? []).find((item) => item.id === input.placeId) : undefined;
+  if (input.placeId && !place) return 'المكان غير موجود';
+  if (!place && !ws.departments.some((item) => item.id === input.departmentId)) return 'اختر القسم';
   if (!isDateKey(input.date)) return 'التاريخ غير صحيح';
   if (input.date > today) return 'ما يمكن تسجيل زيارة بتاريخ قادم';
   if (!isTime(input.time)) return 'اكتب الوقت بصيغة 24 ساعة مثل 09:30';
-  if (!input.site.trim()) return 'اكتب موقع الزيارة أو وصفها';
-  if (!input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
+  if (!clean(input.workType) && !clean(input.location) && !input.site.trim()) return 'اكتب نوع المهمة أو الموقع';
+  if (!place && !input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
   return null;
 }
 
@@ -35,9 +73,10 @@ export function addVisit(ws: Workspace, input: VisitInput, today: string, stamp 
     departmentId: input.departmentId,
     date: input.date,
     time: input.time,
-    site: input.site.trim(),
+    ...visitFields(input),
     technicianIds: [...new Set(input.technicianIds)],
     ...(input.planItemId ? { planItemId: input.planItemId } : {}),
+    ...(input.placeId ? { placeId: input.placeId } : {}),
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -51,7 +90,7 @@ export function updateVisit(ws: Workspace, id: string, input: VisitInput, today:
     ...ws,
     visits: ws.visits.map((visit) =>
       visit.id === id
-        ? { ...visit, ...input, site: input.site.trim(), technicianIds: [...new Set(input.technicianIds)], updatedAt: stamp }
+        ? { ...visit, ...input, ...visitFields(input), technicianIds: [...new Set(input.technicianIds)], updatedAt: stamp }
         : visit,
     ),
   };
@@ -92,7 +131,7 @@ export const attendanceFor = (ws: Workspace, meetingId: string, departmentId: st
  */
 export function saveAttendanceBatch(
   ws: Workspace,
-  input: { departmentId: string; date: string; entries: Record<string, string[]> },
+  input: { departmentId: string; date: string; time?: string; entries: Record<string, string[]> },
   stamp = new Date().toISOString(),
 ): { ws: Workspace; created: number; updated: number; removed: number } {
   let attendance = [...ws.attendance];
@@ -113,7 +152,7 @@ export function saveAttendanceBatch(
       continue;
     }
     if (index >= 0) {
-      attendance[index] = { ...attendance[index], technicianIds: unique, updatedAt: stamp };
+      attendance[index] = { ...attendance[index], technicianIds: unique, ...(input.time ? { time: input.time } : {}), updatedAt: stamp };
       updated++;
     } else {
       const record: MeetingAttendance = {
@@ -121,6 +160,7 @@ export function saveAttendanceBatch(
         meetingId,
         departmentId: input.departmentId,
         date: input.date,
+        ...(input.time ? { time: input.time } : {}),
         technicianIds: unique,
         updatedAt: stamp,
       };

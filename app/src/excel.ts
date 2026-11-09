@@ -13,7 +13,7 @@ export function buildTechnicianWorkbook(ws: Workspace): Uint8Array {
   const book = XLSX.utils.book_new();
   book.Workbook = { Views: [{ RTL: true }] };
   const techs = XLSX.utils.aoa_to_sheet(technicianTable(ws));
-  techs['!cols'] = [{ wch: 28 }, { wch: 8 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 20 }, { wch: 10 }];
+  techs['!cols'] = [{ wch: 28 }, { wch: 8 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 10 }];
   const help = XLSX.utils.aoa_to_sheet(instructionsTable(ws));
   help['!cols'] = [{ wch: 18 }, { wch: 60 }];
   XLSX.utils.book_append_sheet(book, techs, 'الفنيين');

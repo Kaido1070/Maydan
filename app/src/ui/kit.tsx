@@ -37,6 +37,15 @@ export const C = {
   redBg: '#fce9ee',
 };
 
+/**
+ * لون ثابت لكل نوع عمل في كل التطبيق (المهام والرسوم): الزيارة أزرق، والاجتماع برتقالي.
+ * البنفسجي للأزرار والتنقل فقط، والأخضر/الأصفر/الأحمر لحالة الإنجاز فقط.
+ */
+export const KIND = {
+  visit: { fg: '#1f66bd', bg: '#e6f0fb', solid: '#2a78d6' },
+  meeting: { fg: '#b4471b', bg: '#fdece4', solid: '#eb6834' },
+};
+
 export type IconName = React.ComponentProps<typeof Feather>['name'];
 
 export function Icon({ name, size = 18, color = C.purple }: { name: IconName; size?: number; color?: string }) {
@@ -93,8 +102,11 @@ const toneColors: Record<Tone, [string, string]> = {
   red: [C.red, C.redBg],
 };
 
-export function Chip({ tone, label, icon }: { tone: Tone | 'neutral' | 'purple'; label: string; icon?: IconName }) {
-  const [fg, bg] = tone === 'neutral' ? [C.muted, '#f0edf3'] : tone === 'purple' ? [C.purple, '#f2eefc'] : toneColors[tone];
+export type ChipTone = Tone | 'neutral' | 'purple' | 'visit' | 'meeting';
+
+export function Chip({ tone, label, icon }: { tone: ChipTone; label: string; icon?: IconName }) {
+  const [fg, bg] =
+    tone === 'neutral' ? [C.muted, '#f0edf3'] : tone === 'purple' ? [C.purple, '#f2eefc'] : tone === 'visit' || tone === 'meeting' ? [KIND[tone].fg, KIND[tone].bg] : toneColors[tone];
   return (
     <View style={[s.chip, { backgroundColor: bg }]}>
       {icon ? <Icon name={icon} size={11} color={fg} /> : <View style={[s.dot, { backgroundColor: fg }]} />}
@@ -163,8 +175,9 @@ export function Avatar({ text, size = 34 }: { text: string; size?: number }) {
   );
 }
 
-export function IconBox({ name, tone = 'purple', size = 38 }: { name: IconName; tone?: 'purple' | 'green' | 'amber'; size?: number }) {
-  const [fg, bg] = tone === 'green' ? ['#24754e', '#e9f7ef'] : tone === 'amber' ? ['#855200', '#fff1d8'] : [C.purple, C.soft];
+export function IconBox({ name, tone = 'purple', size = 38 }: { name: IconName; tone?: 'purple' | 'green' | 'amber' | 'visit' | 'meeting'; size?: number }) {
+  const [fg, bg] =
+    tone === 'green' ? ['#24754e', '#e9f7ef'] : tone === 'amber' ? ['#855200', '#fff1d8'] : tone === 'visit' || tone === 'meeting' ? [KIND[tone].fg, KIND[tone].bg] : [C.purple, C.soft];
   return (
     <View style={[s.iconBox, { width: size, height: size, borderRadius: size / 3.2, backgroundColor: bg }]}>
       <Icon name={name} size={size * 0.48} color={fg} />
@@ -216,7 +229,7 @@ export function Segmented<V extends string | number>({ options, value, onChange,
             onPress={() => onChange(option.value)}
             style={[s.segment, wrap && { flexGrow: 0, flexBasis: 'auto' }, active && s.segmentOn]}
           >
-            <AppText style={[s.segmentText, active && { color: C.white }]}>{option.label}</AppText>
+            <AppText numberOfLines={wrap ? undefined : 1} style={[s.segmentText, !wrap && options.length >= 3 && { fontSize: 13 }, active && { color: C.white }]}>{option.label}</AppText>
           </Pressable>
         );
       })}
@@ -311,7 +324,7 @@ export const s = StyleSheet.create({
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: '#b8afd0', alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
   checkboxOn: { backgroundColor: C.purple, borderColor: C.purple },
   segmented: { flexDirection: 'row', backgroundColor: '#ece8f5', borderRadius: 11, padding: 3, gap: 3 },
-  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 10, minHeight: 34 },
+  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 6, minHeight: 36 },
   segmentOn: { backgroundColor: C.purple },
   segmentText: { fontSize: 14, fontWeight: '600', color: '#4a4160' },
   input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16, fontFamily: FONTS.regular },

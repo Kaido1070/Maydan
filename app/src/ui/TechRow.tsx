@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { formatDate } from '../domain/dates';
+import { visitTitle } from '../domain/records';
 import { initials, shiftName, techTag } from '../domain/shifts';
 import { techProgress, tone, yearMeetings } from '../domain/stats';
 import type { Technician, Workspace } from '../domain/types';
@@ -10,11 +11,14 @@ export function TechStatus({ ws, tech, asOf }: { ws: Workspace; tech: Technician
   const progress = techProgress(ws, tech, asOf);
   return (
     <Row gap={4} style={{ flexWrap: 'wrap' }}>
-      <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} label={'زيارات ' + ratio(progress.visitCount, ws.settings.visitTarget)} />
-      <Chip
-        tone={tone(progress.attended.size, progress.meetingTarget)}
-        label={'اجتماعات ' + ratio(progress.attended.size, progress.meetingTarget)}
-      />
+      {progress.field ? (
+        <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} icon="map-pin" label={'زيارات ' + ratio(progress.visitCount, ws.settings.visitTarget)} />
+      ) : (
+        <Chip tone="neutral" icon="briefcase" label="مكتبي" />
+      )}
+      {progress.meetingTarget ? (
+        <Chip tone={tone(progress.attended.size, progress.meetingTarget)} icon="users" label={'اجتماعات ' + ratio(progress.attended.size, progress.meetingTarget)} />
+      ) : null}
     </Row>
   );
 }
@@ -26,7 +30,7 @@ export function TechDetails({ ws, tech, asOf }: { ws: Workspace; tech: Technicia
     <View style={{ backgroundColor: '#f8f6fc', borderRadius: 12, padding: 10, marginTop: 8, gap: 6 }}>
       <Sub>
         {progress.visits.length
-          ? 'زيارات آخر ' + ws.settings.visitWindowMonths + ' أشهر: ' + progress.visits.map((visit) => formatDate(visit.date) + ' (' + visit.site + ')').join(' · ')
+          ? 'زيارات آخر ' + ws.settings.visitWindowMonths + ' أشهر: ' + progress.visits.map((visit) => formatDate(visit.date) + ' (' + visitTitle(visit) + ')').join(' · ')
           : 'ما فيه زيارات مسجلة خلال آخر ' + ws.settings.visitWindowMonths + ' أشهر'}
       </Sub>
       <Row gap={4} style={{ flexWrap: 'wrap' }}>
@@ -67,10 +71,9 @@ export function TechRow({
           <View style={{ flex: 1, gap: 3 }}>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               <T style={{ fontWeight: '700', fontSize: 14 }}>{tech.name}</T>
-              {showShift ? <Chip tone="purple" icon="layers" label={'الأساسي: ' + shiftName(ws, tech)} /> : null}
               {badge}
             </Row>
-            <Sub>{techTag(tech, true)}</Sub>
+            <Sub>{techTag(tech) + (showShift ? ' · ' + shiftName(ws, tech) : '')}</Sub>
             <TechStatus ws={ws} tech={tech} asOf={asOf} />
           </View>
           <Icon name={open ? 'chevron-up' : 'chevron-down'} size={16} color={C.muted} />

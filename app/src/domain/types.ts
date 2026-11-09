@@ -33,6 +33,8 @@ export type Technician = {
   kind?: EntryKind;
   /** اسم المقاول للفرق. */
   contractor?: string;
+  /** طبيعة العمل: ميداني (الافتراضي) أو مكتبي. المكتبي له اجتماعات بدون أهداف زيارات. */
+  workplace?: 'field' | 'office';
   name: string;
   departmentId: string;
   /** الشفت الأساسي الذي يتبعه الفني في الدورة. */
@@ -48,9 +50,18 @@ export type Visit = {
   departmentId: string;
   date: string; // YYYY-MM-DD بتوقيت السعودية
   time: string; // HH:MM
+  /** نوع المهمة (صيانة، تمديد كابلات...). */
+  workType?: string;
+  /** موقع المهمة. */
+  location?: string;
+  /** رقم المهمة أو أمر العمل. */
+  taskNumber?: string;
+  /** وصف إضافي (وفي البيانات القديمة: الموقع أو الوصف). */
   site: string;
   technicianIds: string[];
   planItemId?: string;
+  /** زيارة مستودع أو نقطة انطلاق (بدون فنيين). */
+  placeId?: string;
   /** سجل من بيانات التجربة الأولية (لا يُحتسب في نقاط XP). */
   seed?: boolean;
   createdAt: string;
@@ -65,6 +76,8 @@ export type MeetingAttendance = {
   meetingId: string;
   departmentId: string;
   date: string;
+  /** وقت الاجتماع HH:MM (اختياري للبيانات القديمة). */
+  time?: string;
   technicianIds: string[];
   seed?: boolean;
   updatedAt: string;
@@ -79,6 +92,10 @@ export type PlanItem = {
   kind: 'visit' | 'meeting';
   meetingId?: string;
 };
+
+/** مستودع أو نقطة انطلاق تُزار دوريًا. */
+export type PlaceKind = 'warehouse' | 'staging';
+export type Place = { id: string; kind: PlaceKind; name: string; departmentId?: string };
 
 /** صورة محفوظة على الجهاز (أو data URI في نسخة الويب). */
 export type Photo = { id: string; uri: string; takenAt: string };
@@ -97,9 +114,47 @@ export type EquipmentRecord = {
   updatedAt: string;
 };
 
+/** دوام المهندس نفسه: أيام وساعات العمل (جزء ميدان وجزء مكتب). */
+export type WorkSchedule = { days: number[]; start: string; end: string };
+
+export type FindingKind = 'observation' | 'violation';
+export type FindingStatus = 'open' | 'progress' | 'closed';
+
+/** تحديث على ملاحظة أو مخالفة: ملاحظة متابعة، أو سبب تأخير، أو إغلاق. */
+export type FindingUpdate = { id: string; date: string; kind: 'note' | 'delay' | 'close' | 'reopen'; text: string };
+
+/** ملاحظة سلامة أو مخالفة تُتابع لين تنقفل. */
+export type Finding = {
+  id: string;
+  kind: FindingKind;
+  title: string;
+  description: string;
+  departmentId?: string;
+  location: string;
+  /** المسؤول عن الإغلاق: فني أو مقاول أو جهة. */
+  responsible: string;
+  date: string;
+  dueDate?: string;
+  status: FindingStatus;
+  closedAt?: string;
+  photos: Photo[];
+  updates: FindingUpdate[];
+  /** خانات إضافية (نموذج المخالفات لاحقًا). */
+  extra?: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** عمل خارج الدوام. */
+export type OvertimeEntry = { id: string; date: string; start: string; end: string; reason: string; createdAt: string };
+
 export type Settings = {
   engineerName: string;
   dailyVisitGoal: number;
+  /** هدف الزيارات الأسبوعي. الافتراضي = الهدف اليومي × أيام الدوام. */
+  weeklyVisitGoal?: number;
+  /** دوام المهندس. الافتراضي الأحد–الخميس 7:00–15:00. */
+  workSchedule?: WorkSchedule;
   visitTarget: number;
   visitWindowMonths: number;
   xpVisit: number;
@@ -117,6 +172,9 @@ export type Workspace = {
   attendance: MeetingAttendance[];
   /** سجلات معدات التوزيع (اختياري للبيانات القديمة). */
   equipment?: EquipmentRecord[];
+  findings?: Finding[];
+  places?: Place[];
+  overtime?: OvertimeEntry[];
 };
 
 export type Mode = 'demo' | 'live';

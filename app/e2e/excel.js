@@ -42,7 +42,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await download.saveAs(template);
   const tpl = XLSX.readFile(template);
   assert.deepStrictEqual(tpl.SheetNames, ['الفنيين', 'تعليمات']);
-  assert.deepStrictEqual(XLSX.utils.sheet_to_json(tpl.Sheets['الفنيين'], { header: 1 })[0], ['الاسم', 'النوع', 'الرقم الوظيفي', 'المقاول', 'القسم', 'الشفت الأساسي', 'الحالة']);
+  assert.deepStrictEqual(XLSX.utils.sheet_to_json(tpl.Sheets['الفنيين'], { header: 1 })[0], ['الاسم', 'النوع', 'الرقم الوظيفي', 'المقاول', 'القسم', 'الشفت الأساسي', 'طبيعة العمل', 'الحالة']);
 
   // الاستيراد
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), id('excel-import').click()]);
@@ -61,16 +61,16 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   // يظهرون في شاشة الزيارات بالقسم والشفت الصحيح
   await id('tab-visits').click();
   await id('dept-b').click();
-  await page.getByText('كل فنيي القسم').click();
+  await page.getByRole('button', { name: 'كل فنيي القسم', exact: true }).click();
   body = await page.locator('body').innerText();
-  assert(/فني تجربة أول[\s\S]{0,40}الأساسي: طوارئ أ/.test(body), 'الفني ظاهر بشفته');
+  assert(/فني تجربة أول[\s\S]{0,40}طوارئ أ/.test(body), 'الفني ظاهر بشفته');
 
   // وضع التجربة ما تأثر
   await id('open-settings').click();
   await page.getByText('وضع التجربة').first().click();
   await id('tab-visits').click();
   await id('dept-b').click();
-  await page.getByText('كل فنيي القسم').click();
+  await page.getByRole('button', { name: 'كل فنيي القسم', exact: true }).click();
   assert(!(await page.locator('body').innerText()).includes('فني تجربة أول'), 'وضع التجربة منفصل');
 
   assert.deepStrictEqual(errors, []);

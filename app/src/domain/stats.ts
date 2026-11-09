@@ -1,4 +1,5 @@
-import { monthsBefore } from './dates';
+import { addDays, monthsBefore, weekdayOf } from './dates';
+import { isWorkDay, previousWorkDay, scheduleOf } from './worktime';
 import { activeTechnicians, crewForShift, shiftName } from './shifts';
 import type { Department, Meeting, Shift, Technician, Visit, Workspace } from './types';
 
@@ -33,11 +34,15 @@ export type TechProgress = {
   visits: Visit[];
   visitCount: number;
   visitRemaining: number;
+  /** ميداني: له هدف زيارات. المكتبي اجتماعات فقط. */
+  field: boolean;
   attended: Set<string>;
   meetingTarget: number;
   meetingRemaining: number;
   missingMeetings: Meeting[];
 };
+
+export const isOffice = (tech: Technician) => tech.workplace === 'office';
 
 export function techProgress(ws: Workspace, technician: Technician, asOf: string): TechProgress {
   const year = Number(asOf.slice(0, 4));
@@ -49,7 +54,8 @@ export function techProgress(ws: Workspace, technician: Technician, asOf: string
     technician,
     visits,
     visitCount: visits.length,
-    visitRemaining: Math.max(0, ws.settings.visitTarget - visits.length),
+    visitRemaining: isOffice(technician) ? 0 : Math.max(0, ws.settings.visitTarget - visits.length),
+    field: !isOffice(technician),
     attended,
     meetingTarget: meetings.length,
     meetingRemaining: missingMeetings.length,
@@ -59,6 +65,8 @@ export function techProgress(ws: Workspace, technician: Technician, asOf: string
 
 export type Coverage = {
   people: number;
+  /** الميدانيون فقط (اللي لهم هدف زيارات). */
+  fieldPeople: number;
   visitRemaining: number;
   attendanceRemaining: number;
   visitComplete: number;
@@ -72,6 +80,7 @@ export function coverageOf(ws: Workspace, techs: Technician[], asOf: string): { 
   const meetings = yearMeetings(ws, Number(asOf.slice(0, 4)));
   const coverage: Coverage = {
     people: techs.length,
+    fieldPeople: 0,
     visitRemaining: 0,
     attendanceRemaining: 0,
     visitComplete: 0,
@@ -84,7 +93,10 @@ export function coverageOf(ws: Workspace, techs: Technician[], asOf: string): { 
     const progress = techProgress(ws, tech, asOf);
     coverage.visitRemaining += progress.visitRemaining;
     coverage.attendanceRemaining += progress.meetingRemaining;
-    coverage.visitComplete += Number(!progress.visitRemaining);
+    if (progress.field) {
+      coverage.fieldPeople++;
+      coverage.visitComplete += Number(!progress.visitRemaining);
+    }
     coverage.meetingComplete += Number(!progress.meetingRemaining);
     coverage.complete += Number(!progress.visitRemaining && !progress.meetingRemaining);
     meetings.forEach((meeting, index) => {
@@ -140,9 +152,12 @@ export function xpSummary(ws: Workspace) {
 }
 
 export function dayProgress(ws: Workspace, date: string) {
+  const workDay = isWorkDay(ws.settings, date);
   return {
     visits: ws.visits.filter((visit) => visit.date === date).length,
-    goal: ws.settings.dailyVisitGoal,
+    /** هدف اليوم: صفر في أيام الإجازة. */
+    goal: workDay ? ws.settings.dailyVisitGoal : 0,
+    workDay,
     meetings: ws.attendance.filter((item) => item.date === date).length,
   };
 }
@@ -150,4 +165,58 @@ export function dayProgress(ws: Workspace, date: string) {
 export function findByEmployeeNumber(ws: Workspace, number: string): Technician | undefined {
   const key = number.trim();
   return key ? ws.technicians.find((tech) => tech.employeeNumber === key) : undefined;
+}
+
+/**
+ * سلسلة الإنجاز: عدد أيام الدوام المتتالية اللي حققت فيها هدف الزيارات اليومي.
+ * أيام الإجازة ما تكسر السلسلة، واليوم ما يكسرها قبل ما يخلص.
+ */
+export function visitStreak(ws: Workspace, today: string): { days: number; todayDone: boolean } {
+  const goal = ws.settings.dailyVisitGoal;
+  const perDay = new Map<string, number>();
+  for (const visit of ws.visits) if (!visit.seed) perDay.set(visit.date, (perDay.get(visit.date) ?? 0) + 1);
+  const met = (date: string) => (perDay.get(date) ?? 0) >= goal;
+  const todayDone = met(today);
+  let days = todayDone ? 1 : 0;
+  for (let date = previousWorkDay(ws.settings, today); met(date) && days < 400; date = previousWorkDay(ws.settings, date)) days++;
+  return { days, todayDone };
+}
+
+export const weeklyGoal = (ws: Workspace) => ws.settings.weeklyVisitGoal ?? ws.settings.dailyVisitGoal * scheduleOf(ws.settings).days.length;
+
+/** تقدم الأسبوع: الزيارات من يوم الأحد لين اليوم (بدون بيانات التجربة الأولية). */
+export function weekProgress(ws: Workspace, today: string): { visits: number; goal: number; start: string } {
+  const start = addDays(today, -weekdayOf(today));
+  const visits = ws.visits.filter((visit) => !visit.seed && visit.date >= start && visit.date <= today).length;
+  return { visits, goal: weeklyGoal(ws), start };
+}
+
+/** الموظفون (النشطون) اللي ما حضروا اجتماعًا معيّنًا، مع فلتر القسم. */
+export function meetingRemaining(ws: Workspace, meetingId: string, departmentId: string | 'all' = 'all'): { remaining: Technician[]; attended: number; total: number } {
+  const attendedIds = new Set(ws.attendance.filter((item) => item.meetingId === meetingId).flatMap((item) => item.technicianIds));
+  const people = activeTechnicians(ws).filter((tech) => departmentId === 'all' || tech.departmentId === departmentId);
+  const remaining = people.filter((tech) => !attendedIds.has(tech.id)).sort((a, b) => a.departmentId.localeCompare(b.departmentId) || a.name.localeCompare(b.name, 'ar'));
+  return { remaining, attended: people.length - remaining.length, total: people.length };
+}
+
+const searchKey = (value: string) =>
+  value
+    .replace(/[ً-ْـ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+/** البحث بالرقم الوظيفي (تطابق كامل) أو بجزء من الاسم أو اسم المقاول. */
+export function searchTechnicians(ws: Workspace, query: string): Technician[] {
+  const key = searchKey(query);
+  if (!key) return [];
+  const byNumber = ws.technicians.filter((tech) => tech.employeeNumber && tech.employeeNumber === query.trim());
+  if (byNumber.length) return byNumber;
+  return ws.technicians
+    .filter((tech) => searchKey(tech.name).includes(key) || (tech.contractor && searchKey(tech.contractor).includes(key)))
+    .sort((a, b) => Number(a.active === false) - Number(b.active === false) || a.name.localeCompare(b.name, 'ar'))
+    .slice(0, 20);
 }

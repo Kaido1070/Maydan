@@ -21,7 +21,8 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   const id = (t) => page.locator(`[data-testid="${t}"]`);
   await id('whats-new-ok').click();
 
-  await id('tab-equipment').click();
+  await id('tab-follow').click();
+  await page.getByText('المعدات', { exact: true }).first().click();
   await id('add-equipment').click();
   await id('equipment-name').fill('محول اختبار 1');
   await id('equipment-location').fill('موقع اختبار');
@@ -37,7 +38,8 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
 
   // الحفظ بعد إعادة التحميل، والصور تظهر
   await page.reload();
-  await id('tab-equipment').click();
+  await id('tab-follow').click();
+  await page.getByText('المعدات', { exact: true }).first().click();
   body = await page.locator('body').innerText();
   assert(body.includes('محول اختبار 1'), 'المعدة باقية بعد إعادة التشغيل');
   assert((await page.locator('img[src^="data:image/jpeg"]').count()) >= 2, 'الصور تظهر في البطاقة');
@@ -49,10 +51,14 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await page.waitForTimeout(300);
   assert((await page.locator('body').innerText()).includes('بعد 0'), 'حذف صورة');
 
+  // قسم التشغيل في الأقسام
+  await id('tab-visits').click();
+  assert(await id('dept-f').count(), 'قسم التشغيل موجود');
+
   // الشعار يرجع لمهام اليوم
   await id('tab-reports').click();
   await id('brand-home').click();
-  assert((await page.locator('body').innerText()).includes('تحدي اليوم'), 'الشعار يرجع لصفحة اليوم');
+  assert(await id('hero-progress').isVisible(), 'الشعار يرجع لصفحة اليوم');
 
   assert.deepStrictEqual(errors, []);
   console.log('✓ معدات التوزيع وزر الشعار نجحوا');

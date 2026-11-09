@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
+import { visitDetails, visitTitle } from '../domain/records';
 import { activeTechnicians, currentSlot, periodRange, shiftLabel } from '../domain/shifts';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
+import { PlacesView } from './PlacesView';
 import { DepartmentPicker } from './DepartmentPicker';
 
-export function VisitsScreen() {
+function CrewVisits() {
   const { ws, now } = useStore();
   const ui = useUi();
   const [scope, setScope] = useState<'shift' | 'all'>('shift');
@@ -68,7 +70,8 @@ export function VisitsScreen() {
               history.slice(0, limit).map((visit, index) => (
                 <Spread key={visit.id} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
                   <View style={{ flex: 1 }}>
-                    <T style={{ fontWeight: '700' }}>{visit.site}</T>
+                    <T style={{ fontWeight: '700' }}>{visitTitle(visit)}</T>
+                    {visitDetails(visit) ? <Sub>{visitDetails(visit)}</Sub> : null}
                     <Sub>{formatDate(visit.date, { year: true }) + ' · ' + visit.time + ' · ' + visit.technicianIds.length + ' فني'}</Sub>
                     <Sub numberOfLines={2}>
                       {visit.technicianIds.map((id) => ws.technicians.find((tech) => tech.id === id)?.name ?? '—').join('، ')}
@@ -88,6 +91,26 @@ export function VisitsScreen() {
           <Empty text="اختر قسمًا لعرض فنيي شفته الحالي وسجل زياراته." />
         </Card>
       )}
+    </View>
+  );
+}
+
+/** الزيارات: زيارات الفنيين، أو المستودعات ونقاط الانطلاق. */
+export function VisitsScreen() {
+  const [view, setView] = useState<'crew' | 'places'>('crew');
+  return (
+    <View>
+      <View style={{ marginTop: 6 }}>
+        <Segmented
+          options={[
+            { value: 'crew', label: 'زيارات الفنيين' },
+            { value: 'places', label: 'المستودعات والانطلاق' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
+      {view === 'crew' ? <CrewVisits /> : <PlacesView />}
     </View>
   );
 }

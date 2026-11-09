@@ -3,6 +3,13 @@ import { TextInput, View } from 'react-native';
 import { formatDate } from '../domain/dates';
 import { deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName, techTag } from '../domain/shifts';
+import { weeklyGoal } from '../domain/stats';
+import { scheduleOf } from '../domain/worktime';
+import { isTime, WEEKDAYS_AR } from '../domain/dates';
+import { Pressable } from 'react-native';
+import { addDepartment } from '../domain/plan';
+import { addPlace, deletePlace, PLACE_NOUN, placesOf } from '../domain/places';
+import type { PlaceKind } from '../domain/types';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
@@ -26,6 +33,7 @@ export function SettingsScreen() {
   const [techSheet, setTechSheet] = useState<string | null>(null);
   const [techDept, setTechDept] = useState<string | null>(ws.departments[0]?.id ?? null);
   const [importText, setImportText] = useState('');
+  const [newDept, setNewDept] = useState('');
   const [excel, setExcel] = useState<{ file: string; preview: ImportPreview } | null>(null);
 
   const importExcel = async () => {
@@ -104,12 +112,16 @@ export function SettingsScreen() {
       <Card>
         <Field label="اسم المهندس (يظهر في بطاقة الإنجاز والتقارير)" value={ws.settings.engineerName} onChangeText={(v) => setSetting('engineerName', v)} />
         <NumberRow label="هدف الزيارات اليومي" value={ws.settings.dailyVisitGoal} min={1} onChange={(v) => setSetting('dailyVisitGoal', v)} />
+        <NumberRow label="هدف الزيارات الأسبوعي" value={weeklyGoal(ws)} min={1} onChange={(v) => setSetting('weeklyVisitGoal', v)} />
         <NumberRow label="هدف زيارات كل فني" value={ws.settings.visitTarget} min={1} onChange={(v) => setSetting('visitTarget', v)} />
         <NumberRow label="نافذة الزيارات (أشهر)" value={ws.settings.visitWindowMonths} min={1} onChange={(v) => setSetting('visitWindowMonths', v)} />
         <IconLine icon="zap" text={'كل زيارة +' + ws.settings.xpVisit + ' XP وكل تسجيل حضور اجتماع +' + ws.settings.xpMeeting + ' XP، وكل 100 XP مستوى جديد.'} />
       </Card>
 
-      <SectionTitle title="الأقسام والشفتات" sub="بداية الدورات وأوقات الدوام" />
+      <SectionTitle title="دوامي" sub="جزء ميدان وجزء مكتب. يحدد أيام الأهداف والعمل خارج الدوام." />
+      <WorkScheduleCard />
+
+      <SectionTitle title="الأقسام والشفتات" sub="بداية الدورات وأوقات الدوام" right={<Button small variant="secondary" icon="calendar" label="جدول الشفتات" onPress={() => ui.go('roster')} />} />
       {ws.departments.map((department) => (
         <Card key={department.id}>
           <Spread style={{ alignItems: 'flex-start' }}>
@@ -122,6 +134,35 @@ export function SettingsScreen() {
           </Spread>
         </Card>
       ))}
+
+      <Card>
+        <T style={{ fontWeight: '700', marginBottom: 6 }}>إضافة قسم</T>
+        <Row>
+          <TextInput
+            testID="new-dept-name"
+            value={newDept}
+            onChangeText={setNewDept}
+            placeholder="اسم القسم"
+            placeholderTextColor="#a29db3"
+            style={[s.input, { flex: 1, minWidth: 0 }]}
+          />
+          <Button
+            testID="add-dept"
+            icon="plus"
+            label="إضافة"
+            disabled={!newDept.trim()}
+            onPress={() => {
+              const error = apply((c) => addDepartment(c, newDept));
+              if (error) return ui.notify(error);
+              setNewDept('');
+              ui.notify('تمت إضافة القسم. عدّل شفتاته وأوقاته من «تعديل»');
+            }}
+          />
+        </Row>
+      </Card>
+
+      <SectionTitle title="المستودعات ونقاط الانطلاق" sub="تنزار مرة في الشهر على الأقل، وتطلع في خطة اليوم إذا ما انزارت" />
+      <PlacesCard />
 
       <SectionTitle
         title="الفنيون"
@@ -234,9 +275,101 @@ function MeetingRow({ title, first, onRename, onDelete }: { title: string; first
   const [value, setValue] = useState(title);
   return (
     <Row style={{ paddingVertical: 8, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
-      <TextInput value={value} onChangeText={setValue} style={[s.input, { flex: 1, minHeight: 38, fontSize: 14 }]} />
+      <TextInput value={value} onChangeText={setValue} style={[s.input, { flex: 1, minWidth: 0, minHeight: 38, fontSize: 14 }]} />
       <Button small variant="secondary" label="حفظ" disabled={value.trim() === title} onPress={() => onRename(value)} />
       <Button small variant="danger" label="حذف" onPress={onDelete} />
     </Row>
+  );
+}
+
+function WorkScheduleCard() {
+  const { ws } = useStore();
+  const apply = useApply();
+  const schedule = scheduleOf(ws.settings);
+  const [start, setStart] = useState(schedule.start);
+  const [end, setEnd] = useState(schedule.end);
+  const save = (patch: Partial<typeof schedule>) =>
+    apply((c) => ({ ...c, settings: { ...c.settings, workSchedule: { ...scheduleOf(c.settings), ...patch } } }));
+  return (
+    <Card>
+      <T style={{ fontWeight: '700', fontSize: 13, marginBottom: 6 }}>أيام الدوام</T>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {WEEKDAYS_AR.map((name, day) => {
+          const on = schedule.days.includes(day);
+          return (
+            <Pressable
+              key={day}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              onPress={() => save({ days: on ? schedule.days.filter((d) => d !== day) : [...schedule.days, day].sort() })}
+              style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
+            >
+              <T style={{ color: on ? C.white : C.ink, fontSize: 14 }}>{name}</T>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Row style={{ marginTop: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Field testID="work-start" label="من" value={start} maxLength={5} keyboardType="numbers-and-punctuation" onChangeText={(v) => (setStart(v), isTime(v) && save({ start: v }))} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Field testID="work-end" label="إلى" value={end} maxLength={5} keyboardType="numbers-and-punctuation" onChangeText={(v) => (setEnd(v), isTime(v) && save({ end: v }))} />
+        </View>
+      </Row>
+      <Sub>{'هدف الأسبوع = الهدف اليومي × ' + schedule.days.length + ' أيام. الإجازة ما تكسر سلسلة الإنجاز.'}</Sub>
+    </Card>
+  );
+}
+
+function PlacesCard() {
+  const { ws } = useStore();
+  const apply = useApply();
+  const ui = useUi();
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState<PlaceKind>('warehouse');
+  const places = placesOf(ws);
+  return (
+    <Card>
+      <Segmented
+        options={[
+          { value: 'warehouse', label: 'مستودع' },
+          { value: 'staging', label: 'نقطة انطلاق' },
+        ]}
+        value={kind}
+        onChange={setKind}
+      />
+      <Row style={{ marginTop: 8 }}>
+        <TextInput
+          testID="new-place-name"
+          value={name}
+          onChangeText={setName}
+          placeholder={kind === 'warehouse' ? 'اسم المستودع' : 'اسم نقطة الانطلاق'}
+          placeholderTextColor="#a29db3"
+          style={[s.input, { flex: 1, minWidth: 0 }]}
+        />
+        <Button
+          testID="add-place"
+          icon="plus"
+          label="إضافة"
+          disabled={!name.trim()}
+          onPress={() => {
+            const error = apply((c) => addPlace(c, { kind, name }));
+            if (error) return ui.notify(error);
+            setName('');
+            ui.notify('تمت إضافة ' + PLACE_NOUN[kind]);
+          }}
+        />
+      </Row>
+      {places.map((place, index) => (
+        <Spread key={place.id} style={{ paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: C.line, marginTop: index ? 0 : 8 }}>
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '600' }}>{place.name}</T>
+            <Sub>{PLACE_NOUN[place.kind]}</Sub>
+          </View>
+          <Button small variant="danger" label="حذف" onPress={() => confirm('حذف «' + place.name + '»؟ زياراته السابقة تبقى في السجل.', () => apply((c) => deletePlace(c, place.id)))} />
+        </Spread>
+      ))}
+    </Card>
   );
 }

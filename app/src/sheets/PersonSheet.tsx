@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
+import { visitDetails, visitTitle } from '../domain/records';
 import { currentSlot, periodRange, shiftLabel, shiftName, techTag } from '../domain/shifts';
 import { techProgress, tone, yearMeetings } from '../domain/stats';
 import { useStore } from '../store';
@@ -39,7 +40,7 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
       sub={techTag(tech, true) + ' · ' + (department?.name ?? '—')}
       footer={
         <Row>
-          <Button testID="person-visit" style={{ flex: 1 }} icon="map-pin" label="تسجيل زيارة" onPress={recordVisit} />
+          {progress.field ? <Button testID="person-visit" style={{ flex: 1 }} icon="map-pin" label="تسجيل زيارة" onPress={recordVisit} /> : null}
           <Button testID="person-meeting" style={{ flex: 1 }} variant="secondary" icon="users" label="تسجيل حضور" onPress={recordMeeting} />
         </Row>
       }
@@ -54,23 +55,30 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
         <Button small variant="ghost" icon="repeat" label="نقل أو تكليف ليوم" style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => (onClose(), ui.openTechnician(tech.id))} />
       </View>
 
+      {progress.field ? (
       <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12, marginBottom: 10 }}>
         <Spread>
           <T style={{ fontWeight: '700' }}>{'الزيارات · آخر ' + ws.settings.visitWindowMonths + ' أشهر'}</T>
           <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} label={ratio(progress.visitCount, ws.settings.visitTarget)} />
         </Spread>
         <Progress value={progress.visitCount} max={ws.settings.visitTarget} />
-        <Sub>{lastVisit ? 'آخر زيارة: ' + formatDate(lastVisit.date, { year: true }) + ' · ' + lastVisit.site : 'ما طلعت عليه زيارة أبدًا'}</Sub>
+        <Sub>{lastVisit ? 'آخر زيارة: ' + formatDate(lastVisit.date, { year: true }) + ' · ' + visitTitle(lastVisit) : 'ما طلعت عليه زيارة أبدًا'}</Sub>
         {progress.visits.map((visit) => (
           <Row key={visit.id} style={{ borderTopWidth: 1, borderTopColor: C.line, paddingVertical: 6, marginTop: 4 }}>
             <View style={{ flex: 1 }}>
-              <T style={{ fontSize: 14 }}>{visit.site}</T>
+              <T style={{ fontSize: 14 }}>{visitTitle(visit) + (visitDetails(visit) ? ' · ' + visitDetails(visit) : '')}</T>
               <Sub>{formatDate(visit.date, { weekday: true, year: true }) + ' · ' + visit.time + (visit.technicianIds.length > 1 ? ' · مع ' + (visit.technicianIds.length - 1) + ' آخرين' : '')}</Sub>
             </View>
           </Row>
         ))}
         {allVisits.length > progress.visits.length ? <Sub style={{ marginTop: 4 }}>{'وزيارات أقدم: ' + (allVisits.length - progress.visits.length)}</Sub> : null}
       </View>
+      ) : (
+        <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12, marginBottom: 10 }}>
+          <T style={{ fontWeight: '700' }}>موظف مكتبي</T>
+          <Sub>ما عليه زيارات ميدانية، بس لازم يحضر الاجتماعات عشان توصله الرسالة.</Sub>
+        </View>
+      )}
 
       <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: C.line, padding: 12 }}>
         <Spread>

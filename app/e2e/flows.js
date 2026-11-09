@@ -55,16 +55,26 @@ const OUT = process.env.SHOTS || null;
     await shot('visit-sheet');
     await id('visit-save').click();
     await page.waitForTimeout(150);
+    assert(await id('celebration').isVisible(), 'احتفال بعد تسجيل الزيارة');
   }
+  // زيارة ثالثة بنوع مهمة من الاقتراحات ورقم مهمة
+  await id('add-visit').click();
+  await page.getByRole('button', { name: 'تمديد كابلات', exact: true }).click();
+  await id('visit-site').fill('حي الروضة');
+  await id('visit-number').fill('4471');
+  await id('visit-tech-b3').click();
+  await id('visit-save').click();
+  await page.waitForTimeout(150);
   let body = await page.locator('body').innerText();
+  assert(/تمديد كابلات\s*\n?\s*حي الروضة · رقم 4471/.test(body), 'نوع المهمة والموقع والرقم في السجل');
   assert(body.includes('موقع الاختبار الأول') && body.includes('موقع الاختبار الثاني'), 'الزيارتان تظهران في السجل');
-  assert(/\d+ زيارة مسجلة · 2 اليوم/.test(body), 'عداد زيارات اليوم = 2');
+  assert(/\d+ زيارة مسجلة · 3 اليوم/.test(body), 'عداد زيارات اليوم = 3');
   await shot('visits');
 
   // تعديل الزيارة الثانية بشكل مستقل
   const editButtons = page.locator('[data-testid^="edit-visit-v-"]');
-  assert.strictEqual(await editButtons.count(), 2, 'سجلان مستقلان');
-  await editButtons.first().click(); // الأحدث أولًا = الثانية
+  assert.strictEqual(await editButtons.count(), 3, 'ثلاثة سجلات مستقلة');
+  await editButtons.nth(1).click(); // الأحدث أولًا: الثالثة ثم الثانية
   await id('visit-site').fill('موقع الاختبار الثاني - معدل');
   await id('visit-save').click();
   body = await page.locator('body').innerText();
@@ -83,8 +93,23 @@ const OUT = process.env.SHOTS || null;
   assert(body.includes('تم حفظ حضور 2 اجتماع'), 'حفظ دفعة واحدة لاجتماعين');
   assert(body.includes('مراجعة خطة الطوارئ\n2 حاضر') || /مراجعة خطة الطوارئ[\s\S]{0,40}2 حاضر/.test(body), 'سجل الحضور يظهر');
 
+  // متابعة اجتماع: كم باقي ما حضره
+  const remainingText = await id('meeting-remaining').innerText();
+  assert(/\d+/.test(remainingText) && remainingText.includes('حضروا'), 'عدد الباقين على الاجتماع ظاهر');
+
+  // حضور اجتماع بتاريخ أمس ووقت محدد
+  await page.getByRole('button', { name: 'السابق' }).first().click();
+  await id('meeting-time').fill('13:45');
+  // يوم 8 نوفمبر الصباحي = طوارئ ب، فالقائمة تتبع شفت ذاك اليوم
+  assert(!(await id('att-demo-m2-b2').count()), 'فنيو طوارئ أ ما يظهرون في شفت أمس');
+  await page.locator('[data-testid^="att-demo-m2-b"]').first().click();
+  await id('attendance-save').click();
+  body = await page.locator('body').innerText();
+  assert(/الأحد 8 نوفمبر 2026 · 13:45/.test(body), 'سجل الحضور فيه التاريخ والوقت المحددين');
+
   // 3) نقل فني بين الشفتات
-  await id('tab-roster').click();
+  await id('tab-day').click();
+  await id('open-roster').click();
   await page.getByText('الشفت الأساسي للفنيين').click();
   await id('roster-move-b11').click();
   await page.getByRole('button', { name: 'طوارئ ب' }).first().click();
@@ -96,15 +121,17 @@ const OUT = process.env.SHOTS || null;
   await shot('roster');
   await id('tab-visits').click();
   await id('dept-b').click();
-  await page.getByText('كل فنيي القسم').click();
+  await page.getByRole('button', { name: 'كل فنيي القسم', exact: true }).click();
   body = await page.locator('body').innerText();
-  assert(/وليد علي[\s\S]{0,40}الأساسي: طوارئ ب/.test(body), 'الشفت الأساسي الجديد يظهر بجانب الاسم');
-  assert(/حسن يحيى[\s\S]{0,40}الأساسي: طوارئ أ/.test(body), 'الشفت الأساسي يظهر بجانب الاسم');
+  assert(/وليد علي[\s\S]{0,40}طوارئ ب/.test(body), 'الشفت الأساسي الجديد يظهر بجانب الاسم');
+  assert(/حسن يحيى[\s\S]{0,40}طوارئ أ/.test(body), 'الشفت الأساسي يظهر بجانب الاسم');
 
   // 4) أرقام التقرير
   await id('tab-reports').click();
-  assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 2, 'الزيارة الجماعية تُحسب مرة: +2 زيارة');
-  assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 2, '+2 تسجيل اجتماع');
+  assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 3, 'الزيارة الجماعية تُحسب مرة: +3 زيارات');
+  for (const chart of ['chart-period', 'chart-visit-status', 'chart-dept-visits']) assert(await id(chart).isVisible(), 'الرسم البياني ظاهر: ' + chart);
+  assert((await id('chart-visit-status').innerText()).includes('بدون زيارة'), 'الرسم فيه تسميات الحالة');
+  assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 3, '+3 تسجيلات اجتماع (اجتماعان اليوم وواحد أمس)');
   await id('employee-search').fill('١٢٠١');
   await id('employee-search-go').click();
   body = await page.locator('body').innerText();
@@ -117,11 +144,19 @@ const OUT = process.env.SHOTS || null;
   await id('dept-b').click();
   assert((await page.locator('body').innerText()).includes('موقع الاختبار الأول'), 'البيانات محفوظة بعد إعادة التشغيل');
 
+  // بطاقة اليوم: التقدم والسلسلة والمهمة التالية
+
+  await id('tab-day').click();
+  assert(/\d+ \/ \d+/.test(await id('hero-progress').innerText()), 'تقدم مهام اليوم ظاهر');
+  assert((await id('hero-streak').innerText()).includes('🔥'), 'سلسلة الإنجاز ظاهرة');
+  assert(await id('next-task').isVisible(), 'المهمة التالية ظاهرة');
+  assert((await id('hero-week').innerText()).includes('هدف الأسبوع') || (await id('hero-week').innerText()).includes('🏅'), 'هدف الأسبوع ظاهر');
+
   // مهام اليوم: تذكير زيارة → تفاصيل الفني → تسجيل زيارة له → تصير منجزة
   await id('tab-day').click();
   const dailyTask = page.locator('[data-testid^="daily-visit-"]').first();
   const techId = (await dailyTask.getAttribute('data-testid')).replace('daily-visit-', '');
-  assert((await dailyTask.innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر');
+  assert((await id('next-task').innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر في المهمة التالية');
   await dailyTask.click();
   await page.waitForSelector('text=الزيارات · آخر 6 أشهر');
   await id('person-visit').click();

@@ -169,6 +169,20 @@ describe('الاجتماعات', () => {
     expect(again.ws.attendance).toHaveLength(1);
     expect(again.ws.attendance[0].technicianIds).toEqual(['t2']);
   });
+
+  test('حضور اجتماع بتاريخ ووقت محددين، وتعديل الوقت لاحقًا', () => {
+    let ws = fixture();
+    const m = addMeeting(ws, 'اجتماع سابق', 2026);
+    ws = m.ws;
+    ws = saveAttendanceBatch(ws, { departmentId: 'b', date: '2026-11-02', time: '13:30', entries: { [m.meeting.id]: ['t1'] } }, STAMP).ws;
+    expect(ws.attendance[0]).toMatchObject({ date: '2026-11-02', time: '13:30' });
+    const updated = saveAttendanceBatch(ws, { departmentId: 'b', date: '2026-11-02', time: '14:00', entries: { [m.meeting.id]: ['t1'] } }, STAMP);
+    expect(updated).toMatchObject({ created: 0, updated: 1 });
+    expect(updated.ws.attendance[0].time).toBe('14:00');
+    // يوم ثاني = سجل مستقل
+    const other = saveAttendanceBatch(updated.ws, { departmentId: 'b', date: '2026-11-03', time: '09:00', entries: { [m.meeting.id]: ['t2'] } }, STAMP);
+    expect(other.ws.attendance).toHaveLength(2);
+  });
 });
 
 describe('التقارير', () => {
@@ -221,6 +235,8 @@ describe('التقارير', () => {
     expect(shiftB.coverage).toMatchObject({ people: 1, visitRemaining: 1, attendanceRemaining: 0 });
     expect(b.coverage.visitRemaining).toBe(2);
     expect(report.pending.map((p) => p.technician.id)).toEqual(['t2', 't3']);
+    // t1 زيارتان، t2 و t3 زيارة وحدة. الاجتماع: t1 و t3 حضروا، t2 لا
+    expect(report.statusMix).toEqual({ visits: { none: 0, partial: 2, complete: 1 }, meetings: { none: 1, partial: 0, complete: 2 } });
     const csv = reportCsv(report);
     expect(csv.startsWith('﻿')).toBe(true);
     expect(csv).toContain('"فني اثنان","502","طوارئ","طوارئ أ","1","1"');
@@ -237,7 +253,7 @@ describe('التقارير', () => {
 describe('وضع التجربة', () => {
   test('بيانات التجربة متسقة: خطة اليوم والفنيون والزيارات', () => {
     const ws = demoWorkspace(TODAY);
-    expect(ws.technicians).toHaveLength(51);
+    expect(ws.technicians).toHaveLength(58); // مع قسم التشغيل وموظفين مكتبيين
     expect(tasksOn(ws, TODAY)).toHaveLength(4);
     expect(technicianVisits(ws, 'a1', TODAY)).toHaveLength(2);
     // a1 و a4 زيارتهما في نفس اليوم في نفس القسم → سجل واحد

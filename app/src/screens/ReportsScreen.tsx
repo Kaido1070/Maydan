@@ -3,10 +3,12 @@ import { TextInput, View } from 'react-native';
 import { formatDate, MONTHS_AR, normalizeDigits } from '../domain/dates';
 import { buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
 import { shiftName, techTag } from '../domain/shifts';
-import { findByEmployeeNumber, techProgress, tone } from '../domain/stats';
+import { searchTechnicians, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
+import { formatDuration } from '../domain/worktime';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Progress, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
+import { CHART, ColumnChart, ProgressRows, StackedBar } from '../ui/charts';
 import { TechDetails } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 
@@ -24,7 +26,6 @@ export function ReportsScreen() {
   const [busy, setBusy] = useState(false);
   const report = useMemo(() => buildReport(ws, params, now.date), [ws, params, now.date]);
   const set = (patch: Partial<ReportParams>) => setParams((prev) => ({ ...prev, ...patch }));
-  const peak = Math.max(1, ...report.buckets.map((b) => Math.max(b.visits, b.meetingSessions)));
   const currentYear = Number(now.date.slice(0, 4));
 
   const run = async (kind: 'csv' | 'pdf') => {
@@ -51,6 +52,8 @@ export function ReportsScreen() {
 
   return (
     <View>
+      <EmployeeSearch />
+
       <SectionTitle title="تقرير الإنجاز حسب الفترة" sub="اختر الفترة والقسم لمراجعة النشاط المسجل والمتبقي." />
       <Card style={{ gap: 10 }}>
         <Segmented options={(Object.keys(REPORT_MODES) as ReportMode[]).map((mode) => ({ value: mode, label: REPORT_MODES[mode] }))} value={params.mode} onChange={(mode) => set({ mode })} />
@@ -82,27 +85,24 @@ export function ReportsScreen() {
         <T style={{ fontWeight: '800', fontSize: 16 }}>{report.label + ' · ' + report.scopeLabel}</T>
         <Sub>{'من ' + formatDate(report.start) + ' إلى ' + formatDate(report.last) + ' · من السجلات المحفوظة'}</Sub>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-          <Kpi testID="kpi-visits" label="زيارات" value={report.totals.visits} hint="الزيارة الجماعية = 1" />
-          <Kpi label="زيارات الفنيين" value={report.totals.technicianVisits} hint={report.totals.techniciansVisited + ' فني مختلف'} />
-          <Kpi testID="kpi-meetings" label="تسجيلات اجتماعات" value={report.totals.meetingSessions} hint={report.totals.meetingsHeld + ' اجتماع مختلف'} />
-          <Kpi label="مرات حضور" value={report.totals.attendance} />
+          <Kpi half testID="kpi-visits" label="زيارات" value={report.totals.visits} hint="الزيارة الجماعية = 1" />
+          <Kpi half label="زيارات الفنيين" value={report.totals.technicianVisits} hint={report.totals.techniciansVisited + ' فني مختلف'} />
+          <Kpi half testID="kpi-meetings" label="تسجيلات اجتماعات" value={report.totals.meetingSessions} hint={report.totals.meetingsHeld + ' اجتماع مختلف'} />
+          <Kpi half label="مرات حضور" value={report.totals.attendance} />
         </View>
         {!report.totals.visits && !report.totals.meetingSessions ? <Sub style={{ marginTop: 8 }}>ما فيه إنجاز مسجل لهذه الفترة.</Sub> : null}
 
-        <T style={{ fontWeight: '800', marginTop: 14 }}>الإنجاز عبر الفترة</T>
-        <Row gap={10} style={{ marginTop: 4 }}>
-          <Chip tone="purple" label="زيارات" />
-          <Chip tone="green" label="اجتماعات" />
-        </Row>
-        {report.buckets.map((bucket) => (
-          <Row key={bucket.start} style={{ marginTop: 6 }}>
-            <Sub style={{ width: 62 }}>{bucket.label}</Sub>
-            <View style={{ flex: 1 }}>
-              <Bar value={bucket.visits} peak={peak} color="#7653e2" />
-              <Bar value={bucket.meetingSessions} peak={peak} color="#278969" />
-            </View>
-          </Row>
-        ))}
+        <T style={{ fontWeight: '800', marginTop: 16, marginBottom: 6 }}>{params.mode === 'month' ? 'الإنجاز أسبوعًا بأسبوع' : 'الإنجاز شهرًا بشهر'}</T>
+        <View testID="chart-period">
+          <ColumnChart
+            series={[
+              { name: 'زيارات', color: CHART.visits },
+              { name: 'اجتماعات', color: CHART.meetings },
+            ]}
+            buckets={report.buckets.map((bucket) => ({ label: bucket.label, values: [bucket.visits, bucket.meetingSessions] }))}
+          />
+        </View>
+        <Sub style={{ marginTop: 4 }}>اضغط على أي عمود لعرض أرقامه.</Sub>
 
         <T style={{ fontWeight: '800', marginTop: 14, marginBottom: 4 }}>التوزيع حسب القسم</T>
         <Table
@@ -110,6 +110,63 @@ export function ReportsScreen() {
           rows={report.sections.map((row) => [row.name, row.visits, row.technicianVisits, row.meetingSessions, row.attendance])}
         />
         <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله.</Sub>
+      </Card>
+
+      <SectionTitle title="الملاحظات وخارج الدوام" sub={'المسجلة في ' + report.label} />
+      <View testID="report-follow">
+        <Card>
+          <Table
+            head={['', 'مفتوحة', 'متأخرة', 'مقفلة', 'إغلاق (يوم)']}
+            rows={[
+              ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
+              ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+            ]}
+          />
+          <T style={{ fontWeight: '700', marginTop: 12 }}>العمل خارج الدوام</T>
+          <Row gap={8} style={{ marginTop: 6 }}>
+            <Kpi label="مرات مسجلة" value={report.overtime.entries} hint={formatDuration(report.overtime.minutes)} />
+            <Kpi label="نشاط خارج الدوام" value={report.overtime.outOfHoursActivities} hint={report.overtime.days + ' يوم'} />
+          </Row>
+        </Card>
+      </View>
+
+      <SectionTitle title="صورة التغطية" sub={'حالة الفنيين حتى ' + formatDate(report.asOf, { year: true }) + ' · ' + report.scopeLabel} />
+      <Card>
+        <StackedBar
+          testID="chart-visit-status"
+          title={'الزيارات (الهدف ' + ws.settings.visitTarget + ' خلال ' + ws.settings.visitWindowMonths + ' أشهر)'}
+          segments={[
+            { label: 'بدون زيارة', value: report.statusMix.visits.none, color: CHART.critical, icon: 'x-circle' },
+            { label: 'جزئي', value: report.statusMix.visits.partial, color: CHART.warning, icon: 'alert-circle' },
+            { label: 'مكتمل', value: report.statusMix.visits.complete, color: CHART.good, icon: 'check-circle' },
+          ]}
+        />
+        {report.meetingTitles.length ? (
+          <StackedBar
+            testID="chart-meeting-status"
+            title={'الاجتماعات (' + report.meetingTitles.length + ' هالسنة)'}
+            segments={[
+              { label: 'ما حضر', value: report.statusMix.meetings.none, color: CHART.critical, icon: 'x-circle' },
+              { label: 'جزئي', value: report.statusMix.meetings.partial, color: CHART.warning, icon: 'alert-circle' },
+              { label: 'حضر الكل', value: report.statusMix.meetings.complete, color: CHART.good, icon: 'check-circle' },
+            ]}
+          />
+        ) : null}
+        <T style={{ fontWeight: '800', marginTop: 4, marginBottom: 8 }}>نسبة من أكمل الزيارات حسب القسم</T>
+        <ProgressRows
+          testID="chart-dept-visits"
+          color={CHART.visits}
+          rows={report.coverage.map((dept) => ({ label: dept.department.name, done: dept.coverage.visitComplete, total: dept.coverage.fieldPeople }))}
+        />
+        {report.meetingTitles.length ? (
+          <>
+            <T style={{ fontWeight: '800', marginTop: 4, marginBottom: 8 }}>نسبة من حضر كل الاجتماعات حسب القسم</T>
+            <ProgressRows
+              color={CHART.meetings}
+              rows={report.coverage.map((dept) => ({ label: dept.department.name, done: dept.coverage.meetingComplete, total: dept.coverage.people }))}
+            />
+          </>
+        ) : null}
       </Card>
 
       <SectionTitle title="المتبقي على كل قسم وشفت" sub={'محسوب حتى ' + formatDate(report.asOf, { year: true }) + ' · الزيارات لآخر ' + ws.settings.visitWindowMonths + ' أشهر والاجتماعات لسنة ' + report.asOf.slice(0, 4)} />
@@ -125,7 +182,7 @@ export function ReportsScreen() {
             <Sub>{dept.coverage.people + ' فني'}</Sub>
           </Spread>
           <Row gap={8} style={{ marginTop: 8 }}>
-            <Metric label="الزيارات" remaining={dept.coverage.visitRemaining} total={dept.coverage.people * ws.settings.visitTarget} />
+            <Metric label="الزيارات" remaining={dept.coverage.visitRemaining} total={dept.coverage.fieldPeople * ws.settings.visitTarget} />
             <Metric label="مرات الحضور" remaining={dept.coverage.attendanceRemaining} total={dept.coverage.people * report.meetingTitles.length} />
           </Row>
           {report.meetingTitles.length ? (
@@ -171,7 +228,6 @@ export function ReportsScreen() {
         {report.pending.length > 8 ? <Button small variant="ghost" label={showAll ? 'عرض أقل' : 'عرض باقي الفنيين · ' + (report.pending.length - 8)} onPress={() => setShowAll(!showAll)} /> : null}
       </Card>
 
-      <EmployeeSearch />
     </View>
   );
 }
@@ -181,15 +237,20 @@ function EmployeeSearch() {
   const ui = useUi();
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState('');
-  const tech = searched ? findByEmployeeNumber(ws, searched) : undefined;
+  const [picked, setPicked] = useState<string | null>(null);
+  const matches = searched ? searchTechnicians(ws, searched) : [];
+  const tech = matches.length === 1 ? matches[0] : matches.find((item) => item.id === picked);
   const progress = tech ? techProgress(ws, tech, now.date) : null;
   const allVisits = tech ? ws.visits.filter((v) => v.technicianIds.includes(tech.id)).length : 0;
-  const search = () => setSearched(normalizeDigits(query));
+  const search = () => {
+    setSearched(normalizeDigits(query));
+    setPicked(null);
+  };
   const example = ws.technicians.find((t) => t.employeeNumber)?.employeeNumber;
 
   return (
     <>
-      <SectionTitle title="البحث بالرقم الوظيفي" sub="يعرض سجل الموظف من زيارات واجتماعات" />
+      <SectionTitle title="البحث عن موظف" sub="بالرقم الوظيفي أو الاسم: يعرض سجله من زيارات واجتماعات" />
       <Card>
         <Row>
           <TextInput
@@ -197,16 +258,29 @@ function EmployeeSearch() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={search}
-            keyboardType="number-pad"
             returnKeyType="search"
-            placeholder={example ? 'مثال: ' + example : 'الرقم الوظيفي'}
+            placeholder={example ? 'الرقم الوظيفي أو الاسم، مثل ' + example : 'الرقم الوظيفي أو الاسم'}
             placeholderTextColor="#a29db3"
             style={[s.input, { flex: 1, minWidth: 0 }]}
           />
           <Button testID="employee-search-go" label="بحث" icon="search" onPress={search} disabled={!query.trim()} />
         </Row>
-        {!searched ? null : !tech || !progress ? (
-          <Sub style={{ marginTop: 10 }}>ما فيه موظف بهذا الرقم الوظيفي.</Sub>
+        {!searched ? null : !matches.length ? (
+          <Sub style={{ marginTop: 10 }}>ما فيه موظف بهذا الرقم أو الاسم.</Sub>
+        ) : !tech || !progress ? (
+          <View style={{ marginTop: 8 }}>
+            <Sub>{matches.length + ' نتيجة، اختر الموظف:'}</Sub>
+            {matches.map((item, index) => (
+              <Button
+                key={item.id}
+                small
+                variant="ghost"
+                label={item.name + (item.employeeNumber ? ' · ' + item.employeeNumber : '')}
+                onPress={() => setPicked(item.id)}
+                style={{ justifyContent: 'flex-start', borderTopWidth: index ? 1 : 0, borderTopColor: C.line, borderRadius: 0 }}
+              />
+            ))}
+          </View>
         ) : (
           <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10 }}>
             <Spread>
@@ -231,9 +305,9 @@ function EmployeeSearch() {
   );
 }
 
-function Kpi({ label, value, hint, testID }: { label: string; value: number; hint?: string; testID?: string }) {
+function Kpi({ label, value, hint, testID, half }: { label: string; value: number; hint?: string; testID?: string; half?: boolean }) {
   return (
-    <View testID={testID} style={{ flexBasis: '46%', flexGrow: 1, backgroundColor: '#f7f5fb', borderRadius: 12, padding: 9 }}>
+    <View testID={testID} style={{ flexBasis: half ? '46%' : 0, flexGrow: 1, minWidth: 0, backgroundColor: '#f7f5fb', borderRadius: 12, padding: 9 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       <T style={{ fontSize: 20, fontWeight: '800' }}>{value}</T>
       {hint ? <Sub style={{ fontSize: 10 }}>{hint}</Sub> : null}
@@ -253,16 +327,6 @@ function Metric({ label, remaining, total, done }: { label: string; remaining: n
   );
 }
 
-function Bar({ value, peak, color }: { value: number; peak: number; color: string }) {
-  return (
-    <Row gap={5}>
-      <View style={{ flex: 1, height: 7, backgroundColor: '#eeeaf6', borderRadius: 99, overflow: 'hidden', marginVertical: 2 }}>
-        <View style={{ width: `${(100 * value) / peak}%`, height: '100%', backgroundColor: color, borderRadius: 99 }} />
-      </View>
-      <T style={{ fontSize: 11, fontWeight: '700', minWidth: 18 }}>{value}</T>
-    </Row>
-  );
-}
 
 function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
   return (

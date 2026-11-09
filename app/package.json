@@ -1,6 +1,6 @@
 {
   "name": "maydan",
-  "version": "1.3.0",
+  "version": "1.5.0",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
@@ -40,7 +40,7 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export -p web",
-    "test:e2e": "node e2e/flows.js && node e2e/excel.js && node e2e/equipment.js",
+    "test:e2e": "node e2e/flows.js && node e2e/excel.js && node e2e/equipment.js && node e2e/follow.js",
     "serve:web": "npx serve -s dist -l 8089"
   },
   "private": true,
