@@ -5,7 +5,10 @@ import { removePlanItem } from '../domain/plan';
 import { deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName } from '../domain/shifts';
 import type { Settings, Workspace } from '../domain/types';
-import { shareText } from '../exporting';
+import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
+import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
+import { shareBytes, shareText } from '../exporting';
+import { ImportSheet } from '../sheets/ImportSheet';
 import { DepartmentPicker } from './DepartmentPicker';
 import { rotationText } from './RosterScreen';
 import { DepartmentSheet, IconLine, PlanItemSheet, TechnicianEditSheet } from '../sheets/SettingsSheets';
@@ -24,6 +27,21 @@ export function SettingsScreen() {
   const [planSheet, setPlanSheet] = useState(false);
   const [techDept, setTechDept] = useState<string | null>(ws.departments[0]?.id ?? null);
   const [importText, setImportText] = useState('');
+  const [excel, setExcel] = useState<{ file: string; preview: ImportPreview } | null>(null);
+
+  const importExcel = async () => {
+    try {
+      const picked = await pickSpreadsheet();
+      if (!picked) return;
+      setExcel({ file: picked.name, preview: previewTechnicianImport(ws, readTable(picked.bytes)) });
+    } catch (error) {
+      ui.notify('تعذر قراءة الملف: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  };
+  const exportExcel = () =>
+    shareBytes('Maydan-Technicians-' + now.date + '.xlsx', buildTechnicianWorkbook(ws), XLSX_MIME, XLSX_UTI).catch((error) =>
+      ui.notify('تعذر التصدير: ' + (error instanceof Error ? error.message : String(error))),
+    );
   const year = Number(now.date.slice(0, 4));
 
   const setSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => apply((c) => ({ ...c, settings: { ...c.settings, [key]: value } }));
@@ -101,6 +119,17 @@ export function SettingsScreen() {
         sub={ws.technicians.filter((t) => t.active !== false).length + ' فني نشط'}
         right={<Button small icon="user-plus" label="إضافة فني" testID="add-tech" onPress={() => setTechSheet('new')} />}
       />
+      <Card>
+        <T style={{ fontWeight: '800' }}>استيراد من Excel</T>
+        <Sub>
+          نزّل النموذج، عبّئ أسماء الفنيين وأرقامهم وأقسامهم وشفتاتهم، ثم استورده هنا. الملف يُقرأ على جهازك فقط وما يرفع لأي مكان.
+          {ws.technicians.length ? ' النموذج يحتوي القائمة الحالية، فتقدر تعدلها وتعيد استيرادها.' : ''}
+        </Sub>
+        <Row style={{ marginTop: 10 }}>
+          <Button testID="excel-template" style={{ flex: 1 }} small variant="secondary" icon="download" label={ws.technicians.length ? 'تصدير القائمة (Excel)' : 'تنزيل نموذج Excel'} onPress={exportExcel} />
+          <Button testID="excel-import" style={{ flex: 1 }} small icon="upload" label="استيراد ملف Excel" onPress={importExcel} />
+        </Row>
+      </Card>
       <DepartmentPicker value={techDept} onChange={setTechDept} icon="users" />
       <Card style={{ paddingVertical: 4 }}>
         {ws.technicians.filter((t) => t.departmentId === techDept).length ? (
@@ -187,6 +216,15 @@ export function SettingsScreen() {
 
       <Sub style={{ marginTop: 14, textAlign: 'center' }}>{'ميدان · التوقيت: السعودية (UTC+3) · ' + formatDate(now.date, { weekday: true, year: true }) + ' ' + now.time}</Sub>
 
+      <ImportSheet
+        file={excel?.file ?? ''}
+        preview={excel?.preview ?? null}
+        onClose={() => setExcel(null)}
+        onDone={(message) => {
+          setExcel(null);
+          ui.notify(message);
+        }}
+      />
       <DepartmentSheet departmentId={deptSheet} onClose={() => setDeptSheet(null)} onSaved={(m) => (setDeptSheet(null), saved(m))} />
       <TechnicianEditSheet technicianId={techSheet} onClose={() => setTechSheet(null)} onSaved={(m) => (setTechSheet(null), saved(m))} />
       <PlanItemSheet visible={planSheet} onClose={() => setPlanSheet(false)} onSaved={(m) => (setPlanSheet(false), saved(m))} />
