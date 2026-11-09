@@ -231,7 +231,7 @@ export function Segmented<V extends string | number>({ options, value, onChange,
             accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
             feedback="select"
-            style={[s.segment, wrap && { flexGrow: 0, flexBasis: 'auto' }, active && s.segmentOn]}
+            style={[s.segment, wrap && s.segmentGrid, wrap && options.length > 4 && { flexBasis: '30%' }, active && s.segmentOn]}
           >
             <AppText numberOfLines={wrap ? undefined : 1} style={[s.segmentText, !wrap && options.length >= 3 && { fontSize: 13 }, active && { color: C.white }]}>{option.label}</AppText>
           </Touch>
@@ -329,6 +329,8 @@ export const s = StyleSheet.create({
   checkboxOn: { backgroundColor: C.purple, borderColor: C.purple },
   segmented: { flexDirection: 'row', backgroundColor: '#ece8f5', borderRadius: 11, padding: 3, gap: 3 },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 6, minHeight: 36 },
+  /** وضع الشبكة: خياران في كل سطر بعرض ثابت (ما ينضغط النص على الآيفون). */
+  segmentGrid: { flexGrow: 1, flexShrink: 0, flexBasis: '47%' },
   segmentOn: { backgroundColor: C.purple },
   segmentText: { fontSize: 14, fontWeight: '600', color: '#4a4160' },
   input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16, fontFamily: FONTS.regular },
