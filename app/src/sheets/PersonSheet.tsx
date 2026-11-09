@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
+import { visitDetails, visitTitle } from '../domain/records';
 import { currentSlot, periodRange, shiftLabel, shiftName, techTag } from '../domain/shifts';
 import { techProgress, tone, yearMeetings } from '../domain/stats';
 import { useStore } from '../store';
@@ -60,11 +61,11 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
           <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} label={ratio(progress.visitCount, ws.settings.visitTarget)} />
         </Spread>
         <Progress value={progress.visitCount} max={ws.settings.visitTarget} />
-        <Sub>{lastVisit ? 'آخر زيارة: ' + formatDate(lastVisit.date, { year: true }) + ' · ' + lastVisit.site : 'ما طلعت عليه زيارة أبدًا'}</Sub>
+        <Sub>{lastVisit ? 'آخر زيارة: ' + formatDate(lastVisit.date, { year: true }) + ' · ' + visitTitle(lastVisit) : 'ما طلعت عليه زيارة أبدًا'}</Sub>
         {progress.visits.map((visit) => (
           <Row key={visit.id} style={{ borderTopWidth: 1, borderTopColor: C.line, paddingVertical: 6, marginTop: 4 }}>
             <View style={{ flex: 1 }}>
-              <T style={{ fontSize: 14 }}>{visit.site}</T>
+              <T style={{ fontSize: 14 }}>{visitTitle(visit) + (visitDetails(visit) ? ' · ' + visitDetails(visit) : '')}</T>
               <Sub>{formatDate(visit.date, { weekday: true, year: true }) + ' · ' + visit.time + (visit.technicianIds.length > 1 ? ' · مع ' + (visit.technicianIds.length - 1) + ' آخرين' : '')}</Sub>
             </View>
           </Row>

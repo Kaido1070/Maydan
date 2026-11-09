@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
+import { visitDetails, visitTitle } from '../domain/records';
 import { activeTechnicians, currentSlot, periodRange, shiftLabel } from '../domain/shifts';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
@@ -68,7 +69,8 @@ export function VisitsScreen() {
               history.slice(0, limit).map((visit, index) => (
                 <Spread key={visit.id} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
                   <View style={{ flex: 1 }}>
-                    <T style={{ fontWeight: '700' }}>{visit.site}</T>
+                    <T style={{ fontWeight: '700' }}>{visitTitle(visit)}</T>
+                    {visitDetails(visit) ? <Sub>{visitDetails(visit)}</Sub> : null}
                     <Sub>{formatDate(visit.date, { year: true }) + ' · ' + visit.time + ' · ' + visit.technicianIds.length + ' فني'}</Sub>
                     <Sub numberOfLines={2}>
                       {visit.technicianIds.map((id) => ws.technicians.find((tech) => tech.id === id)?.name ?? '—').join('، ')}

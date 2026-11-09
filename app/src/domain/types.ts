@@ -48,6 +48,13 @@ export type Visit = {
   departmentId: string;
   date: string; // YYYY-MM-DD بتوقيت السعودية
   time: string; // HH:MM
+  /** نوع المهمة (صيانة، تمديد كابلات...). */
+  workType?: string;
+  /** موقع المهمة. */
+  location?: string;
+  /** رقم المهمة أو أمر العمل. */
+  taskNumber?: string;
+  /** وصف إضافي (وفي البيانات القديمة: الموقع أو الوصف). */
   site: string;
   technicianIds: string[];
   planItemId?: string;

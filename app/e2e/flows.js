@@ -57,15 +57,24 @@ const OUT = process.env.SHOTS || null;
     await page.waitForTimeout(150);
     assert(await id('celebration').isVisible(), 'احتفال بعد تسجيل الزيارة');
   }
+  // زيارة ثالثة بنوع مهمة من الاقتراحات ورقم مهمة
+  await id('add-visit').click();
+  await page.getByRole('button', { name: 'تمديد كابلات', exact: true }).click();
+  await id('visit-site').fill('حي الروضة');
+  await id('visit-number').fill('4471');
+  await id('visit-tech-b3').click();
+  await id('visit-save').click();
+  await page.waitForTimeout(150);
   let body = await page.locator('body').innerText();
+  assert(/تمديد كابلات\s*\n?\s*حي الروضة · رقم 4471/.test(body), 'نوع المهمة والموقع والرقم في السجل');
   assert(body.includes('موقع الاختبار الأول') && body.includes('موقع الاختبار الثاني'), 'الزيارتان تظهران في السجل');
-  assert(/\d+ زيارة مسجلة · 2 اليوم/.test(body), 'عداد زيارات اليوم = 2');
+  assert(/\d+ زيارة مسجلة · 3 اليوم/.test(body), 'عداد زيارات اليوم = 3');
   await shot('visits');
 
   // تعديل الزيارة الثانية بشكل مستقل
   const editButtons = page.locator('[data-testid^="edit-visit-v-"]');
-  assert.strictEqual(await editButtons.count(), 2, 'سجلان مستقلان');
-  await editButtons.first().click(); // الأحدث أولًا = الثانية
+  assert.strictEqual(await editButtons.count(), 3, 'ثلاثة سجلات مستقلة');
+  await editButtons.nth(1).click(); // الأحدث أولًا: الثالثة ثم الثانية
   await id('visit-site').fill('موقع الاختبار الثاني - معدل');
   await id('visit-save').click();
   body = await page.locator('body').innerText();
@@ -119,7 +128,7 @@ const OUT = process.env.SHOTS || null;
 
   // 4) أرقام التقرير
   await id('tab-reports').click();
-  assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 2, 'الزيارة الجماعية تُحسب مرة: +2 زيارة');
+  assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 3, 'الزيارة الجماعية تُحسب مرة: +3 زيارات');
   for (const chart of ['chart-period', 'chart-visit-status', 'chart-dept-visits']) assert(await id(chart).isVisible(), 'الرسم البياني ظاهر: ' + chart);
   assert((await id('chart-visit-status').innerText()).includes('بدون زيارة'), 'الرسم فيه تسميات الحالة');
   assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 3, '+3 تسجيلات اجتماع (اجتماعان اليوم وواحد أمس)');

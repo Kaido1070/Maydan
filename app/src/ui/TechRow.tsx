@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { formatDate } from '../domain/dates';
+import { visitTitle } from '../domain/records';
 import { initials, shiftName, techTag } from '../domain/shifts';
 import { techProgress, tone, yearMeetings } from '../domain/stats';
 import type { Technician, Workspace } from '../domain/types';
@@ -25,7 +26,7 @@ export function TechDetails({ ws, tech, asOf }: { ws: Workspace; tech: Technicia
     <View style={{ backgroundColor: '#f8f6fc', borderRadius: 12, padding: 10, marginTop: 8, gap: 6 }}>
       <Sub>
         {progress.visits.length
-          ? 'زيارات آخر ' + ws.settings.visitWindowMonths + ' أشهر: ' + progress.visits.map((visit) => formatDate(visit.date) + ' (' + visit.site + ')').join(' · ')
+          ? 'زيارات آخر ' + ws.settings.visitWindowMonths + ' أشهر: ' + progress.visits.map((visit) => formatDate(visit.date) + ' (' + visitTitle(visit) + ')').join(' · ')
           : 'ما فيه زيارات مسجلة خلال آخر ' + ws.settings.visitWindowMonths + ' أشهر'}
       </Sub>
       <Row gap={4} style={{ flexWrap: 'wrap' }}>
