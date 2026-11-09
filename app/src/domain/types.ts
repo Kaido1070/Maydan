@@ -117,7 +117,8 @@ export type EquipmentRecord = {
 /** دوام المهندس نفسه: أيام وساعات العمل (جزء ميدان وجزء مكتب). */
 export type WorkSchedule = { days: number[]; start: string; end: string };
 
-export type FindingKind = 'observation' | 'violation';
+/** ملاحظة، مخالفة، أو مخالفة قواعد الحفاظ على الحياة (LSR). */
+export type FindingKind = 'observation' | 'violation' | 'lsr';
 export type FindingStatus = 'open' | 'progress' | 'closed';
 
 /** تحديث على ملاحظة أو مخالفة: ملاحظة متابعة، أو سبب تأخير، أو إغلاق. */
@@ -133,6 +134,8 @@ export type Finding = {
   location: string;
   /** المسؤول عن الإغلاق: فني أو مقاول أو جهة. */
   responsible: string;
+  /** الفنيون أو الفرق أو المشاريع المعنيون بالملاحظة. */
+  technicianIds?: string[];
   date: string;
   dueDate?: string;
   status: FindingStatus;

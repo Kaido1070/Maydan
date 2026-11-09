@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatDate, MONTHS_AR, normalizeDigits } from '../domain/dates';
-import { buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
+import type { FindingRow, FindingsDetail } from '../domain/findings';
+import { FINDING_KINDS, FINDING_NOUN, FINDING_PLURAL, STATUS_LABEL } from '../domain/findings';
+import { findingStatRows, buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
 import { shiftName, techTag } from '../domain/shifts';
 import { searchTechnicians, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
@@ -112,15 +114,12 @@ export function ReportsScreen() {
         <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله.</Sub>
       </Card>
 
-      <SectionTitle title="الملاحظات وخارج الدوام" sub={'المسجلة في ' + report.label} />
+      <SectionTitle title="الملاحظات والمخالفات وLSR وخارج الدوام" sub={'المسجلة في ' + report.label} />
       <View testID="report-follow">
         <Card>
           <Table
             head={['', 'مفتوحة', 'متأخرة', 'مقفلة', 'إغلاق (يوم)']}
-            rows={[
-              ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
-              ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
-            ]}
+            rows={findingStatRows(report)}
           />
           <T style={{ fontWeight: '700', marginTop: 12 }}>العمل خارج الدوام</T>
           <Row gap={8} style={{ marginTop: 6 }}>
@@ -129,6 +128,9 @@ export function ReportsScreen() {
           </Row>
         </Card>
       </View>
+
+      <SectionTitle title="الملاحظات والمخالفات وLSR بالأسماء" sub={'المسجلة في ' + report.label + ' · ' + report.scopeLabel} />
+      <FindingsByName detail={report.findingsDetail} />
 
       <SectionTitle title="صورة التغطية" sub={'حالة الفنيين حتى ' + formatDate(report.asOf, { year: true }) + ' · ' + report.scopeLabel} />
       <Card>
@@ -302,6 +304,75 @@ function EmployeeSearch() {
         )}
       </Card>
     </>
+  );
+}
+
+function FindingsByName({ detail }: { detail: FindingsDetail }) {
+  const [list, setList] = useState<'open' | 'closed'>('open');
+  const [all, setAll] = useState(false);
+  const rows = detail[list];
+  const shown = all ? rows : rows.slice(0, 8);
+  return (
+    <View testID="report-findings">
+      <Card>
+        <T style={{ fontWeight: '800', marginBottom: 6 }}>حسب الفني</T>
+        {detail.byTechnician.length ? (
+          <>
+            <Table
+              head={['الفني / الفريق', ...FINDING_KINDS.map((kind) => FINDING_PLURAL[kind])]}
+              rows={detail.byTechnician.map((row) => [row.technician.name, ...FINDING_KINDS.map((kind) => '\u2066' + row[kind].open + ' / ' + row[kind].closed + '\u2069')])}
+            />
+            <Sub style={{ marginTop: 6 }}>الرقم: باقية / مقفلة</Sub>
+          </>
+        ) : (
+          <Sub>ما فيه ملاحظات مربوطة بفنيين في هالفترة. اختر الفنيين المعنيين وقت تسجيل الملاحظة أو المخالفة.</Sub>
+        )}
+        {detail.unlinked ? <Sub style={{ marginTop: 6 }}>{detail.unlinked + ' بدون فني محدد'}</Sub> : null}
+      </Card>
+      <Card>
+        <Segmented
+          options={[
+            { value: 'open', label: 'الباقية · ' + detail.open.length },
+            { value: 'closed', label: 'المقفلة · ' + detail.closed.length },
+          ]}
+          value={list}
+          onChange={(value) => {
+            setList(value);
+            setAll(false);
+          }}
+        />
+        <View style={{ marginTop: 8 }}>
+          {shown.map((row) => (
+            <FindingLine key={row.finding.id} row={row} />
+          ))}
+          {!rows.length ? <Empty text={list === 'open' ? 'ما فيه شي باقي 👍' : 'ما انقفل شي في هالفترة'} /> : null}
+        </View>
+        {rows.length > shown.length || all ? (
+          <Button small variant="ghost" label={all ? 'عرض أقل' : 'عرض الكل (' + rows.length + ')'} onPress={() => setAll(!all)} />
+        ) : null}
+      </Card>
+    </View>
+  );
+}
+
+function FindingLine({ row }: { row: FindingRow }) {
+  const closed = row.finding.status === 'closed';
+  return (
+    <View testID={'report-finding-' + row.finding.id} style={{ borderTopWidth: 1, borderTopColor: C.line, paddingVertical: 8 }}>
+      <Spread style={{ alignItems: 'flex-start' }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <T style={{ fontWeight: '700' }}>{row.finding.title}</T>
+          {row.finding.extra?.rule ? <Sub style={{ color: C.red }}>{'القاعدة: ' + row.finding.extra.rule}</Sub> : null}
+          <Sub numberOfLines={2}>{[row.names.join('، ') || 'بدون فني محدد', row.departmentName, row.finding.location].filter(Boolean).join(' · ')}</Sub>
+        </View>
+        <Chip tone={row.finding.kind === 'observation' ? 'purple' : 'red'} label={FINDING_NOUN[row.finding.kind]} />
+      </Spread>
+      <Sub style={{ marginTop: 2, color: closed ? C.green : row.overdue ? C.red : C.amber }}>
+        {closed
+          ? 'انقفلت ' + formatDate(row.finding.closedAt ?? row.finding.date) + ' بعد ' + row.age + ' يوم'
+          : (row.overdue ? 'متأخرة · ' : row.finding.status === 'progress' ? STATUS_LABEL.progress + ' · ' : '') + (row.age ? 'مفتوحة من ' + row.age + ' يوم' : 'انسجلت اليوم')}
+      </Sub>
+    </View>
   );
 }
 
