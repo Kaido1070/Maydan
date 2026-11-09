@@ -19,6 +19,8 @@ export type VisitInput = {
   technicianIds: string[];
   planItemId?: string;
   placeId?: string;
+  /** زيارة معدات التوزيع: ما تحتاج فنيين ولا قسم. */
+  target?: 'equipment';
 };
 
 const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
@@ -44,6 +46,10 @@ export function visitDetails(visit: Pick<Visit, 'workType' | 'location' | 'site'
     .join(' · ');
 }
 
+export const EQUIPMENT_WORK_TYPE = 'زيارة معدات التوزيع';
+/** أنواع معدات التوزيع الشائعة كاقتراحات سريعة. */
+export const EQUIPMENT_KINDS = ['محطة توزيع', 'محول', 'لوحة توزيع', 'كابينة', 'قاطع', 'خط هوائي', 'كابل أرضي'];
+
 export const DEFAULT_WORK_TYPES = ['صيانة', 'تمديد كابلات', 'توصيلات', 'طوارئ', 'فحص معدات', 'إنشاءات', 'تشغيل'];
 
 /** اقتراحات نوع المهمة: آخر الأنواع المستخدمة ثم الافتراضية. */
@@ -55,12 +61,14 @@ export function workTypeSuggestions(ws: Workspace, limit = 8): string[] {
 export function validateVisit(ws: Workspace, input: VisitInput, today: string): string | null {
   const place = input.placeId ? (ws.places ?? []).find((item) => item.id === input.placeId) : undefined;
   if (input.placeId && !place) return 'المكان غير موجود';
-  if (!place && !ws.departments.some((item) => item.id === input.departmentId)) return 'اختر القسم';
+  const free = !!place || input.target === 'equipment';
+  if (!free && !ws.departments.some((item) => item.id === input.departmentId)) return 'اختر القسم';
   if (!isDateKey(input.date)) return 'التاريخ غير صحيح';
   if (input.date > today) return 'ما يمكن تسجيل زيارة بتاريخ قادم';
   if (!isTime(input.time)) return 'اكتب الوقت بصيغة 24 ساعة مثل 09:30';
   if (!clean(input.workType) && !clean(input.location) && !input.site.trim()) return 'اكتب نوع المهمة أو الموقع';
-  if (!place && !input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
+  if (input.target === 'equipment' && !clean(input.location)) return 'اكتب اسم المعدة أو موقعها';
+  if (!free && !input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
   return null;
 }
 
@@ -77,6 +85,7 @@ export function addVisit(ws: Workspace, input: VisitInput, today: string, stamp 
     technicianIds: [...new Set(input.technicianIds)],
     ...(input.planItemId ? { planItemId: input.planItemId } : {}),
     ...(input.placeId ? { placeId: input.placeId } : {}),
+    ...(input.target ? { target: input.target } : {}),
     createdAt: stamp,
     updatedAt: stamp,
   };

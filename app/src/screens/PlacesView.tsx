@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatDate } from '../domain/dates';
-import { addPlace, deletePlace, PLACE_NOUN, placeStatus, renamePlace } from '../domain/places';
+import { addPlace, deletePlace, PLACE_NOUN, placeStatus, renamePlace, warehouseQuarter } from '../domain/places';
 import type { Place, PlaceKind } from '../domain/types';
 import { confirm } from '../sheets/VisitSheet';
 import { visitDetails, visitTitle } from '../domain/records';
 import { useApply, useStore } from '../store';
-import { Button, C, Card, Chip, Empty, Field, Icon, Row, s, SectionTitle, Segmented, Sheet, Spread, Sub, T } from '../ui/kit';
+import { Button, C, Card, Chip, Empty, Field, Icon, Progress, Row, s, SectionTitle, Segmented, Sheet, Spread, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
 
-/** زيارات المستودعات ونقاط الانطلاق: الهدف زيارة لكل مكان كل شهر. */
+/** زيارات المستودعات ونقاط الانطلاق: الهدف عدد مستودعات كل ربع سنة. */
 export function PlacesView() {
   const { ws, now } = useStore();
   const ui = useUi();
   const status = placeStatus(ws, now.date);
-  const due = status.filter((item) => !item.visitedThisMonth).length;
+  const quarter = warehouseQuarter(ws, now.date);
   const placeIds = new Set(status.map((item) => item.place.id));
   const [editing, setEditing] = useState<Place | null>(null);
   const history = ws.visits.filter((visit) => visit.placeId && placeIds.has(visit.placeId)).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 15);
@@ -23,19 +23,31 @@ export function PlacesView() {
     <View>
       <SectionTitle
         title="المستودعات ونقاط الانطلاق"
-        sub={status.length ? (due ? 'باقي ' + due + ' ما انزارت هالشهر' : 'كلها انزارت هالشهر 👏') : 'سجّل مستودعاتك ونقاط الانطلاق، وبعدها تسجّل زياراتها هنا.'}
+        sub={status.length ? 'المطلوب زيارة ' + quarter.goal + ' مستودعات كل ربع سنة.' : 'سجّل مستودعاتك ونقاط الانطلاق، وبعدها تسجّل زياراتها هنا.'}
       />
+      {quarter.total ? (
+        <View testID="warehouse-quarter" style={{ backgroundColor: quarter.remaining ? C.amberBg : C.greenBg, borderRadius: 16, padding: 14, marginBottom: 12 }}>
+          <Spread>
+            <View style={{ flex: 1 }}>
+              <T style={{ fontWeight: '700' }}>{'مستودعات ' + quarter.label}</T>
+              <Sub>{quarter.remaining ? 'باقي ' + quarter.remaining + (quarter.remaining === 1 ? ' مستودع' : ' مستودعات') + ' · ' + quarter.daysLeft + ' يوم على نهاية الربع' : 'حققت هدف الربع 👏'}</Sub>
+            </View>
+            <T style={{ fontSize: 26, fontWeight: '700', lineHeight: 34, color: quarter.remaining ? C.amber : C.green }}>{'\u2066' + Math.min(quarter.visited, quarter.goal) + ' / ' + quarter.goal + '\u2069'}</T>
+          </Spread>
+          <Progress value={quarter.visited} max={quarter.goal} color={quarter.remaining ? '#d98a00' : C.green} track="#ffffffaa" />
+        </View>
+      ) : null}
       <AddPlace />
       {status.length ? (
         <Card style={{ paddingVertical: 4 }}>
           {status.map((item, index) => (
             <Spread key={item.place.id} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
               <Row style={{ flex: 1 }}>
-                <Icon name={item.place.kind === 'warehouse' ? 'package' : 'navigation'} size={18} color={item.visitedThisMonth ? C.green : C.amber} />
+                <Icon name={item.place.kind === 'warehouse' ? 'package' : 'navigation'} size={18} color={item.visitedThisQuarter ? C.green : item.place.kind === 'warehouse' ? C.amber : C.muted} />
                 <View style={{ flex: 1 }}>
                   <T style={{ fontWeight: '700' }}>{item.place.name}</T>
                   <Sub>{PLACE_NOUN[item.place.kind] + ' · ' + (item.lastVisit ? 'آخر زيارة ' + formatDate(item.lastVisit.date) : 'ما انزار أبدًا')}</Sub>
-                  <Chip tone={item.visitedThisMonth ? 'green' : 'amber'} label={item.visitedThisMonth ? 'انزار هالشهر' : 'ما انزار هالشهر'} />
+                  {item.visitedThisQuarter ? <Chip tone="green" label="انزار هالربع" /> : item.place.kind === 'warehouse' ? <Chip tone="amber" label="ما انزار هالربع" /> : null}
                 </View>
               </Row>
               <View style={{ gap: 6 }}>
@@ -101,7 +113,7 @@ function AddPlace() {
           onSubmitEditing={add}
           returnKeyType="done"
           placeholder={kind === 'warehouse' ? 'اسم المستودع' : 'اسم نقطة الانطلاق'}
-          placeholderTextColor="#a29db3"
+          placeholderTextColor={C.placeholder}
           style={[s.input, { flex: 1, minWidth: 0 }]}
         />
         <Button testID="place-add" icon="plus" label="تسجيل" disabled={!name.trim()} onPress={add} />

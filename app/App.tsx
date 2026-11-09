@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FollowScreen, OvertimeSheet } from './src/screens/FollowScreen';
@@ -17,6 +18,7 @@ import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftS
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { StoreProvider, useStore } from './src/store';
 import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
+import { alpha, BLUR_LEVELS, themed } from './src/ui/theme';
 import { useAppFonts } from './src/ui/fonts';
 import { SettingsSection, Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
@@ -24,8 +26,8 @@ import { dailyTasks } from './src/domain/daily';
 import { weekProgress, xpSummary } from './src/domain/stats';
 import { haptic, Touch } from './src/ui/touch';
 
-/** iOS 26 وأحدث: شريط التبويبات زجاج سائل عائم فوق المحتوى. */
-const GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+/** iOS 26 وأحدث: زجاج النظام السائل. قبله: ضبابية النظام. */
+const LIQUID = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 /** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
 export const SEEN_VERSION_KEY = 'maydan-seen-version';
@@ -50,7 +52,7 @@ const TITLES: Record<Tab, string> = {
 
 function Shell() {
   const insets = useSafeAreaInsets();
-  const { mode, ready, ws, now } = useStore();
+  const { mode, ready, ws, now, prefs } = useStore();
   const [tab, setTab] = useState<Tab>('day');
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>(null);
@@ -177,7 +179,7 @@ function Shell() {
           </View>
         </View>
 
-        <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: GLASS ? 30 + 72 + Math.max(insets.bottom, 8) : 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: prefs.glass ? 30 + 72 + Math.max(insets.bottom, 8) : 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {ready ? <Screen /> : null}
         </ScrollView>
 
@@ -197,9 +199,9 @@ function Shell() {
                 style={styles.tab}
               >
                 <View style={[styles.tabIcon, active && { backgroundColor: C.soft }]}>
-                  <Icon name={item.icon} size={20} color={active ? C.purple : '#8a849c'} />
+                  <Icon name={item.icon} size={20} color={active ? C.link : C.muted} />
                 </View>
-                <Text style={[styles.tabText, active && { color: C.purple, fontWeight: '800' }]}>{item.label}</Text>
+                <Text style={[styles.tabText, active && { color: C.link, fontWeight: '800' }]}>{item.label}</Text>
               </Touch>
             );
           })}
@@ -256,20 +258,36 @@ function Shell() {
   );
 }
 
+/** الشريط السفلي: زجاجي عائم (بدرجة ضبابية من الإعدادات) أو عادي ثابت. */
 function TabBar({ children, glassBottom }: { children: React.ReactNode; glassBottom: number }) {
-  if (GLASS) {
+  const { prefs, theme } = useStore();
+  if (!prefs.glass) {
     return (
-      <GlassView glassEffectStyle="regular" isInteractive style={[styles.tabbarGlass, { bottom: glassBottom }]} accessibilityRole="tablist">
+      <View style={[styles.tabbar, { paddingBottom: glassBottom }]} accessibilityRole="tablist">
+        {children}
+      </View>
+    );
+  }
+  const level = BLUR_LEVELS[prefs.blur] ?? BLUR_LEVELS[2];
+  const frame = [styles.tabbarGlass, { bottom: glassBottom, borderColor: alpha(theme === 'dark' ? '#ffffff' : '#ffffff', theme === 'dark' ? 0.14 : 0.7) }];
+  const tint = { ...fill, backgroundColor: alpha(C.white, level.tint) };
+  if (LIQUID) {
+    return (
+      <GlassView testID="tabbar-glass" glassEffectStyle={prefs.blur < 2 ? 'clear' : 'regular'} colorScheme={theme} isInteractive style={frame} accessibilityRole="tablist">
+        <View pointerEvents="none" style={{ ...fill, backgroundColor: alpha(C.white, level.tint * 0.5) }} />
         {children}
       </GlassView>
     );
   }
   return (
-    <View style={[styles.tabbar, { paddingBottom: glassBottom }]} accessibilityRole="tablist">
+    <View testID="tabbar-glass" style={[frame, styles.tabbarShadow]} accessibilityRole="tablist">
+      <BlurView pointerEvents="none" intensity={level.intensity} tint={theme === 'dark' ? 'dark' : 'light'} style={fill} />
+      <View pointerEvents="none" style={tint} />
       {children}
     </View>
   );
 }
+const fill = { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 30 } as const;
 
 /** رسائل الإنجاز تطلع كاحتفال كبير. */
 const celebrate = (message: string) => /XP|^[🎉⭐🏅🏆]/u.test(message);
@@ -287,7 +305,7 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: { flex: 1, backgroundColor: C.night },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -296,16 +314,17 @@ const styles = StyleSheet.create({
   brandName: { color: '#fff', fontSize: 19, fontWeight: '800' },
   brandSub: { color: '#cfc9e0', fontSize: 12 },
   modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
-  demo: { backgroundColor: '#3a2d18', borderColor: '#6b5320' },
+  demo: { backgroundColor: '#3a2d18', borderColor: C.amber },
   live: { backgroundColor: '#163528', borderColor: '#24614a' },
   modeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   dot: { width: 7, height: 7, borderRadius: 4 },
   gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
-  tabbarGlass: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', borderRadius: 32, paddingVertical: 6, overflow: 'hidden' },
-  tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
+  tabbarGlass: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', borderRadius: 30, paddingVertical: 7, paddingHorizontal: 4, overflow: 'hidden', borderWidth: 1 },
+  tabbarShadow: { shadowColor: '#1a1040', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  tabbar: { flexDirection: 'row', backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
   tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 12, color: '#5f5975' },
-  celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: '#4a2f9a', borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
+  tabText: { fontSize: 12, color: C.muted },
+  celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: C.hero, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
-});
+}) as const);

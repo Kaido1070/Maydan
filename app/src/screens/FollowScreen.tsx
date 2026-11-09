@@ -125,7 +125,7 @@ function FindingCard({ finding, onPress }: { finding: Finding; onPress: () => vo
   const closed = finding.status === 'closed';
   return (
     <Touch testID={'finding-' + finding.id} accessibilityRole="button" accessibilityLabel={finding.title} onPress={onPress}>
-      <Card style={overdue ? { borderColor: '#f3b7c4', borderWidth: 1.5 } : undefined}>
+      <Card style={overdue ? { borderColor: C.redLine, borderWidth: 1.5 } : undefined}>
         <Spread style={{ alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '700', fontSize: 16 }}>{finding.title}</T>
@@ -179,8 +179,8 @@ function TechnicianPicker({ value, onChange }: { value: string[]; onChange: (ids
               onPress={() => onChange(value.filter((id) => id !== tech.id))}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.soft, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 10 }}
             >
-              <T style={{ fontSize: 13, color: C.purple, fontWeight: '600' }}>{tech.name}</T>
-              <Icon name="x" size={13} color={C.purple} />
+              <T style={{ fontSize: 13, color: C.link, fontWeight: '600' }}>{tech.name}</T>
+              <Icon name="x" size={13} color={C.link} />
             </Touch>
           ))}
         </Row>
@@ -190,7 +190,7 @@ function TechnicianPicker({ value, onChange }: { value: string[]; onChange: (ids
         value={query}
         onChangeText={setQuery}
         placeholder="ابحث بالاسم أو الرقم الوظيفي"
-        placeholderTextColor="#a29db3"
+        placeholderTextColor={C.placeholder}
         style={s.input}
       />
       {matches.map((tech) => (
@@ -207,7 +207,7 @@ function TechnicianPicker({ value, onChange }: { value: string[]; onChange: (ids
           }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: C.line }}
         >
-          <Icon name="plus-circle" size={16} color={C.purple} />
+          <Icon name="plus-circle" size={16} color={C.link} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <T style={{ fontWeight: '600' }}>{tech.name}</T>
             <Sub numberOfLines={1}>{[techTag(tech), ws.departments.find((d) => d.id === tech.departmentId)?.name].filter(Boolean).join(' · ')}</Sub>
@@ -250,7 +250,7 @@ function RulePicker({ value, onChange }: { value: string; onChange: (rule: strin
             onPress={() => onChange(rule === value ? '' : rule)}
             style={{ borderRadius: 99, paddingVertical: 5, paddingHorizontal: 10, backgroundColor: rule === value ? C.red : C.redBg }}
           >
-            <T style={{ fontSize: 13, color: rule === value ? C.white : C.red, fontWeight: '600' }}>{rule}</T>
+            <T style={{ fontSize: 13, color: rule === value ? C.onAccent : C.red, fontWeight: '600' }}>{rule}</T>
           </Touch>
         ))}
       </Row>
@@ -382,7 +382,7 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
                 value={updateText}
                 onChangeText={setUpdateText}
                 placeholder={updateKind === 'delay' ? 'ليش طولت؟ مثل: بانتظار المقاول' : 'وش صار؟'}
-                placeholderTextColor="#a29db3"
+                placeholderTextColor={C.placeholder}
                 style={[s.input, { marginTop: 8 }]}
               />
               <Row style={{ marginTop: 8 }}>
@@ -432,12 +432,12 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
         onChangeText={(description) => set({ description })}
         multiline
         placeholder="تفاصيل أكثر"
-        placeholderTextColor="#a29db3"
+        placeholderTextColor={C.placeholder}
         style={[s.input, { minHeight: 70, textAlignVertical: 'top', paddingTop: 10, marginBottom: 10 }]}
       />
       <PhotoField testID="finding-photos" title="الصور" photos={draft.photos} onChange={(photos) => set({ photos })} onError={setError} />
       {kind !== 'observation' ? (
-        <View style={{ backgroundColor: '#f7f5fb', borderRadius: 12, padding: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: '#cfc6e6' }}>
+        <View style={{ backgroundColor: C.subtle, borderRadius: 12, padding: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: C.softLine }}>
           <T style={{ fontWeight: '700', fontSize: 13 }}>{kind === 'lsr' ? 'خانات نموذج LSR' : 'خانات نموذج المخالفة'}</T>
           <Sub>بتنضاف هنا لما ترسل نموذج المخالفات.</Sub>
         </View>

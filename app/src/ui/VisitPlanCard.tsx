@@ -9,7 +9,7 @@ import { Button, C, Chip, Icon, KIND, Row, Sheet, Spread, Sub, T } from './kit';
 import { useUi } from './ui';
 
 function Badge({ index, tone }: { index: number; tone: 'visit' | 'meeting' | 'place' }) {
-  const colors = tone === 'place' ? { bg: '#eef6ee', fg: C.green } : { bg: KIND[tone].bg, fg: KIND[tone].fg };
+  const colors = tone === 'place' ? { bg: C.greenBg, fg: C.green } : { bg: KIND[tone].bg, fg: KIND[tone].fg };
   return (
     <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
       <T style={{ color: colors.fg, fontWeight: '700' }}>{index + 1}</T>
@@ -63,7 +63,7 @@ function PlaceRow({ item, index, onAct }: { item: PlannedPlace; index: number; o
       <Badge index={index} tone="place" />
       <View style={{ flex: 1, gap: 2 }}>
         <T style={{ fontWeight: '700' }}>{item.place.name}</T>
-        <Sub>{PLACE_NOUN[item.place.kind] + ' · ' + (item.lastVisitDate ? 'آخر زيارة ' + formatDate(item.lastVisitDate) : 'ما انزار أبدًا') + ' · ما انزار هالشهر'}</Sub>
+        <Sub>{PLACE_NOUN[item.place.kind] + ' · ' + (item.lastVisitDate ? 'آخر زيارة ' + formatDate(item.lastVisitDate) : 'ما انزار أبدًا') + ' · باقي على هدف الربع'}</Sub>
       </View>
       <Button testID="plan-place" small label="ابدأ" icon={item.place.kind === 'warehouse' ? 'package' : 'navigation'} style={{ backgroundColor: C.green }} onPress={() => (onAct?.(), ui.openVisit({ departmentId: item.place.departmentId ?? '', placeId: item.place.id }))} />
     </View>

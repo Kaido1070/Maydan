@@ -45,7 +45,7 @@ export function PhotoField({
           {photos.map((photo) => (
             <View key={photo.id} style={{ width: '31%' }}>
               <Touch accessibilityRole="imagebutton" accessibilityLabel="عرض الصورة" onPress={() => setViewer(photo)}>
-                <Image source={{ uri: photoSrc(photo) }} style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#eee' }} />
+                <Image source={{ uri: photoSrc(photo) }} style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: C.track }} />
               </Touch>
               <Touch
                 accessibilityRole="button"

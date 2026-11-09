@@ -154,12 +154,12 @@ export function MeetingsScreen() {
                     minHeight: 40,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: on ? '#cdbbf6' : C.line,
-                    backgroundColor: on ? '#efe9ff' : C.white,
+                    borderColor: on ? C.softLine : C.line,
+                    backgroundColor: on ? C.soft : C.white,
                   }}
                 >
-                  <Icon name={on ? 'check-square' : 'square'} size={16} color={on ? C.purple : C.muted} />
-                  <T style={{ fontSize: 13, color: on ? '#4827ac' : '#55466e', fontWeight: on ? '700' : '400' }}>{meeting.title}</T>
+                  <Icon name={on ? 'check-square' : 'square'} size={16} color={on ? C.link : C.muted} />
+                  <T style={{ fontSize: 13, color: on ? C.link : C.muted, fontWeight: on ? '700' : '400' }}>{meeting.title}</T>
                 </Touch>
               );
             })
@@ -178,7 +178,7 @@ export function MeetingsScreen() {
             }}
             onSubmitEditing={addTitle}
             placeholder="مثال: مراجعة خطة الطوارئ"
-            placeholderTextColor="#a29db3"
+            placeholderTextColor={C.placeholder}
             maxLength={80}
             returnKeyType="done"
             style={[s.input, { flex: 1, minWidth: 0 }]}
@@ -249,7 +249,7 @@ export function MeetingsScreen() {
                         <Sub style={{ fontWeight: '700', textAlign: 'center', fontSize: 11 }} numberOfLines={2}>
                           {meeting.title}
                         </Sub>
-                        <T style={{ color: C.purple, fontSize: 10 }}>الكل</T>
+                        <T style={{ color: C.link, fontSize: 10 }}>الكل</T>
                       </Touch>
                     ))}
                   </Row>

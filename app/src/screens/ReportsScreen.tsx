@@ -296,7 +296,7 @@ function EmployeeSearch() {
             onSubmitEditing={search}
             returnKeyType="search"
             placeholder={example ? 'الرقم الوظيفي أو الاسم، مثل ' + example : 'الرقم الوظيفي أو الاسم'}
-            placeholderTextColor="#a29db3"
+            placeholderTextColor={C.placeholder}
             style={[s.input, { flex: 1, minWidth: 0 }]}
           />
           <Button testID="employee-search-go" label="بحث" icon="search" onPress={search} disabled={!query.trim()} />
@@ -412,7 +412,7 @@ function FindingLine({ row }: { row: FindingRow }) {
 
 function Kpi({ label, value, hint, testID, half }: { label: string; value: number; hint?: string; testID?: string; half?: boolean }) {
   return (
-    <View testID={testID} style={{ flexBasis: half ? '46%' : 0, flexGrow: 1, minWidth: 0, backgroundColor: '#f7f5fb', borderRadius: 12, padding: 9 }}>
+    <View testID={testID} style={{ flexBasis: half ? '46%' : 0, flexGrow: 1, minWidth: 0, backgroundColor: C.subtle, borderRadius: 12, padding: 9 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       <T style={{ fontSize: 20, fontWeight: '800' }}>{value}</T>
       {hint ? <Sub style={{ fontSize: 10 }}>{hint}</Sub> : null}
@@ -423,7 +423,7 @@ function Kpi({ label, value, hint, testID, half }: { label: string; value: numbe
 function Metric({ label, remaining, total, done }: { label: string; remaining: number; total: number; done?: number }) {
   const completed = done ?? total - remaining;
   return (
-    <View style={{ flex: 1, backgroundColor: '#f7f5fb', borderRadius: 10, padding: 8 }}>
+    <View style={{ flex: 1, backgroundColor: C.subtle, borderRadius: 10, padding: 8 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       <T style={{ fontSize: 16, fontWeight: '800' }}>{remaining + ' متبقية'}</T>
       <Progress value={Math.min(completed, total)} max={total} height={5} />

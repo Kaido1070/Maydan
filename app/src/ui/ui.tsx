@@ -5,7 +5,7 @@ import type { VisitTarget } from '../sheets/VisitSheet';
 export type Tab = 'day' | 'visits' | 'meetings' | 'follow' | 'reports' | 'roster' | 'settings';
 
 /** أقسام صفحة الإعدادات. null = القائمة الرئيسية. */
-export type SettingsSection = 'people' | 'departments' | 'places' | 'meetings' | 'goals' | 'backup' | null;
+export type SettingsSection = 'people' | 'departments' | 'places' | 'meetings' | 'goals' | 'appearance' | 'backup' | null;
 
 export type Ui = {
   tab: Tab;

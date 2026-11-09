@@ -39,9 +39,9 @@ function EquipmentCard({ record, onPress }: { record: EquipmentRecord; onPress: 
     <View style={{ flex: 1, gap: 4 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       {photos[0] ? (
-        <Image source={{ uri: photoSrc(photos[0]) }} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 10, backgroundColor: '#eee' }} />
+        <Image source={{ uri: photoSrc(photos[0]) }} style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 10, backgroundColor: C.track }} />
       ) : (
-        <View style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 10, backgroundColor: '#f2f0f7', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: 10, backgroundColor: C.subtle, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="image" color={C.muted} />
         </View>
       )}
@@ -146,7 +146,7 @@ function EquipmentSheet({ recordId, onClose }: { recordId: string | 'new' | null
         {draft[side].map((photo) => (
           <View key={photo.id} style={{ width: '31%' }}>
             <Touch accessibilityRole="imagebutton" accessibilityLabel={'عرض صورة ' + title} onPress={() => setViewer(photo)}>
-              <Image source={{ uri: photoSrc(photo) }} style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#eee' }} />
+              <Image source={{ uri: photoSrc(photo) }} style={{ width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: C.track }} />
             </Touch>
             <Touch
               accessibilityRole="button"
@@ -203,7 +203,7 @@ function EquipmentSheet({ recordId, onClose }: { recordId: string | 'new' | null
         onChangeText={(notes) => setDraft({ ...draft, notes })}
         multiline
         placeholder="وصف العمل أو الملاحظة"
-        placeholderTextColor="#a29db3"
+        placeholderTextColor={C.placeholder}
         style={[s.input, { minHeight: 80, textAlignVertical: 'top', paddingTop: 10 }]}
       />
 

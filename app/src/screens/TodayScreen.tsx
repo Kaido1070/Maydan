@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
+import { themed } from '../ui/theme';
 import { DailyTask, dailyTasks, taskReason } from '../domain/daily';
 import { formatDate } from '../domain/dates';
 import { currentSlot, periodRange, shiftLabel } from '../domain/shifts';
@@ -89,7 +90,7 @@ export function TodayScreen() {
       </View>
 
       {outside ? (
-        <View testID="outside-hours" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff7e6', borderRadius: 16, borderWidth: 1, borderColor: '#f5dca3', padding: 12, marginTop: 12 }}>
+        <View testID="outside-hours" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.amberBg, borderRadius: 16, borderWidth: 1, borderColor: C.amberLine, padding: 12, marginTop: 12 }}>
           <T style={{ fontSize: 24, lineHeight: 30 }}>🌙</T>
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '700' }}>أنت خارج الدوام الحين</T>
@@ -174,7 +175,7 @@ export function TodayScreen() {
       ) : null}
 
       {doneAll.length ? (
-        <Card style={{ paddingVertical: 4, backgroundColor: '#f6fbf8', borderColor: '#d5efe0' }}>
+        <Card style={{ paddingVertical: 4, backgroundColor: C.greenBg, borderColor: C.greenLine }}>
           <Sub style={{ fontWeight: '700', paddingTop: 8, color: C.green }}>{'✓ منجز اليوم · ' + doneAll.length}</Sub>
           {doneAll.map((task, index) => (
             <TaskRow key={task.kind + task.technician.id} task={task} first={!index} />
@@ -196,7 +197,7 @@ export function TodayScreen() {
               <Touch accessibilityRole="button" testID={'today-dept-' + department.id} feedback="select" scaleTo={0.98} onPress={() => setOpenDept(expanded ? null : department.id)} style={{ paddingVertical: 11 }}>
                 <Spread>
                   <Row style={{ flex: 1 }}>
-                    <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: slot?.crew.length ? '#2fbf71' : '#c9c4d6' }} />
+                    <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: slot?.crew.length ? '#2fbf71' : C.softLine }} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <T style={{ fontWeight: '700' }}>{department.name}</T>
                       <Sub numberOfLines={1}>{slot ? shiftLabel(slot) + ' · ' + periodRange(slot.period) : 'لا يوجد شفت الآن'}</Sub>
@@ -272,9 +273,9 @@ function TaskRow({ task, first }: { task: DailyTask; first: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
-  hero: { backgroundColor: '#4a2f9a', borderRadius: 22, padding: 16 },
+const styles = themed(() => ({
+  hero: { backgroundColor: C.hero, borderRadius: 22, padding: 16 },
   badge: { backgroundColor: '#ffffff24', borderRadius: 99, paddingVertical: 5, paddingHorizontal: 12 },
   week: { marginTop: 14, backgroundColor: '#ffffff14', borderRadius: 14, padding: 10 },
-  setup: { backgroundColor: C.white, borderRadius: 18, borderWidth: 2, borderColor: '#cdbbf6', padding: 14, marginTop: 12 },
-});
+  setup: { backgroundColor: C.white, borderRadius: 18, borderWidth: 2, borderColor: C.softLine, padding: 14, marginTop: 12 },
+}) as const);

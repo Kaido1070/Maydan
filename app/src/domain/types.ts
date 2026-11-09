@@ -62,6 +62,8 @@ export type Visit = {
   planItemId?: string;
   /** زيارة مستودع أو نقطة انطلاق (بدون فنيين). */
   placeId?: string;
+  /** زيارة على معدات التوزيع (بدون فنيين ولا مكان مسجل). */
+  target?: 'equipment';
   /** سجل من بيانات التجربة الأولية (لا يُحتسب في نقاط XP). */
   seed?: boolean;
   createdAt: string;
@@ -160,6 +162,8 @@ export type Settings = {
   workSchedule?: WorkSchedule;
   visitTarget: number;
   visitWindowMonths: number;
+  /** كم مستودع لازم ينزار كل ربع سنة. الافتراضي 2. */
+  warehouseQuarterGoal?: number;
   xpVisit: number;
   xpMeeting: number;
 };
@@ -182,6 +186,6 @@ export type Workspace = {
 
 export type Mode = 'demo' | 'live';
 
-export type AppState = { version: 1; mode: Mode; demo: Workspace; live: Workspace };
+export type AppState = { version: 1; mode: Mode; demo: Workspace; live: Workspace; /** تفضيلات المظهر (الوضع الداكن والزجاج). */ prefs?: { theme: 'light' | 'dark' | 'system'; glass: boolean; blur: 0 | 1 | 2 | 3 } };
 
 export type Now = { date: string; time: string };

@@ -116,8 +116,18 @@ async function overflow(page) {
     await id('visit-save').click();
     await page.waitForTimeout(200);
     await id('tab-visits').click();
-    await page.getByText('المستودعات والانطلاق', { exact: true }).click();
-    assert((await page.locator('body').innerText()).includes('انزار هالشهر'), 'المكان صار مزار هالشهر');
+    await page.getByText('المستودعات', { exact: true }).click();
+    assert((await page.locator('body').innerText()).includes('انزار هالربع'), 'المستودع صار مزار هالربع');
+    assert((await id('warehouse-quarter').innerText()).replace(/[^0-9/ ]/g, '').includes('1 / 2'), 'هدف الربع: مستودع من مستودعين');
+
+    // زيارة معدات التوزيع: بدون فنيين
+    await page.getByText('المعدات', { exact: true }).click();
+    await id('add-equipment-visit').click();
+    await id('visit-site').fill('محطة توزيع 12');
+    await id('visit-save').click();
+    await page.waitForTimeout(200);
+    assert((await page.locator('body').innerText()).includes('محطة توزيع 12'), 'زيارة المعدة انسجلت');
+    await page.getByText('المستودعات', { exact: true }).click();
     assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
 
     // تسجيل مستودع جديد من صفحة الأماكن، وتعديله، وتسجيل زيارته
@@ -169,7 +179,7 @@ async function overflow(page) {
     const screens = [
       ['اليوم', async () => id('tab-day').click()],
       ['الزيارات', async () => (await id('tab-visits').click(), await id('dept-b').click())],
-      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات والانطلاق', { exact: true }).click())],
+      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات', { exact: true }).click())],
       ['الاجتماعات', async () => (await id('tab-meetings').click(), await id('dept-b').click())],
       ['المتابعة', async () => id('tab-follow').click()],
       ['التقارير', async () => id('tab-reports').click()],
@@ -178,8 +188,9 @@ async function overflow(page) {
       ['التقارير: التغطية', async () => (await id('tab-reports').click(), await page.getByText('التغطية', { exact: true }).click())],
       ['التقارير: من باقي', async () => (await id('tab-reports').click(), await page.getByText('من باقي', { exact: true }).click())],
       ['التقارير: الملاحظات', async () => (await id('tab-reports').click(), await page.getByText('الملاحظات', { exact: true }).click())],
+      ['زيارات المعدات', async () => (await id('tab-visits').click(), await page.getByText('المعدات', { exact: true }).click())],
       ['الإعدادات', async () => id('open-settings').click()],
-      ...['people', 'places', 'meetings', 'departments', 'goals'].map((section) => ['الإعدادات: ' + section, async () => (await id('open-settings').click(), await id('settings-' + section).click())]),
+      ...['people', 'places', 'meetings', 'departments', 'goals', 'appearance'].map((section) => ['الإعدادات: ' + section, async () => (await id('open-settings').click(), await id('settings-' + section).click())]),
       ['الشفتات', async () => (await id('tab-day').click(), await id('open-roster').click())],
     ];
     for (const [name, open] of screens) {

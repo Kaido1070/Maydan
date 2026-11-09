@@ -71,7 +71,7 @@ export function RosterScreen() {
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                     {slot.crew.length ? (
                       slot.crew.map((tech) => (
-                        <View key={tech.id} style={{ backgroundColor: tech.baseShiftId === slot.shift?.id ? '#f4f1fa' : C.amberBg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <View key={tech.id} style={{ backgroundColor: tech.baseShiftId === slot.shift?.id ? C.subtle : C.amberBg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                           <T style={{ fontSize: 11 }}>{tech.name}</T>
                         </View>
                       ))
