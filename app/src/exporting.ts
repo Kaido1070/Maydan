@@ -13,6 +13,15 @@ export async function shareText(fileName: string, content: string, mimeType: str
   await Sharing.shareAsync(file.uri, { mimeType, UTI: uti, dialogTitle: fileName });
 }
 
+/** يحفظ ملفًا ثنائيًا (مثل Excel) ثم يفتح نافذة المشاركة. */
+export async function shareBytes(fileName: string, bytes: Uint8Array, mimeType: string, uti: string) {
+  const file = new File(Paths.cache, fileName);
+  if (file.exists) file.delete();
+  file.create();
+  await file.write(bytes);
+  await Sharing.shareAsync(file.uri, { mimeType, UTI: uti, dialogTitle: fileName });
+}
+
 /** يحوّل HTML إلى PDF ويشاركه. */
 export async function sharePdf(fileName: string, html: string) {
   const { uri } = await Print.printToFileAsync({ html });

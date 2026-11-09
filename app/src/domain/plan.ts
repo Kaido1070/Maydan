@@ -46,13 +46,14 @@ export const plannedVisit = (ws: Workspace, item: PlanItem, date: string) =>
 export function upsertTechnician(ws: Workspace, tech: Omit<Technician, 'id'> & { id?: string }): Workspace {
   const name = tech.name.trim();
   const employeeNumber = tech.employeeNumber.trim();
-  if (!name) throw new Error('اكتب اسم الفني');
-  if (!employeeNumber) throw new Error('اكتب الرقم الوظيفي');
-  if (ws.technicians.some((item) => item.employeeNumber === employeeNumber && item.id !== tech.id))
-    throw new Error('الرقم الوظيفي مستخدم لفني آخر');
+  const team = tech.kind === 'team';
+  if (!name) throw new Error(team ? 'اكتب اسم الفريق أو المقاول' : 'اكتب اسم الفني');
+  if (!employeeNumber && !team) throw new Error('اكتب الرقم الوظيفي');
+  if (employeeNumber && ws.technicians.some((item) => item.employeeNumber === employeeNumber && item.id !== tech.id))
+    throw new Error('الرقم مستخدم لفني أو فريق آخر');
   const department = ws.departments.find((item) => item.id === tech.departmentId);
   if (!department?.shifts.some((shift) => shift.id === tech.baseShiftId)) throw new Error('اختر القسم والشفت الأساسي');
-  const clean = { ...tech, name, employeeNumber };
+  const clean = { ...tech, name, employeeNumber, contractor: team ? tech.contractor?.trim() || undefined : undefined };
   if (tech.id && ws.technicians.some((item) => item.id === tech.id))
     return { ...ws, technicians: ws.technicians.map((item) => (item.id === tech.id ? ({ ...item, ...clean } as Technician) : item)) };
   return { ...ws, technicians: [...ws.technicians, { ...clean, id: newId('t') } as Technician] };

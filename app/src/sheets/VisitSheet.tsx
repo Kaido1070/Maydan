@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import { addVisit, deleteVisit, updateVisit, validateVisit } from '../domain/records';
-import { activeTechnicians, shiftName, slotAt } from '../domain/shifts';
+import { activeTechnicians, shiftName, slotAt, techTag } from '../domain/shifts';
 import type { PlanItem } from '../domain/types';
 import { useApply, useStore } from '../store';
 import { Button, C, Checkbox, Chip, Field, Row, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
@@ -89,7 +89,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
             <Checkbox testID={'visit-tech-' + tech.id} checked={people.includes(tech.id)} onChange={(value) => toggle(tech.id, value)} label={tech.name} />
             <View style={{ flex: 1 }}>
               <T>{tech.name}</T>
-              <Sub>{tech.employeeNumber + ' · ' + shiftName(ws, tech)}</Sub>
+              <Sub>{techTag(tech) + ' · ' + shiftName(ws, tech)}</Sub>
             </View>
           </Row>
         ))}
@@ -119,7 +119,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       <Field label="الوقت (24 ساعة)" value={time} onChangeText={setTime} placeholder="09:30" keyboardType="numbers-and-punctuation" maxLength={5} testID="visit-time" />
       <Field label="الموقع أو وصف الزيارة" value={site} onChangeText={setSite} placeholder="مثال: متابعة موقع تمديد الكابلات" maxLength={100} testID="visit-site" />
       <Spread>
-        <T style={{ fontWeight: '700', fontSize: 12 }}>الفنيون الذين شملتهم الزيارة</T>
+        <T style={{ fontWeight: '700', fontSize: 12 }}>الفنيون والفرق الذين شملتهم الزيارة</T>
         <Chip tone={people.length ? 'green' : 'neutral'} label={people.length + ' محدد'} />
       </Spread>
       <Sub>الزيارة تُحسب مرة واحدة في التقارير، وزيارة لكل فني تحدده في سجله.</Sub>

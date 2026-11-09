@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { formatDate } from '../domain/dates';
 import { addMeeting, attendanceFor, saveAttendanceBatch } from '../domain/records';
-import { activeTechnicians, currentSlot, shiftLabel, shiftName } from '../domain/shifts';
+import { activeTechnicians, currentSlot, shiftLabel, shiftName, techTag } from '../domain/shifts';
 import { yearMeetings } from '../domain/stats';
 import { useApply, useStore } from '../store';
 import { Button, C, Card, Checkbox, Chip, Empty, Icon, ratio, Row, s, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
@@ -200,7 +200,7 @@ export function MeetingsScreen() {
                     <Row key={tech.id} gap={0} style={{ borderBottomWidth: 1, borderBottomColor: C.line, paddingVertical: 8 }}>
                       <View style={{ flex: 1 }}>
                         <T style={{ fontSize: 13, fontWeight: '600' }}>{tech.name}</T>
-                        <Sub style={{ fontSize: 10 }}>{tech.employeeNumber + ' · ' + shiftName(ws, tech)}</Sub>
+                        <Sub style={{ fontSize: 10 }}>{techTag(tech) + ' · ' + shiftName(ws, tech)}</Sub>
                       </View>
                       {chosen.map((meeting) => (
                         <View key={meeting.id} style={{ width: 78, alignItems: 'center' }}>

@@ -48,6 +48,10 @@ export async function shareText(fileName: string, content: string, mimeType: str
   await saveFile(fileName, content, mimeType);
 }
 
+export async function shareBytes(fileName: string, bytes: Uint8Array, mimeType: string, _uti: string) {
+  await saveFile(fileName, new Blob([bytes as BlobPart], { type: mimeType }), mimeType);
+}
+
 /** يرسم HTML التقرير في إطار مخفي ثم يحوله لصفحات PDF بمقاس A4 (يحافظ على تشكيل الحروف العربية). */
 export async function buildPdf(html: string): Promise<Blob> {
   const frame = document.createElement('iframe');

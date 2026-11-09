@@ -23,7 +23,12 @@ export type Department = {
 
 export type Technician = {
   id: string;
+  /** للفريق: رقم الفريق أو العقد (اختياري). */
   employeeNumber: string;
+  /** فني باسمه، أو فريق/مقاول (شائع في الإنشاءات والصيانة). الافتراضي فني. */
+  kind?: 'person' | 'team';
+  /** اسم المقاول للفرق. */
+  contractor?: string;
   name: string;
   departmentId: string;
   /** الشفت الأساسي الذي يتبعه الفني في الدورة. */

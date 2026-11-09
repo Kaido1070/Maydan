@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { addDays, formatDate } from '../domain/dates';
-import { activeTechnicians, assignForDay, getSlot, moveTechnician, periodRange, resetSlot, setDayCrew, setSlotShift, shiftName } from '../domain/shifts';
+import { activeTechnicians, assignForDay, getSlot, moveTechnician, periodRange, resetSlot, setDayCrew, setSlotShift, shiftName, techTag } from '../domain/shifts';
 import { useApply, useStore } from '../store';
 import { Button, C, Checkbox, Chip, Divider, Row, Segmented, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
 
@@ -41,7 +41,7 @@ export function TechnicianShiftSheet({ technicianId, initialDate, onClose, onSav
   };
 
   return (
-    <Sheet visible onClose={onClose} title={tech.name} sub={'الرقم الوظيفي ' + tech.employeeNumber + ' · ' + department.name}>
+    <Sheet visible onClose={onClose} title={tech.name} sub={techTag(tech, true) + ' · ' + department.name}>
       <T style={{ fontWeight: '800', fontSize: 16 }}>الشفت الأساسي</T>
       <Sub>يحدد دوام الفني في الدورة من الآن فصاعدًا. التكليفات اليومية المحفوظة لا تتغير.</Sub>
       <View style={{ marginVertical: 10 }}>

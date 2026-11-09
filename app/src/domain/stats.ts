@@ -148,5 +148,6 @@ export function dayProgress(ws: Workspace, date: string) {
 }
 
 export function findByEmployeeNumber(ws: Workspace, number: string): Technician | undefined {
-  return ws.technicians.find((tech) => tech.employeeNumber === number.trim());
+  const key = number.trim();
+  return key ? ws.technicians.find((tech) => tech.employeeNumber === key) : undefined;
 }

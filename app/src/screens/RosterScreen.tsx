@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { addDays, formatDate, WEEKDAYS_AR } from '../domain/dates';
-import { crewForShift, getSlot, OFF, periodRange } from '../domain/shifts';
+import { crewForShift, getSlot, OFF, periodRange, techTag } from '../domain/shifts';
 import type { Department } from '../domain/types';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Row, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
@@ -98,7 +98,7 @@ export function RosterScreen() {
                     <Spread key={tech.id} style={{ borderBottomWidth: 1, borderBottomColor: C.line, paddingVertical: 7 }}>
                       <View style={{ flex: 1 }}>
                         <T style={{ fontSize: 13 }}>{tech.name}</T>
-                        <Sub style={{ fontSize: 11 }}>{tech.employeeNumber}</Sub>
+                        <Sub style={{ fontSize: 11 }}>{techTag(tech)}</Sub>
                       </View>
                       <Button small variant="secondary" label="نقل/تكليف" testID={'roster-move-' + tech.id} onPress={() => ui.openTechnician(tech.id, date)} />
                     </Spread>
