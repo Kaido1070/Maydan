@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "ميدان",
+    "slug": "maydan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.maydan.fieldsafety",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "ar",
+        "CFBundleAllowMixedLocalizations": true
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.maydan.fieldsafety"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "ميدان",
+      "lang": "ar"
+    },
+    "plugins": [
+      "expo-sharing",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true,
+          "forcesRTL": true
+        }
+      ],
+      "expo-font"
+    ],
+    "scheme": "maydan",
+    "backgroundColor": "#19172c",
+    "extra": {
+      "supportsRTL": true,
+      "forcesRTL": true
+    }
+  }
+}
