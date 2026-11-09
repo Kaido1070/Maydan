@@ -28,3 +28,10 @@ export function placeStatus(ws: Workspace, today: string): PlaceStatus[] {
     })
     .sort((a, b) => Number(a.visitedThisMonth) - Number(b.visitedThisMonth) || (a.lastVisit?.date ?? '').localeCompare(b.lastVisit?.date ?? '') || a.place.name.localeCompare(b.place.name, 'ar'));
 }
+
+export function renamePlace(ws: Workspace, id: string, input: { name: string; kind: PlaceKind }): Workspace {
+  const name = input.name.trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('اكتب الاسم');
+  if (placesOf(ws).some((place) => place.name === name && place.id !== id)) throw new Error('الاسم موجود بالفعل');
+  return { ...ws, places: placesOf(ws).map((place) => (place.id === id ? { ...place, name, kind: input.kind } : place)) };
+}

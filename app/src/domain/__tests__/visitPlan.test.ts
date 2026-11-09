@@ -1,4 +1,4 @@
-import { addPlace } from '../places';
+import { addPlace, deletePlace, renamePlace } from '../places';
 import { addMeeting, addVisit, saveAttendanceBatch } from '../records';
 import { demoWorkspace, emptyWorkspace } from '../seed';
 import { DayPlan, PlannedVisit, visitPlan } from '../visitPlan';
@@ -83,5 +83,20 @@ describe('المستودعات ونقاط الانطلاق', () => {
     ws = addVisit(ws, { departmentId: '', placeId: north.id, date: MONDAY.date, time: '09:00', workType: 'زيارة مستودع', location: north.name, site: '', technicianIds: [] }, MONDAY.date).ws;
     plan = visitPlan(ws, MONDAY);
     expect(plan.flatMap((d) => d.visits).filter((v) => v.kind === 'place').map((v) => v.kind === 'place' && v.place.name)).toEqual(['نقطة انطلاق الطوارئ']);
+  });
+});
+
+describe('تسجيل المستودعات ونقاط الانطلاق', () => {
+  test('إضافة وتعديل الاسم والنوع وحذف، بدون تكرار الأسماء', () => {
+    let ws = addPlace(emptyWorkspace('2026-11-09'), { kind: 'warehouse', name: ' مستودع  أ ' });
+    ws = addPlace(ws, { kind: 'staging', name: 'نقطة ب' });
+    const [a, b] = ws.places!;
+    expect(a.name).toBe('مستودع أ');
+    expect(() => addPlace(ws, { kind: 'staging', name: '' })).toThrow('اكتب اسم ال' + 'نقطة انطلاق');
+    ws = renamePlace(ws, a.id, { name: 'مستودع الشمال', kind: 'staging' });
+    expect(ws.places![0]).toMatchObject({ name: 'مستودع الشمال', kind: 'staging' });
+    expect(() => renamePlace(ws, a.id, { name: 'نقطة ب', kind: 'staging' })).toThrow('موجود');
+    ws = deletePlace(ws, b.id);
+    expect(ws.places!.map((p) => p.name)).toEqual(['مستودع الشمال']);
   });
 });

@@ -102,6 +102,22 @@ async function overflow(page) {
     assert((await page.locator('body').innerText()).includes('انزار هالشهر'), 'المكان صار مزار هالشهر');
     assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
 
+    // تسجيل مستودع جديد من صفحة الأماكن، وتعديله، وتسجيل زيارته
+    await id('place-name').fill('مستودع الاختبار');
+    await id('place-add').click();
+    await page.waitForTimeout(150);
+    const placeEdit = page.locator('[data-testid^="place-edit-pl-"]').first();
+    await placeEdit.click();
+    await id('place-edit-name').fill('مستودع الاختبار المعدل');
+    await id('place-save').click();
+    await page.waitForTimeout(150);
+    let placesBody = await page.locator('body').innerText();
+    assert(placesBody.includes('مستودع الاختبار المعدل'), 'المستودع انسجل وانعدل');
+    await page.locator('[data-testid^="place-visit-pl-"]').first().click();
+    assert((await id('visit-site').inputValue()) === 'مستودع الاختبار المعدل', 'زيارة المستودع الجديد');
+    await id('visit-save').click();
+    await page.waitForTimeout(150);
+
     // اجتماع مقترح مع الزيارة يفتح الحضور على نفس الاجتماع
     await id('tab-day').click();
     await page.locator('[data-testid="plan-meeting"]').first().click();
