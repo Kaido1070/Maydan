@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EquipmentScreen } from './src/screens/EquipmentScreen';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
 import { RosterScreen } from './src/screens/RosterScreen';
@@ -26,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'day', label: 'اليوم', icon: 'grid' },
   { id: 'visits', label: 'الزيارات', icon: 'map-pin' },
   { id: 'meetings', label: 'الاجتماعات', icon: 'users' },
+  { id: 'equipment', label: 'المعدات', icon: 'tool' },
   { id: 'reports', label: 'التقارير', icon: 'bar-chart-2' },
   { id: 'roster', label: 'الشفتات', icon: 'calendar' },
 ];
@@ -34,6 +36,7 @@ const TITLES: Record<Tab, string> = {
   day: 'مهام اليوم',
   visits: 'الزيارات',
   meetings: 'الاجتماعات',
+  equipment: 'معدات التوزيع',
   reports: 'الإحصائيات والتقارير',
   roster: 'جدول الشفتات',
   settings: 'الإعدادات',
@@ -95,14 +98,20 @@ function Shell() {
     [tab, departmentId, rosterDate, focusMeetingId],
   );
 
-  const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
+  const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, equipment: EquipmentScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
 
   return (
     <UiContext.Provider value={ui}>
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <StatusBar style="light" />
         <View style={styles.header}>
-          <View style={styles.brand}>
+          <Pressable
+            testID="brand-home"
+            accessibilityRole="button"
+            accessibilityLabel="ميدان، الرجوع لمهام اليوم"
+            onPress={() => ui.go('day')}
+            style={({ pressed }) => [styles.brand, pressed && { opacity: 0.7 }]}
+          >
             <View style={styles.brandMark}>
               <Icon name="shield" size={20} color="#211345" />
             </View>
@@ -110,7 +119,7 @@ function Shell() {
               <Text style={styles.brandName}>ميدان</Text>
               <Text style={styles.brandSub}>{TITLES[tab]}</Text>
             </View>
-          </View>
+          </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Pressable
               accessibilityRole="button"
@@ -224,7 +233,7 @@ const styles = StyleSheet.create({
   gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
   tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
-  tabIcon: { width: 44, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 12, color: '#5f5975' },
+  tabIcon: { width: 40, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tabText: { fontSize: 11, color: '#5f5975' },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
 });

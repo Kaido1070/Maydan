@@ -80,6 +80,23 @@ export type PlanItem = {
   meetingId?: string;
 };
 
+/** صورة محفوظة على الجهاز (أو data URI في نسخة الويب). */
+export type Photo = { id: string; uri: string; takenAt: string };
+
+/** سجل معدة توزيع: صور قبل وبعد، تُستخدم لاحقًا في التقرير. */
+export type EquipmentRecord = {
+  id: string;
+  /** اسم المعدة أو رقمها (مثل محول، لوحة توزيع، رقم الأصل). */
+  name: string;
+  location: string;
+  notes: string;
+  date: string;
+  before: Photo[];
+  after: Photo[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Settings = {
   engineerName: string;
   dailyVisitGoal: number;
@@ -98,6 +115,8 @@ export type Workspace = {
   overrides: Record<string, SlotOverride>;
   visits: Visit[];
   attendance: MeetingAttendance[];
+  /** سجلات معدات التوزيع (اختياري للبيانات القديمة). */
+  equipment?: EquipmentRecord[];
 };
 
 export type Mode = 'demo' | 'live';

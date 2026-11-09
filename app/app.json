@@ -38,7 +38,15 @@
           "forcesRTL": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ميدان يحتاج الوصول للصور لإرفاق صور قبل وبعد لمعدات التوزيع.",
+          "cameraPermission": "ميدان يحتاج الكاميرا لتصوير معدات التوزيع قبل وبعد.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "scheme": "maydan",
     "backgroundColor": "#19172c",
