@@ -42,8 +42,8 @@ export function workingToday(ws: Workspace, now: Now): Map<string, { technician:
 }
 
 /**
- * مهام اليوم: تذكير بزيارة لكل فني يداوم اليوم ولم يكمل هدف الزيارات،
- * وتذكير باجتماع لكل فني باقي عليه اجتماعات. المهمة تصير منجزة إذا انسجل له شي اليوم.
+ * مهام اليوم: تذكير بزيارة لكل من يداوم اليوم وما نزلت عليه أي زيارة (خلال نافذة الزيارات)،
+ * وتذكير باجتماع لكل من ما حضر أي اجتماع هالسنة. المهمة تصير منجزة إذا انسجل له شي اليوم.
  */
 export function dailyTasks(ws: Workspace, now: Now): DailyTask[] {
   const tasks: DailyTask[] = [];
@@ -51,18 +51,16 @@ export function dailyTasks(ws: Workspace, now: Now): DailyTask[] {
     const progress = techProgress(ws, technician, now.date);
     const visitedToday = ws.visits.some((visit) => visit.date === now.date && visit.technicianIds.includes(technician.id));
     const metToday = ws.attendance.some((item) => item.date === now.date && item.technicianIds.includes(technician.id));
-    if (progress.visitRemaining > 0 || visitedToday)
+    if (progress.visitCount === 0 || visitedToday)
       tasks.push({ kind: 'visit', technician, department, onShiftNow, done: visitedToday, progress });
-    if (progress.meetingRemaining > 0 || metToday)
+    if ((progress.meetingTarget > 0 && progress.attended.size === 0) || metToday)
       tasks.push({ kind: 'meeting', technician, department, onShiftNow, done: metToday, progress });
   }
-  const need = (task: DailyTask) => (task.kind === 'visit' ? task.progress.visitCount : task.progress.attended.size);
   return tasks.sort(
     (a, b) =>
       Number(a.done) - Number(b.done) ||
       Number(b.onShiftNow) - Number(a.onShiftNow) ||
       (a.kind === b.kind ? 0 : a.kind === 'visit' ? -1 : 1) ||
-      need(a) - need(b) ||
       a.technician.name.localeCompare(b.technician.name, 'ar'),
   );
 }
@@ -71,10 +69,8 @@ export function dailyTasks(ws: Workspace, now: Now): DailyTask[] {
 export function taskReason(task: DailyTask, settings: Settings): string {
   if (task.kind === 'visit') {
     if (task.done) return 'انسجلت له زيارة اليوم';
-    return task.progress.visitCount
-      ? task.progress.visitCount + ' من ' + settings.visitTarget + ' زيارات خلال ' + settings.visitWindowMonths + ' أشهر'
-      : 'ما طلعت عليه زيارة';
+    return 'ما نزلت عليه زيارة خلال ' + settings.visitWindowMonths + ' أشهر';
   }
   if (task.done) return 'حضر اجتماع اليوم';
-  return task.progress.attended.size ? 'باقي عليه ' + task.progress.meetingRemaining + ' اجتماع' : 'ما سويت معه اجتماع';
+  return 'ما سويت معه اجتماع هالسنة';
 }

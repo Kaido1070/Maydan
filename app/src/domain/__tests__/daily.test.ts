@@ -23,12 +23,13 @@ function fixture(): Workspace {
 }
 
 describe('مهام اليوم التلقائية', () => {
-  test('زيارة واجتماع لكل من يداوم اليوم وباقي عليه، بدون من في إجازة', () => {
+  test('تذكير فقط لمن ما نزلت عليه زيارة أو ما حضر أي اجتماع، بدون من في إجازة', () => {
     const tasks = dailyTasks(fixture(), NOW);
     const keys = tasks.map((t) => t.kind + ':' + t.technician.id);
-    expect(keys).toEqual(expect.arrayContaining(['visit:a', 'visit:b', 'meeting:a', 'meeting:b', 'visit:e', 'meeting:e']));
-    expect(keys).not.toContain('visit:c'); // أكمل الزيارات والاجتماعات
-    expect(keys).not.toContain('meeting:c');
+    expect(keys).toEqual(expect.arrayContaining(['visit:a', 'meeting:a', 'meeting:b', 'visit:e', 'meeting:e']));
+    expect(keys).not.toContain('visit:b'); // عنده زيارة وحدة: ما يحتاج تذكير
+    expect(keys).not.toContain('visit:c');
+    expect(keys).not.toContain('meeting:c'); // حضر اجتماع
     expect(keys.some((k) => k.endsWith(':d'))).toBe(false); // طوارئ ج ما يداوم اليوم
     // الأولوية: على رأس العمل، الزيارات قبل الاجتماعات، الأقل زيارات أولًا
     expect(keys[0]).toBe('visit:a');
@@ -42,9 +43,9 @@ describe('مهام اليوم التلقائية', () => {
     expect(visitA.done).toBe(true);
     expect(tasks[tasks.length - 1].done).toBe(true); // المنجز في الآخر
     expect(taskReason(visitA, ws.settings)).toBe('انسجلت له زيارة اليوم');
-    const visitB = tasks.find((t) => t.kind === 'visit' && t.technician.id === 'b')!;
-    expect(taskReason(visitB, ws.settings)).toBe('1 من 2 زيارات خلال 6 أشهر');
-    expect(taskReason(tasks.find((t) => t.kind === 'meeting' && t.technician.id === 'a')!, ws.settings)).toBe('ما سويت معه اجتماع');
+    const visitE = tasks.find((t) => t.kind === 'visit' && t.technician.id === 'e')!;
+    expect(taskReason(visitE, ws.settings)).toBe('ما نزلت عليه زيارة خلال 6 أشهر');
+    expect(taskReason(tasks.find((t) => t.kind === 'meeting' && t.technician.id === 'a')!, ws.settings)).toBe('ما سويت معه اجتماع هالسنة');
   });
 
   test('شفت الليل الممتد من أمس يدخل في مهام الصباح الباكر', () => {

@@ -1,5 +1,5 @@
 import { addDays, daysBetween, minutesOf, mod, weekdayOf } from './dates';
-import type { Department, Now, PeriodDef, Shift, SlotOverride, Technician, Workspace } from './types';
+import type { Department, EntryKind, Now, PeriodDef, Shift, SlotOverride, Technician, Workspace } from './types';
 
 export const OFF = 'off';
 
@@ -95,11 +95,17 @@ export const shiftName = (ws: Workspace, tech: Technician) =>
   ws.departments.find((item) => item.id === tech.departmentId)?.shifts.find((shift) => shift.id === tech.baseShiftId)?.name ?? '—';
 
 export const isTeam = (tech: Technician) => tech.kind === 'team';
+export const isProject = (tech: Technician) => tech.kind === 'project';
 
-/** وصف قصير يعرّف الفني أو الفريق: الرقم الوظيفي، أو «فريق · مقاول ...». */
+export const ENTRY_NOUN: Record<EntryKind, string> = { person: 'فني', team: 'فريق', project: 'مشروع' };
+
+/** نوع السجلات الافتراضي للقسم (الإنشاءات = مشاريع). */
+export const deptEntryKind = (department: Department | undefined): 'person' | 'project' => department?.entryKind ?? 'person';
+
+/** وصف قصير يعرّف الفني أو الفريق أو المشروع: الرقم الوظيفي، أو «مشروع · مقاول ...». */
 export function techTag(tech: Technician, long = false): string {
-  if (!isTeam(tech)) return (long ? 'الرقم الوظيفي ' : '') + tech.employeeNumber;
-  return ['فريق', tech.contractor ? 'مقاول ' + tech.contractor : '', tech.employeeNumber ? 'رقم ' + tech.employeeNumber : ''].filter(Boolean).join(' · ');
+  if (!tech.kind || tech.kind === 'person') return (long ? 'الرقم الوظيفي ' : '') + tech.employeeNumber;
+  return [ENTRY_NOUN[tech.kind], tech.contractor ? 'مقاول ' + tech.contractor : '', tech.employeeNumber ? 'رقم ' + tech.employeeNumber : ''].filter(Boolean).join(' · ');
 }
 
 export function initials(name: string): string {

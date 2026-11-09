@@ -13,9 +13,13 @@ export type Rotation =
 
 export type Shift = { id: string; name: string };
 
+export type EntryKind = 'person' | 'team' | 'project';
+
 export type Department = {
   id: string;
   name: string;
+  /** نوع السجلات الافتراضي في القسم: فنيون، أو مشاريع (مثل الإنشاءات). */
+  entryKind?: 'person' | 'project';
   shifts: Shift[];
   periods: PeriodDef[];
   rotation: Rotation;
@@ -23,10 +27,10 @@ export type Department = {
 
 export type Technician = {
   id: string;
-  /** للفريق: رقم الفريق أو العقد (اختياري). */
+  /** للفريق: رقم الفريق أو العقد، وللمشروع: رقم المشروع (اختياري لهما). */
   employeeNumber: string;
-  /** فني باسمه، أو فريق/مقاول (شائع في الإنشاءات والصيانة). الافتراضي فني. */
-  kind?: 'person' | 'team';
+  /** فني باسمه، أو فريق/مقاول، أو مشروع (الإنشاءات). الافتراضي فني. */
+  kind?: EntryKind;
   /** اسم المقاول للفرق. */
   contractor?: string;
   name: string;

@@ -121,7 +121,7 @@ const OUT = process.env.SHOTS || null;
   await id('tab-day').click();
   const dailyTask = page.locator('[data-testid^="daily-visit-"]').first();
   const techId = (await dailyTask.getAttribute('data-testid')).replace('daily-visit-', '');
-  assert(/ما طلعت عليه زيارة|من 2 زيارات/.test(await dailyTask.innerText()), 'سبب المهمة ظاهر');
+  assert((await dailyTask.innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر');
   await dailyTask.click();
   await page.waitForSelector('text=الزيارات · آخر 6 أشهر');
   await id('person-visit').click();

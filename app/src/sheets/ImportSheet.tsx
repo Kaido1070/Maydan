@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { applyTechnicianImport, ImportPreview, ImportRow } from '../domain/importer';
+import { ENTRY_NOUN } from '../domain/shifts';
 import { useApply, useStore } from '../store';
 import { Button, C, Chip, Row, Sheet, Spread, Sub, T } from '../ui/kit';
 
@@ -32,7 +33,7 @@ export function ImportSheet({ file, preview, onClose, onDone }: { file: string; 
     <Sheet
       visible
       onClose={onClose}
-      title="استيراد الفنيين والفرق من Excel"
+      title="استيراد الفنيين والفرق والمشاريع"
       sub={file}
       footer={
         preview.problem ? (
@@ -64,13 +65,13 @@ export function ImportSheet({ file, preview, onClose, onDone }: { file: string; 
             <Chip tone={preview.errors ? 'red' : 'neutral'} label={'أخطاء ' + preview.errors} />
           </Row>
           <Sub style={{ marginBottom: 6 }}>
-            الفني يُعرف برقمه الوظيفي، والفريق برقمه أو باسمه داخل القسم. الصفوف اللي فيها أخطاء تنتجاهل، والفنيون غير الموجودين في الملف يبقون كما هم.
+            الفني يُعرف برقمه الوظيفي، والفريق والمشروع برقمهما أو بالاسم داخل القسم. الصفوف اللي فيها أخطاء تنتجاهل، والفنيون غير الموجودين في الملف يبقون كما هم.
           </Sub>
           {rows.slice(0, limit).map((row) => (
             <Spread key={row.line} style={{ borderTopWidth: 1, borderTopColor: C.line, paddingVertical: 8, alignItems: 'flex-start' }}>
               <View style={{ flex: 1 }}>
                 <T style={{ fontWeight: '700', fontSize: 13 }}>{row.name || '—'}</T>
-                <Sub>{'سطر ' + row.line + ' · ' + (row.kind === 'team' ? 'فريق' + (row.contractor ? ' · ' + row.contractor : '') + (row.employeeNumber ? ' · ' + row.employeeNumber : '') : row.employeeNumber || 'بدون رقم') + ' · ' + row.departmentName + ' · ' + row.shiftName + (row.active ? '' : ' · غير نشط')}</Sub>
+                <Sub>{'سطر ' + row.line + ' · ' + (row.kind !== 'person' ? ENTRY_NOUN[row.kind] + (row.contractor ? ' · ' + row.contractor : '') + (row.employeeNumber ? ' · ' + row.employeeNumber : '') : row.employeeNumber || 'بدون رقم') + ' · ' + row.departmentName + ' · ' + row.shiftName + (row.active ? '' : ' · غير نشط')}</Sub>
                 {row.error ? <T style={{ color: C.red, fontSize: 12 }}>{row.error}</T> : null}
               </View>
               <Chip tone={ACTIONS[row.action].tone} label={ACTIONS[row.action].label} />
