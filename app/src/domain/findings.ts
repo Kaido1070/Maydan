@@ -1,6 +1,6 @@
 import { daysBetween, isDateKey } from './dates';
 import { newId } from './records';
-import type { Finding, FindingKind, FindingStatus, FindingUpdate, Photo, Workspace } from './types';
+import type { Finding, FindingKind, FindingStatus, FindingUpdate, Photo, Technician, Workspace } from './types';
 
 export const FINDING_NOUN: Record<FindingKind, string> = { observation: 'ملاحظة', violation: 'مخالفة' };
 export const STATUS_LABEL: Record<FindingStatus, string> = { open: 'مفتوحة', progress: 'قيد المعالجة', closed: 'مقفلة' };
@@ -12,6 +12,7 @@ export type FindingInput = {
   departmentId?: string;
   location: string;
   responsible: string;
+  technicianIds?: string[];
   date: string;
   dueDate?: string;
   photos: Photo[];
@@ -39,6 +40,7 @@ export function saveFinding(ws: Workspace, input: FindingInput, id?: string, sta
     description: input.description.trim(),
     location: input.location.trim(),
     responsible: input.responsible.trim(),
+    technicianIds: input.technicianIds?.length ? [...new Set(input.technicianIds)] : undefined,
     id: existing?.id ?? newId('f'),
     createdAt: existing?.createdAt ?? stamp,
     updatedAt: stamp,
@@ -100,5 +102,76 @@ export function findingStats(ws: Workspace, kind: FindingKind, today: string, ra
     closed: closed.length,
     avgDaysToClose: closed.length ? Math.round((10 * closed.reduce((sum, item) => sum + findingAge(item, today), 0)) / closed.length) / 10 : null,
     oldestOpenDays: open.reduce((max, item) => Math.max(max, findingAge(item, today)), 0),
+  };
+}
+
+/* ───────────── تفاصيل التقرير: حسب الفني، والمقفلة والباقية ───────────── */
+
+export type FindingRow = {
+  finding: Finding;
+  /** أسماء الفنيين أو الفرق المعنيين. */
+  names: string[];
+  departmentName: string;
+  /** أيام مفتوحة، أو كم أخذت لين انقفلت. */
+  age: number;
+  overdue: boolean;
+};
+
+export type KindCount = { open: number; closed: number };
+export type TechnicianFindings = { technician: Technician; departmentName: string; observation: KindCount; violation: KindCount };
+
+export type FindingsDetail = {
+  byTechnician: TechnicianFindings[];
+  /** الباقية: المتأخر أولًا ثم الأقدم. */
+  open: FindingRow[];
+  /** المقفلة: الأحدث إغلاقًا أولًا. */
+  closed: FindingRow[];
+  /** ملاحظات ومخالفات ما انربطت بفني. */
+  unlinked: number;
+};
+
+/** الملاحظات والمخالفات المسجلة في الفترة، مع أسماء الفنيين، وفلتر القسم (قسم الملاحظة أو قسم أحد فنييها). */
+export function findingsDetail(ws: Workspace, today: string, range?: { start: string; end: string }, departmentId: string | 'all' = 'all'): FindingsDetail {
+  const byId = new Map(ws.technicians.map((tech) => [tech.id, tech]));
+  const deptName = (id?: string) => ws.departments.find((item) => item.id === id)?.name ?? '';
+  const list = (ws.findings ?? []).filter((item) => {
+    if (range && (item.date < range.start || item.date >= range.end)) return false;
+    if (departmentId === 'all') return true;
+    return item.departmentId === departmentId || (item.technicianIds ?? []).some((id) => byId.get(id)?.departmentId === departmentId);
+  });
+  const row = (finding: Finding): FindingRow => {
+    const people = (finding.technicianIds ?? []).map((id) => byId.get(id)).filter((tech): tech is Technician => !!tech);
+    return {
+      finding,
+      names: people.map((tech) => tech.name),
+      departmentName: deptName(finding.departmentId) || [...new Set(people.map((tech) => deptName(tech.departmentId)))].filter(Boolean).join('، '),
+      age: findingAge(finding, today),
+      overdue: isOverdue(finding, today),
+    };
+  };
+  const rows = list.map(row);
+  const people = new Map<string, TechnicianFindings>();
+  for (const finding of list) {
+    for (const id of new Set(finding.technicianIds ?? [])) {
+      const tech = byId.get(id);
+      if (!tech || (departmentId !== 'all' && tech.departmentId !== departmentId)) continue;
+      const entry = people.get(id) ?? { technician: tech, departmentName: deptName(tech.departmentId), observation: { open: 0, closed: 0 }, violation: { open: 0, closed: 0 } };
+      entry[finding.kind][finding.status === 'closed' ? 'closed' : 'open']++;
+      people.set(id, entry);
+    }
+  }
+  const openOf = (entry: TechnicianFindings) => entry.observation.open + entry.violation.open;
+  const totalOf = (entry: TechnicianFindings) => openOf(entry) + entry.observation.closed + entry.violation.closed;
+  return {
+    byTechnician: [...people.values()].sort(
+      (a, b) => openOf(b) - openOf(a) || totalOf(b) - totalOf(a) || a.technician.name.localeCompare(b.technician.name, 'ar'),
+    ),
+    open: rows
+      .filter((item) => item.finding.status !== 'closed')
+      .sort((a, b) => Number(b.overdue) - Number(a.overdue) || b.age - a.age),
+    closed: rows
+      .filter((item) => item.finding.status === 'closed')
+      .sort((a, b) => (b.finding.closedAt ?? '').localeCompare(a.finding.closedAt ?? '')),
+    unlinked: list.filter((item) => !(item.technicianIds ?? []).length).length,
   };
 }

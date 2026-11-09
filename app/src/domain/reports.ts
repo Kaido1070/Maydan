@@ -1,7 +1,7 @@
 import { addDays, dateOf, formatDate, MONTHS_AR } from './dates';
 import { techTag } from './shifts';
 import { activeTechnicians } from './shifts';
-import { findingStats, FindingStats } from './findings';
+import { FINDING_NOUN, findingsDetail, FindingsDetail, FindingRow, findingStats, FindingStats, STATUS_LABEL } from './findings';
 import { formatDuration, overtimeSummary, OvertimeSummary } from './worktime';
 import { coverageByDepartment, DepartmentCoverage, followUpList, FollowUp, techProgress, yearMeetings } from './stats';
 import type { Workspace } from './types';
@@ -46,6 +46,8 @@ export type Report = {
   statusMix: { visits: StatusMix; meetings: StatusMix };
   /** الملاحظات والمخالفات المسجلة في الفترة، والعمل خارج الدوام. */
   findings: { observation: FindingStats; violation: FindingStats };
+  /** حسب الفني، والمقفلة والباقية بالأسماء. */
+  findingsDetail: FindingsDetail;
   overtime: OvertimeSummary;
 };
 
@@ -133,9 +135,24 @@ export function buildReport(ws: Workspace, params: ReportParams, today: string):
       observation: findingStats(ws, 'observation', today, { start: period.start, end: period.end }),
       violation: findingStats(ws, 'violation', today, { start: period.start, end: period.end }),
     },
+    findingsDetail: findingsDetail(ws, today, { start: period.start, end: period.end }, params.departmentId),
     overtime: overtimeSummary(ws, period.start, period.end),
   };
 }
+
+/** سطر ملاحظة في الجداول: النوع، العنوان، الفنيون، القسم، التاريخ، الحالة والمدة. */
+export const FINDING_HEADINGS = ['النوع', 'العنوان', 'الفنيون / الفرق', 'القسم', 'الموقع', 'التاريخ', 'الحالة', 'المدة (يوم)'];
+export const findingValues = (row: FindingRow): (string | number)[] => [
+  FINDING_NOUN[row.finding.kind],
+  row.finding.title,
+  row.names.join('، ') || '—',
+  row.departmentName || '—',
+  row.finding.location || '—',
+  row.finding.date,
+  row.finding.status === 'closed' ? 'مقفلة ' + (row.finding.closedAt ?? '') : row.overdue ? 'متأخرة' : STATUS_LABEL[row.finding.status],
+  row.age,
+];
+export const TECH_FINDING_HEADINGS = ['الفني / الفريق', 'القسم', 'ملاحظات باقية', 'ملاحظات مقفلة', 'مخالفات باقية', 'مخالفات مقفلة'];
 
 const COUNT_HEADINGS = ['زيارات', 'زيارات الفنيين', 'فنيون تمت زيارتهم', 'تسجيلات اجتماعات', 'مرات حضور'];
 const countValues = (row: Counts) => [row.visits, row.technicianVisits, row.techniciansVisited, row.meetingSessions, row.attendance];
@@ -171,6 +188,17 @@ export function reportRows(report: Report): (string | number)[][] {
     ['الملاحظات والمخالفات', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
     ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
     ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+    [],
+    ['الملاحظات والمخالفات حسب الفني', ...TECH_FINDING_HEADINGS.slice(1)],
+    ...report.findingsDetail.byTechnician.map((row) => [row.technician.name, row.departmentName, row.observation.open, row.observation.closed, row.violation.open, row.violation.closed]),
+    [],
+    ['الباقية (' + report.findingsDetail.open.length + ')'],
+    FINDING_HEADINGS,
+    ...report.findingsDetail.open.map(findingValues),
+    [],
+    ['المقفلة (' + report.findingsDetail.closed.length + ')'],
+    FINDING_HEADINGS,
+    ...report.findingsDetail.closed.map(findingValues),
     [],
     ['العمل خارج الدوام', 'مرات مسجلة', 'الوقت', 'أيام', 'نشاط خارج الدوام'],
     ['الفترة', report.overtime.entries, formatDuration(report.overtime.minutes), report.overtime.days, report.overtime.outOfHoursActivities],
@@ -280,6 +308,14 @@ export function reportHtml(report: Report, engineerName: string): string {
         ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
       ],
     ) +
+    (report.findingsDetail.byTechnician.length
+      ? '<h2>الملاحظات والمخالفات حسب الفني</h2>' +
+        table(TECH_FINDING_HEADINGS, report.findingsDetail.byTechnician.map((row) => [row.technician.name, row.departmentName, row.observation.open, row.observation.closed, row.violation.open, row.violation.closed]))
+      : '') +
+    '<h2>الملاحظات والمخالفات الباقية (' + report.findingsDetail.open.length + ')</h2>' +
+    (report.findingsDetail.open.length ? table(FINDING_HEADINGS, report.findingsDetail.open.map(findingValues)) : '<p>ما فيه شي باقي.</p>') +
+    '<h2>الملاحظات والمخالفات المقفلة (' + report.findingsDetail.closed.length + ')</h2>' +
+    (report.findingsDetail.closed.length ? table(FINDING_HEADINGS, report.findingsDetail.closed.map(findingValues)) : '<p>ما انقفل شي في هالفترة.</p>') +
     '<h2>العمل خارج الدوام</h2>' +
     table(['مرات مسجلة', 'الوقت', 'أيام', 'نشاط خارج الدوام'], [[report.overtime.entries, formatDuration(report.overtime.minutes), report.overtime.days, report.overtime.outOfHoursActivities]]) +
     '<h2>الفنيون المتبقي عليهم (' + report.pending.length + ')</h2>' +

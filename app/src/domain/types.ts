@@ -133,6 +133,8 @@ export type Finding = {
   location: string;
   /** المسؤول عن الإغلاق: فني أو مقاول أو جهة. */
   responsible: string;
+  /** الفنيون أو الفرق أو المشاريع المعنيون بالملاحظة. */
+  technicianIds?: string[];
   date: string;
   dueDate?: string;
   status: FindingStatus;

@@ -54,10 +54,13 @@ async function overflow(page) {
     await id('add-observation').click();
     await id('finding-title').fill('غطاء غرفة تفتيش مفتوح');
     await page.getByText('3 أيام', { exact: true }).click();
+    await id('finding-tech-search').fill('فيصل عمر');
+    await id('finding-tech-add-a6').click();
+    assert(await id('finding-tech-remove-a6').isVisible(), 'الفني المعني انضاف للملاحظة');
     await id('finding-save').click();
     await page.waitForTimeout(200);
     let body = await page.locator('body').innerText();
-    assert(body.includes('غطاء غرفة تفتيش مفتوح') && body.includes('انسجلت اليوم'), 'الملاحظة ظاهرة مع عمرها');
+    assert(body.includes('غطاء غرفة تفتيش مفتوح') && body.includes('انسجلت اليوم') && body.includes('فيصل عمر المرواني'), 'الملاحظة ظاهرة مع عمرها واسم الفني');
 
     await page.locator('[data-testid^="finding-f-"]').first().click();
     await page.getByText('سبب تأخير', { exact: true }).click();
@@ -79,6 +82,10 @@ async function overflow(page) {
 
     await id('tab-reports').click();
     assert((await id('report-follow').innerText()).includes('ملاحظات'), 'التقرير فيه الملاحظات وخارج الدوام');
+    const named = await id('report-findings').innerText();
+    assert(named.includes('فيصل عمر المرواني') && named.includes('المقفلة · 1') && named.includes('الباقية · 0'), 'التقرير فيه الملاحظات بأسماء الفنيين');
+    await page.getByText('المقفلة · 1', { exact: true }).click();
+    assert((await id('report-findings').innerText()).includes('غطاء غرفة تفتيش مفتوح'), 'قائمة المقفلة فيها الملاحظة');
 
     // خطة الزيارات: «ابدأ» يفتح الزيارة والفنيين محددين
     await id('tab-day').click();

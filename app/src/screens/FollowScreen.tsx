@@ -17,6 +17,8 @@ import {
 } from '../domain/findings';
 import type { Finding, FindingKind, OvertimeEntry, Photo } from '../domain/types';
 import { deleteOvertime, durationMinutes, formatDuration, isWorkTime, overtimeSummary, saveOvertime } from '../domain/worktime';
+import { searchTechnicians } from '../domain/stats';
+import { techTag } from '../domain/shifts';
 import { deletePhotoFiles } from '../photos';
 import { confirm } from '../sheets/VisitSheet';
 import { useApply, useStore } from '../store';
@@ -124,7 +126,14 @@ function FindingCard({ finding, onPress }: { finding: Finding; onPress: () => vo
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '700', fontSize: 16 }}>{finding.title}</T>
             <Sub numberOfLines={1}>
-              {[finding.location, finding.responsible, ws.departments.find((d) => d.id === finding.departmentId)?.name].filter(Boolean).join(' · ') || formatDate(finding.date)}
+              {[
+                (finding.technicianIds ?? []).map((id) => ws.technicians.find((tech) => tech.id === id)?.name).filter(Boolean).join('، '),
+                finding.location,
+                finding.responsible,
+                ws.departments.find((d) => d.id === finding.departmentId)?.name,
+              ]
+                .filter(Boolean)
+                .join(' · ') || formatDate(finding.date)}
             </Sub>
           </View>
           <Chip tone={closed ? 'green' : overdue ? 'red' : finding.status === 'progress' ? 'purple' : 'amber'} label={overdue ? 'متأخرة' : STATUS_LABEL[finding.status]} />
@@ -141,6 +150,67 @@ function FindingCard({ finding, onPress }: { finding: Finding; onPress: () => vo
         ) : null}
       </Card>
     </Touch>
+  );
+}
+
+/** اختيار الفنيين أو الفرق المعنيين: بحث بالاسم أو الرقم، والمختارين يطلعون فوق. */
+function TechnicianPicker({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
+  const { ws } = useStore();
+  const [query, setQuery] = useState('');
+  const chosen = value.map((id) => ws.technicians.find((tech) => tech.id === id)).filter((tech): tech is NonNullable<typeof tech> => !!tech);
+  const matches = searchTechnicians(ws, query).filter((tech) => !value.includes(tech.id)).slice(0, 6);
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <T style={{ fontWeight: '700', fontSize: 13, marginBottom: 6 }}>الفنيون أو الفرق المعنيون (اختياري)</T>
+      {chosen.length ? (
+        <Row gap={6} style={{ flexWrap: 'wrap', marginBottom: 6 }}>
+          {chosen.map((tech) => (
+            <Touch
+              key={tech.id}
+              testID={'finding-tech-remove-' + tech.id}
+              accessibilityRole="button"
+              accessibilityLabel={'إزالة ' + tech.name}
+              feedback="select"
+              onPress={() => onChange(value.filter((id) => id !== tech.id))}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.soft, borderRadius: 99, paddingVertical: 5, paddingHorizontal: 10 }}
+            >
+              <T style={{ fontSize: 13, color: C.purple, fontWeight: '600' }}>{tech.name}</T>
+              <Icon name="x" size={13} color={C.purple} />
+            </Touch>
+          ))}
+        </Row>
+      ) : null}
+      <TextInput
+        testID="finding-tech-search"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="ابحث بالاسم أو الرقم الوظيفي"
+        placeholderTextColor="#a29db3"
+        style={s.input}
+      />
+      {matches.map((tech) => (
+        <Touch
+          key={tech.id}
+          testID={'finding-tech-add-' + tech.id}
+          accessibilityRole="button"
+          accessibilityLabel={'إضافة ' + tech.name}
+          feedback="select"
+          scaleTo={0.98}
+          onPress={() => {
+            onChange([...value, tech.id]);
+            setQuery('');
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: C.line }}
+        >
+          <Icon name="plus-circle" size={16} color={C.purple} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <T style={{ fontWeight: '600' }}>{tech.name}</T>
+            <Sub numberOfLines={1}>{[techTag(tech), ws.departments.find((d) => d.id === tech.departmentId)?.name].filter(Boolean).join(' · ')}</Sub>
+          </View>
+        </Touch>
+      ))}
+      {query.trim() && !matches.length ? <Sub style={{ marginTop: 6 }}>ما لقيت أحد بهالاسم أو الرقم.</Sub> : null}
+    </View>
   );
 }
 
@@ -285,6 +355,13 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
       <Field testID="finding-title" label={'عنوان ال' + noun} value={draft.title} onChangeText={(title) => set({ title })} placeholder={kind === 'observation' ? 'مثال: غطاء غرفة تفتيش مفتوح' : 'مثال: عدم لبس الخوذة'} />
       <Field label="الموقع" value={draft.location} onChangeText={(location) => set({ location })} placeholder="مثال: حي الروضة، شارع ..." />
       <Field label="المسؤول عن الإغلاق" value={draft.responsible} onChangeText={(responsible) => set({ responsible })} placeholder="فني، مقاول، أو جهة" />
+      <TechnicianPicker
+        value={draft.technicianIds ?? []}
+        onChange={(technicianIds) => {
+          const first = ws.technicians.find((tech) => tech.id === technicianIds[0]);
+          set({ technicianIds, ...(!draft.departmentId && first ? { departmentId: first.departmentId } : {}) });
+        }}
+      />
       <T style={{ fontWeight: '700', fontSize: 13, marginBottom: 6 }}>القسم (اختياري)</T>
       <Segmented
         wrap
