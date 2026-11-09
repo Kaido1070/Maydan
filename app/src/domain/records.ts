@@ -92,7 +92,7 @@ export const attendanceFor = (ws: Workspace, meetingId: string, departmentId: st
  */
 export function saveAttendanceBatch(
   ws: Workspace,
-  input: { departmentId: string; date: string; entries: Record<string, string[]> },
+  input: { departmentId: string; date: string; time?: string; entries: Record<string, string[]> },
   stamp = new Date().toISOString(),
 ): { ws: Workspace; created: number; updated: number; removed: number } {
   let attendance = [...ws.attendance];
@@ -113,7 +113,7 @@ export function saveAttendanceBatch(
       continue;
     }
     if (index >= 0) {
-      attendance[index] = { ...attendance[index], technicianIds: unique, updatedAt: stamp };
+      attendance[index] = { ...attendance[index], technicianIds: unique, ...(input.time ? { time: input.time } : {}), updatedAt: stamp };
       updated++;
     } else {
       const record: MeetingAttendance = {
@@ -121,6 +121,7 @@ export function saveAttendanceBatch(
         meetingId,
         departmentId: input.departmentId,
         date: input.date,
+        ...(input.time ? { time: input.time } : {}),
         technicianIds: unique,
         updatedAt: stamp,
       };

@@ -65,6 +65,8 @@ export type MeetingAttendance = {
   meetingId: string;
   departmentId: string;
   date: string;
+  /** وقت الاجتماع HH:MM (اختياري للبيانات القديمة). */
+  time?: string;
   technicianIds: string[];
   seed?: boolean;
   updatedAt: string;

@@ -169,6 +169,20 @@ describe('الاجتماعات', () => {
     expect(again.ws.attendance).toHaveLength(1);
     expect(again.ws.attendance[0].technicianIds).toEqual(['t2']);
   });
+
+  test('حضور اجتماع بتاريخ ووقت محددين، وتعديل الوقت لاحقًا', () => {
+    let ws = fixture();
+    const m = addMeeting(ws, 'اجتماع سابق', 2026);
+    ws = m.ws;
+    ws = saveAttendanceBatch(ws, { departmentId: 'b', date: '2026-11-02', time: '13:30', entries: { [m.meeting.id]: ['t1'] } }, STAMP).ws;
+    expect(ws.attendance[0]).toMatchObject({ date: '2026-11-02', time: '13:30' });
+    const updated = saveAttendanceBatch(ws, { departmentId: 'b', date: '2026-11-02', time: '14:00', entries: { [m.meeting.id]: ['t1'] } }, STAMP);
+    expect(updated).toMatchObject({ created: 0, updated: 1 });
+    expect(updated.ws.attendance[0].time).toBe('14:00');
+    // يوم ثاني = سجل مستقل
+    const other = saveAttendanceBatch(updated.ws, { departmentId: 'b', date: '2026-11-03', time: '09:00', entries: { [m.meeting.id]: ['t2'] } }, STAMP);
+    expect(other.ws.attendance).toHaveLength(2);
+  });
 });
 
 describe('التقارير', () => {

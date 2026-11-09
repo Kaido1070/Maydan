@@ -83,6 +83,16 @@ const OUT = process.env.SHOTS || null;
   assert(body.includes('تم حفظ حضور 2 اجتماع'), 'حفظ دفعة واحدة لاجتماعين');
   assert(body.includes('مراجعة خطة الطوارئ\n2 حاضر') || /مراجعة خطة الطوارئ[\s\S]{0,40}2 حاضر/.test(body), 'سجل الحضور يظهر');
 
+  // حضور اجتماع بتاريخ أمس ووقت محدد
+  await page.getByRole('button', { name: 'السابق' }).first().click();
+  await id('meeting-time').fill('13:45');
+  // يوم 8 نوفمبر الصباحي = طوارئ ب، فالقائمة تتبع شفت ذاك اليوم
+  assert(!(await id('att-demo-m2-b2').count()), 'فنيو طوارئ أ ما يظهرون في شفت أمس');
+  await page.locator('[data-testid^="att-demo-m2-b"]').first().click();
+  await id('attendance-save').click();
+  body = await page.locator('body').innerText();
+  assert(/الأحد 8 نوفمبر 2026 · 13:45/.test(body), 'سجل الحضور فيه التاريخ والوقت المحددين');
+
   // 3) نقل فني بين الشفتات
   await id('tab-roster').click();
   await page.getByText('الشفت الأساسي للفنيين').click();
@@ -104,7 +114,7 @@ const OUT = process.env.SHOTS || null;
   // 4) أرقام التقرير
   await id('tab-reports').click();
   assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 2, 'الزيارة الجماعية تُحسب مرة: +2 زيارة');
-  assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 2, '+2 تسجيل اجتماع');
+  assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 3, '+3 تسجيلات اجتماع (اجتماعان اليوم وواحد أمس)');
   await id('employee-search').fill('١٢٠١');
   await id('employee-search-go').click();
   body = await page.locator('body').innerText();

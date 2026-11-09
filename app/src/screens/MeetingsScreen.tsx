@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
-import { formatDate } from '../domain/dates';
+import { addDays, formatDate, isTime } from '../domain/dates';
 import { addMeeting, attendanceFor, saveAttendanceBatch } from '../domain/records';
-import { activeTechnicians, currentSlot, shiftLabel, shiftName, techTag } from '../domain/shifts';
+import { activeTechnicians, currentSlot, shiftLabel, shiftName, slotAt, techTag } from '../domain/shifts';
 import { yearMeetings } from '../domain/stats';
 import { useApply, useStore } from '../store';
-import { Button, C, Card, Checkbox, Chip, Empty, Icon, ratio, Row, s, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
+import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 import { DepartmentPicker } from './DepartmentPicker';
@@ -23,29 +23,45 @@ export function MeetingsScreen() {
   const [draft, setDraft] = useState<Record<string, string[]>>({});
 
   const department = ws.departments.find((item) => item.id === ui.departmentId);
-  const slot = department ? currentSlot(ws, department, now) : null;
+  // تاريخ ووقت الاجتماع: الافتراضي الآن، ويقبل أي تاريخ لين اليوم.
+  const [date, setDate] = useState(now.date);
+  const [time, setTime] = useState(now.time);
+  const validTime = isTime(time);
+  const slot = department ? (date === now.date && (!validTime || time === now.time) ? currentSlot(ws, department, now) : slotAt(ws, department, date, validTime ? time : now.time)) : null;
 
-  useEffect(() => setDraft({}), [ui.departmentId]);
+  useEffect(() => setDraft({}), [ui.departmentId, date]);
+  // لما يتغير التاريخ أو القسم: نعرض وقت الاجتماع المحفوظ إن وجد.
+  useEffect(() => {
+    if (!ui.departmentId) return;
+    const saved = ws.attendance.find((item) => item.departmentId === ui.departmentId && item.date === date && selected.includes(item.meetingId) && item.time);
+    if (saved?.time) setTime(saved.time);
+    else if (date === now.date) setTime(now.time);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui.departmentId, date]);
 
   const chosen = meetings.filter((meeting) => selected.includes(meeting.id));
   const crew = useMemo(() => {
     if (!department) return [];
-    const recorded = new Set(chosen.flatMap((meeting) => attendanceFor(ws, meeting.id, department.id, now.date)?.technicianIds ?? []));
+    const recorded = new Set(chosen.flatMap((meeting) => attendanceFor(ws, meeting.id, department.id, date)?.technicianIds ?? []));
     const shiftIds = new Set((slot?.crew ?? []).map((tech) => tech.id));
     return activeTechnicians(ws).filter(
       (tech) =>
         shiftIds.has(tech.id) || recorded.has(tech.id) || (scope === 'all' && tech.departmentId === department.id),
     );
-  }, [ws, department, slot, scope, chosen, now.date]);
+  }, [ws, department, slot, scope, chosen, date]);
 
-  const saved = (meetingId: string) => (department ? attendanceFor(ws, meetingId, department.id, now.date)?.technicianIds ?? [] : []);
+  const saved = (meetingId: string) => (department ? attendanceFor(ws, meetingId, department.id, date)?.technicianIds ?? [] : []);
   const value = (meetingId: string) => draft[meetingId] ?? saved(meetingId);
   const setCell = (meetingId: string, techId: string, checked: boolean) =>
     setDraft((prev) => {
       const list = prev[meetingId] ?? saved(meetingId);
       return { ...prev, [meetingId]: checked ? [...list, techId] : list.filter((id) => id !== techId) };
     });
-  const dirty = Object.keys(draft).some((id) => selected.includes(id));
+  const timeChanged = !!department && chosen.some((meeting) => {
+    const record = attendanceFor(ws, meeting.id, department.id, date);
+    return !!record && (record.time ?? '') !== time;
+  });
+  const dirty = Object.keys(draft).some((id) => selected.includes(id)) || timeChanged;
 
   const addTitle = () => {
     let created = '';
@@ -66,7 +82,7 @@ export function MeetingsScreen() {
     const entries = Object.fromEntries(chosen.map((meeting) => [meeting.id, value(meeting.id)]));
     let summary = { created: 0, updated: 0, removed: 0 };
     const error = apply((current) => {
-      const result = saveAttendanceBatch(current, { departmentId: department.id, date: now.date, entries });
+      const result = saveAttendanceBatch(current, { departmentId: department.id, date, time, entries });
       summary = result;
       return result.ws;
     });
@@ -151,7 +167,20 @@ export function MeetingsScreen() {
       {department ? (
         <Card>
           <T style={{ fontWeight: '800', fontSize: 16 }}>{department.name + ' · ' + shiftLabel(slot)}</T>
-          <Sub>{'حضور اليوم ' + formatDate(now.date, { weekday: true })}</Sub>
+          <Spread style={{ marginTop: 10 }}>
+            <T style={{ fontWeight: '700', fontSize: 13 }}>تاريخ الاجتماع</T>
+            <Stepper
+              label={date === now.date ? 'اليوم' : formatDate(date)}
+              onPrev={() => setDate(addDays(date, -1))}
+              onNext={() => setDate(addDays(date, 1))}
+              nextDisabled={date >= now.date}
+            />
+          </Spread>
+          <Sub style={{ marginTop: 2 }}>{formatDate(date, { weekday: true, year: true })}</Sub>
+          <View style={{ marginTop: 8 }}>
+            <Field testID="meeting-time" label="وقت الاجتماع (24 ساعة)" value={time} onChangeText={setTime} placeholder="09:30" keyboardType="numbers-and-punctuation" maxLength={5} />
+          </View>
+          {!validTime ? <T style={{ color: C.red, fontSize: 12, marginTop: -6, marginBottom: 6 }}>اكتب الوقت بصيغة 24 ساعة مثل 09:30</T> : null}
           <View style={{ marginVertical: 10 }}>
             <Segmented
               options={[
@@ -222,7 +251,7 @@ export function MeetingsScreen() {
                 icon="save"
                 label={'حفظ الحضور · ' + chosen.length + (chosen.length === 1 ? ' اجتماع' : ' اجتماعات')}
                 onPress={save}
-                disabled={!dirty}
+                disabled={!dirty || !validTime}
               />
               {dirty ? <Sub style={{ textAlign: 'center', marginTop: 4 }}>فيه تغييرات غير محفوظة</Sub> : null}
             </>
@@ -243,7 +272,7 @@ export function MeetingsScreen() {
                 <Spread key={item.id} style={{ paddingVertical: 9, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
                   <View style={{ flex: 1 }}>
                     <T style={{ fontWeight: '700' }}>{ws.meetings.find((m) => m.id === item.meetingId)?.title ?? '—'}</T>
-                    <Sub>{formatDate(item.date, { year: true })}</Sub>
+                    <Sub>{formatDate(item.date, { weekday: true, year: true }) + (item.time ? ' · ' + item.time : '')}</Sub>
                   </View>
                   <Chip tone="green" label={item.technicianIds.length + ' حاضر'} />
                 </Spread>
