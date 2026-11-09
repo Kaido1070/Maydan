@@ -1,6 +1,6 @@
 # يبني ملف IPA غير موقّع للآيفون على جهاز macOS في GitHub Actions.
 # الملف الناتج يظهر في صفحة التشغيل تحت Artifacts باسم Maydan-unsigned-ipa،
-# ويحتاج توقيعًا بشهادتك قبل التثبيت.
+# ويُنشر أيضًا كإصدار (Release) في المستودع، ويحتاج توقيعًا بشهادتك قبل التثبيت.
 name: iOS unsigned IPA
 
 on:
@@ -14,6 +14,9 @@ on:
 concurrency:
   group: ios-ipa-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -80,3 +83,18 @@ jobs:
           path: ${{ runner.temp }}/Maydan-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: ميدان للآيفون · بناء ${{ github.run_number }} (غير موقّع)
+          prerelease: true
+          files: ${{ runner.temp }}/Maydan-unsigned.ipa
+          body: |
+            ملف IPA غير موقّع لتطبيق ميدان، مبني من الالتزام ${{ github.sha }} على الفرع ${{ github.ref_name }}.
+
+            - وقّعه بشهادتك وملف التعريف (provisioning profile) قبل التثبيت، مثلًا عبر Sideloadly أو ESign.
+            - معرّف الحزمة: `com.maydan.fieldsafety` (غيّره وقت التوقيع إذا كان ملف التعريف لمعرّف آخر).
+            - التطبيق لا يطلب صلاحيات خاصة.
