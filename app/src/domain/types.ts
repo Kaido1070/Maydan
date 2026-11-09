@@ -58,6 +58,8 @@ export type Visit = {
   site: string;
   technicianIds: string[];
   planItemId?: string;
+  /** زيارة مستودع أو نقطة انطلاق (بدون فنيين). */
+  placeId?: string;
   /** سجل من بيانات التجربة الأولية (لا يُحتسب في نقاط XP). */
   seed?: boolean;
   createdAt: string;
@@ -88,6 +90,10 @@ export type PlanItem = {
   kind: 'visit' | 'meeting';
   meetingId?: string;
 };
+
+/** مستودع أو نقطة انطلاق تُزار دوريًا. */
+export type PlaceKind = 'warehouse' | 'staging';
+export type Place = { id: string; kind: PlaceKind; name: string; departmentId?: string };
 
 /** صورة محفوظة على الجهاز (أو data URI في نسخة الويب). */
 export type Photo = { id: string; uri: string; takenAt: string };
@@ -165,6 +171,7 @@ export type Workspace = {
   /** سجلات معدات التوزيع (اختياري للبيانات القديمة). */
   equipment?: EquipmentRecord[];
   findings?: Finding[];
+  places?: Place[];
   overtime?: OvertimeEntry[];
 };
 

@@ -186,10 +186,18 @@ export function demoWorkspace(today: string): Workspace {
     ...(kind === 'meeting' ? { meetingId: 'demo-m2' } : {}),
   }));
 
+  const places = [
+    { id: 'demo-pl1', kind: 'warehouse' as const, name: 'المستودع الرئيسي (تجريبي)' },
+    { id: 'demo-pl2', kind: 'warehouse' as const, name: 'مستودع الصيانة (تجريبي)' },
+    { id: 'demo-pl3', kind: 'staging' as const, name: 'نقطة انطلاق الطوارئ (تجريبي)' },
+    { id: 'demo-pl4', kind: 'staging' as const, name: 'نقطة انطلاق العدادات (تجريبي)' },
+  ];
+
   return {
     departments,
     technicians,
     meetings,
+    places,
     plan,
     settings: { ...DEFAULT_SETTINGS, engineerName: 'مهدي' },
     overrides: {},

@@ -86,9 +86,27 @@ async function overflow(page) {
     await page.reload();
     await id('open-week-plan').click();
     assert((await page.locator('body').innerText()).includes('خطة الأسبوع'), 'نافذة خطة الأسبوع');
-    await page.getByRole('button', { name: 'ابدأ' }).last().click(); // داخل نافذة الأسبوع
+    await page.locator('[data-testid="plan-start"]').last().click(); // داخل نافذة الأسبوع
     assert((await page.locator('[aria-checked="true"]').count()) >= 1, 'الفنيون محددون من الخطة');
     await id('sheet-close').click();
+
+    // مستودع من الخطة: زيارة بدون فنيين، ويختفي من اقتراحات الشهر
+    await id('tab-day').click();
+    const placesBefore = await page.locator('[data-testid="plan-place"]').count();
+    await page.locator('[data-testid="plan-place"]').first().click();
+    assert((await id('visit-site').inputValue()).includes('(تجريبي)'), 'اسم المكان معبأ في الموقع');
+    await id('visit-save').click();
+    await page.waitForTimeout(200);
+    await id('tab-visits').click();
+    await page.getByText('المستودعات والانطلاق', { exact: true }).click();
+    assert((await page.locator('body').innerText()).includes('انزار هالشهر'), 'المكان صار مزار هالشهر');
+    assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
+
+    // اجتماع مقترح مع الزيارة يفتح الحضور على نفس الاجتماع
+    await id('tab-day').click();
+    await page.locator('[data-testid="plan-meeting"]').first().click();
+    await page.waitForTimeout(200);
+    assert(await id('attendance-save').count() || (await page.locator('body').innerText()).includes('حضور'), 'فتح صفحة الحضور للاجتماع المقترح');
 
     // موضوع الاجتماع: اعتماده يضيفه كاجتماع ويحدده
     await id('tab-meetings').click();
@@ -115,6 +133,7 @@ async function overflow(page) {
     const screens = [
       ['اليوم', async () => id('tab-day').click()],
       ['الزيارات', async () => (await id('tab-visits').click(), await id('dept-b').click())],
+      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات والانطلاق', { exact: true }).click())],
       ['الاجتماعات', async () => (await id('tab-meetings').click(), await id('dept-b').click())],
       ['المتابعة', async () => id('tab-follow').click()],
       ['التقارير', async () => id('tab-reports').click()],

@@ -61,7 +61,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   // يظهرون في شاشة الزيارات بالقسم والشفت الصحيح
   await id('tab-visits').click();
   await id('dept-b').click();
-  await page.getByText('كل فنيي القسم').click();
+  await page.getByRole('button', { name: 'كل فنيي القسم', exact: true }).click();
   body = await page.locator('body').innerText();
   assert(/فني تجربة أول[\s\S]{0,40}طوارئ أ/.test(body), 'الفني ظاهر بشفته');
 
@@ -70,7 +70,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await page.getByText('وضع التجربة').first().click();
   await id('tab-visits').click();
   await id('dept-b').click();
-  await page.getByText('كل فنيي القسم').click();
+  await page.getByRole('button', { name: 'كل فنيي القسم', exact: true }).click();
   assert(!(await page.locator('body').innerText()).includes('فني تجربة أول'), 'وضع التجربة منفصل');
 
   assert.deepStrictEqual(errors, []);

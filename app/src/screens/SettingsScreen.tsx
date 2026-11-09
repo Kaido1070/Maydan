@@ -8,6 +8,8 @@ import { scheduleOf } from '../domain/worktime';
 import { isTime, WEEKDAYS_AR } from '../domain/dates';
 import { Pressable } from 'react-native';
 import { addDepartment } from '../domain/plan';
+import { addPlace, deletePlace, PLACE_NOUN, placesOf } from '../domain/places';
+import type { PlaceKind } from '../domain/types';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
@@ -158,6 +160,9 @@ export function SettingsScreen() {
           />
         </Row>
       </Card>
+
+      <SectionTitle title="المستودعات ونقاط الانطلاق" sub="تنزار مرة في الشهر على الأقل، وتطلع في خطة اليوم إذا ما انزارت" />
+      <PlacesCard />
 
       <SectionTitle
         title="الفنيون"
@@ -313,6 +318,58 @@ function WorkScheduleCard() {
         </View>
       </Row>
       <Sub>{'هدف الأسبوع = الهدف اليومي × ' + schedule.days.length + ' أيام. الإجازة ما تكسر سلسلة الإنجاز.'}</Sub>
+    </Card>
+  );
+}
+
+function PlacesCard() {
+  const { ws } = useStore();
+  const apply = useApply();
+  const ui = useUi();
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState<PlaceKind>('warehouse');
+  const places = placesOf(ws);
+  return (
+    <Card>
+      <Segmented
+        options={[
+          { value: 'warehouse', label: 'مستودع' },
+          { value: 'staging', label: 'نقطة انطلاق' },
+        ]}
+        value={kind}
+        onChange={setKind}
+      />
+      <Row style={{ marginTop: 8 }}>
+        <TextInput
+          testID="new-place-name"
+          value={name}
+          onChangeText={setName}
+          placeholder={kind === 'warehouse' ? 'اسم المستودع' : 'اسم نقطة الانطلاق'}
+          placeholderTextColor="#a29db3"
+          style={[s.input, { flex: 1, minWidth: 0 }]}
+        />
+        <Button
+          testID="add-place"
+          icon="plus"
+          label="إضافة"
+          disabled={!name.trim()}
+          onPress={() => {
+            const error = apply((c) => addPlace(c, { kind, name }));
+            if (error) return ui.notify(error);
+            setName('');
+            ui.notify('تمت إضافة ' + PLACE_NOUN[kind]);
+          }}
+        />
+      </Row>
+      {places.map((place, index) => (
+        <Spread key={place.id} style={{ paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: C.line, marginTop: index ? 0 : 8 }}>
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '600' }}>{place.name}</T>
+            <Sub>{PLACE_NOUN[place.kind]}</Sub>
+          </View>
+          <Button small variant="danger" label="حذف" onPress={() => confirm('حذف «' + place.name + '»؟ زياراته السابقة تبقى في السجل.', () => apply((c) => deletePlace(c, place.id)))} />
+        </Spread>
+      ))}
     </Card>
   );
 }

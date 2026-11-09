@@ -18,6 +18,7 @@ export type VisitInput = {
   site: string;
   technicianIds: string[];
   planItemId?: string;
+  placeId?: string;
 };
 
 const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
@@ -52,12 +53,14 @@ export function workTypeSuggestions(ws: Workspace, limit = 8): string[] {
 }
 
 export function validateVisit(ws: Workspace, input: VisitInput, today: string): string | null {
-  if (!ws.departments.some((item) => item.id === input.departmentId)) return 'اختر القسم';
+  const place = input.placeId ? (ws.places ?? []).find((item) => item.id === input.placeId) : undefined;
+  if (input.placeId && !place) return 'المكان غير موجود';
+  if (!place && !ws.departments.some((item) => item.id === input.departmentId)) return 'اختر القسم';
   if (!isDateKey(input.date)) return 'التاريخ غير صحيح';
   if (input.date > today) return 'ما يمكن تسجيل زيارة بتاريخ قادم';
   if (!isTime(input.time)) return 'اكتب الوقت بصيغة 24 ساعة مثل 09:30';
   if (!clean(input.workType) && !clean(input.location) && !input.site.trim()) return 'اكتب نوع المهمة أو الموقع';
-  if (!input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
+  if (!place && !input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
   return null;
 }
 
@@ -73,6 +76,7 @@ export function addVisit(ws: Workspace, input: VisitInput, today: string, stamp 
     ...visitFields(input),
     technicianIds: [...new Set(input.technicianIds)],
     ...(input.planItemId ? { planItemId: input.planItemId } : {}),
+    ...(input.placeId ? { placeId: input.placeId } : {}),
     createdAt: stamp,
     updatedAt: stamp,
   };

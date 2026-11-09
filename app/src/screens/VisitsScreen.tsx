@@ -7,9 +7,10 @@ import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
+import { PlacesView } from './PlacesView';
 import { DepartmentPicker } from './DepartmentPicker';
 
-export function VisitsScreen() {
+function CrewVisits() {
   const { ws, now } = useStore();
   const ui = useUi();
   const [scope, setScope] = useState<'shift' | 'all'>('shift');
@@ -90,6 +91,26 @@ export function VisitsScreen() {
           <Empty text="اختر قسمًا لعرض فنيي شفته الحالي وسجل زياراته." />
         </Card>
       )}
+    </View>
+  );
+}
+
+/** الزيارات: زيارات الفنيين، أو المستودعات ونقاط الانطلاق. */
+export function VisitsScreen() {
+  const [view, setView] = useState<'crew' | 'places'>('crew');
+  return (
+    <View>
+      <View style={{ marginTop: 6 }}>
+        <Segmented
+          options={[
+            { value: 'crew', label: 'زيارات الفنيين' },
+            { value: 'places', label: 'المستودعات والانطلاق' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
+      {view === 'crew' ? <CrewVisits /> : <PlacesView />}
     </View>
   );
 }

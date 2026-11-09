@@ -121,7 +121,7 @@ const OUT = process.env.SHOTS || null;
   await shot('roster');
   await id('tab-visits').click();
   await id('dept-b').click();
-  await page.getByText('كل فنيي القسم').click();
+  await page.getByRole('button', { name: 'كل فنيي القسم', exact: true }).click();
   body = await page.locator('body').innerText();
   assert(/وليد علي[\s\S]{0,40}طوارئ ب/.test(body), 'الشفت الأساسي الجديد يظهر بجانب الاسم');
   assert(/حسن يحيى[\s\S]{0,40}طوارئ أ/.test(body), 'الشفت الأساسي يظهر بجانب الاسم');
