@@ -3,7 +3,7 @@ import { TextInput, View } from 'react-native';
 import { formatDate, WEEKDAYS_AR } from '../domain/dates';
 import { removePlanItem } from '../domain/plan';
 import { deleteMeeting, renameMeeting } from '../domain/records';
-import { shiftName } from '../domain/shifts';
+import { shiftName, techTag } from '../domain/shifts';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
@@ -139,7 +139,7 @@ export function SettingsScreen() {
               <Spread key={tech.id} style={{ paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
                 <View style={{ flex: 1 }}>
                   <T style={{ fontWeight: '700', fontSize: 13, color: tech.active === false ? C.muted : C.ink }}>{tech.name}</T>
-                  <Sub>{tech.employeeNumber + ' · ' + shiftName(ws, tech) + (tech.active === false ? ' · غير نشط' : '')}</Sub>
+                  <Sub>{techTag(tech) + ' · ' + shiftName(ws, tech) + (tech.active === false ? ' · غير نشط' : '')}</Sub>
                 </View>
                 <Button small variant="secondary" label="تعديل" onPress={() => setTechSheet(tech.id)} />
               </Spread>

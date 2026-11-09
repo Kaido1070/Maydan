@@ -1,4 +1,5 @@
 import { addDays, dateOf, formatDate, MONTHS_AR } from './dates';
+import { techTag } from './shifts';
 import { coverageByDepartment, DepartmentCoverage, followUpList, FollowUp, yearMeetings } from './stats';
 import type { Workspace } from './types';
 
@@ -138,10 +139,10 @@ export function reportRows(report: Report): (string | number)[][] {
       [dept.department.name, 'الإجمالي', dept.coverage.people, dept.coverage.visitRemaining, dept.coverage.attendanceRemaining, dept.coverage.visitComplete, dept.coverage.meetingComplete],
     ]),
     [],
-    ['الفنيون المتبقي عليهم', 'الرقم الوظيفي', 'القسم', 'الشفت', 'زيارات متبقية', 'اجتماعات متبقية', 'الاجتماعات الناقصة'],
+    ['الفنيون والفرق المتبقي عليهم', 'الرقم الوظيفي / الفريق', 'القسم', 'الشفت', 'زيارات متبقية', 'اجتماعات متبقية', 'الاجتماعات الناقصة'],
     ...report.pending.map((row) => [
       row.technician.name,
-      row.technician.employeeNumber,
+      techTag(row.technician),
       row.departmentName,
       row.shiftName,
       row.visitRemaining,
@@ -193,8 +194,8 @@ export function reportHtml(report: Report, engineerName: string): string {
     '<h2>الفنيون المتبقي عليهم (' + report.pending.length + ')</h2>' +
     (report.pending.length
       ? table(
-          ['الفني', 'الرقم الوظيفي', 'القسم · الشفت', 'زيارات متبقية', 'اجتماعات متبقية'],
-          report.pending.map((row) => [row.technician.name, row.technician.employeeNumber, row.departmentName + ' · ' + row.shiftName, row.visitRemaining, row.meetingRemaining]),
+          ['الفني / الفريق', 'الرقم الوظيفي / الفريق', 'القسم · الشفت', 'زيارات متبقية', 'اجتماعات متبقية'],
+          report.pending.map((row) => [row.technician.name, techTag(row.technician), row.departmentName + ' · ' + row.shiftName, row.visitRemaining, row.meetingRemaining]),
         )
       : '<p>اكتملت تغطية جميع الفنيين.</p>') +
     '<p class="note">الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله. هدف كل فني زيارتان خلال آخر 6 أشهر وحضور كل اجتماعات السنة.</p>' +

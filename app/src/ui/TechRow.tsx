@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { formatDate } from '../domain/dates';
-import { initials, shiftName } from '../domain/shifts';
+import { initials, shiftName, techTag } from '../domain/shifts';
 import { techProgress, tone, yearMeetings } from '../domain/stats';
 import type { Technician, Workspace } from '../domain/types';
 import { Avatar, C, Chip, Icon, ratio, Row, Sub, T } from './kit';
@@ -70,7 +70,7 @@ export function TechRow({
               {showShift ? <Chip tone="purple" icon="layers" label={'الأساسي: ' + shiftName(ws, tech)} /> : null}
               {badge}
             </Row>
-            <Sub>{'الرقم الوظيفي ' + tech.employeeNumber}</Sub>
+            <Sub>{techTag(tech, true)}</Sub>
             <TechStatus ws={ws} tech={tech} asOf={asOf} />
           </View>
           <Icon name={open ? 'chevron-up' : 'chevron-down'} size={16} color={C.muted} />

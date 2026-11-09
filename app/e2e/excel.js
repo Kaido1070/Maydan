@@ -41,7 +41,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await download.saveAs(template);
   const tpl = XLSX.readFile(template);
   assert.deepStrictEqual(tpl.SheetNames, ['الفنيين', 'تعليمات']);
-  assert.deepStrictEqual(XLSX.utils.sheet_to_json(tpl.Sheets['الفنيين'], { header: 1 })[0], ['الاسم', 'الرقم الوظيفي', 'القسم', 'الشفت الأساسي', 'الحالة']);
+  assert.deepStrictEqual(XLSX.utils.sheet_to_json(tpl.Sheets['الفنيين'], { header: 1 })[0], ['الاسم', 'النوع', 'الرقم الوظيفي', 'المقاول', 'القسم', 'الشفت الأساسي', 'الحالة']);
 
   // الاستيراد
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), id('excel-import').click()]);

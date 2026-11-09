@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatDate, MONTHS_AR, normalizeDigits } from '../domain/dates';
 import { buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
-import { shiftName } from '../domain/shifts';
+import { shiftName, techTag } from '../domain/shifts';
 import { findByEmployeeNumber, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
 import { useStore } from '../store';
@@ -156,7 +156,7 @@ export function ReportsScreen() {
             <Spread key={row.technician.id} style={{ paddingVertical: 8, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
               <View style={{ flex: 1 }}>
                 <T style={{ fontWeight: '700', fontSize: 13 }}>{row.technician.name}</T>
-                <Sub>{row.departmentName + ' · ' + row.shiftName + ' · ' + row.technician.employeeNumber}</Sub>
+                <Sub>{row.departmentName + ' · ' + row.shiftName + ' · ' + techTag(row.technician)}</Sub>
                 {row.missingMeetings.length ? <Sub numberOfLines={2}>{'ناقص: ' + row.missingMeetings.map((m) => m.title).join('، ')}</Sub> : null}
               </View>
               <View style={{ gap: 3, alignItems: 'flex-end' }}>
@@ -185,7 +185,7 @@ function EmployeeSearch() {
   const progress = tech ? techProgress(ws, tech, now.date) : null;
   const allVisits = tech ? ws.visits.filter((v) => v.technicianIds.includes(tech.id)).length : 0;
   const search = () => setSearched(normalizeDigits(query));
-  const example = ws.technicians[0]?.employeeNumber;
+  const example = ws.technicians.find((t) => t.employeeNumber)?.employeeNumber;
 
   return (
     <>
@@ -213,7 +213,7 @@ function EmployeeSearch() {
               <View style={{ flex: 1 }}>
                 <T style={{ fontWeight: '800', fontSize: 16 }}>{tech.name}</T>
                 <Sub>
-                  {'الرقم الوظيفي ' + tech.employeeNumber + ' · ' + (ws.departments.find((d) => d.id === tech.departmentId)?.name ?? '—') + ' · ' + shiftName(ws, tech) + (tech.active === false ? ' · غير نشط' : '')}
+                  {techTag(tech, true) + ' · ' + (ws.departments.find((d) => d.id === tech.departmentId)?.name ?? '—') + ' · ' + shiftName(ws, tech) + (tech.active === false ? ' · غير نشط' : '')}
                 </Sub>
               </View>
               <Button small variant="secondary" label="نقل/تكليف" onPress={() => ui.openTechnician(tech.id)} />

@@ -13,7 +13,7 @@ export function buildTechnicianWorkbook(ws: Workspace): Uint8Array {
   const book = XLSX.utils.book_new();
   book.Workbook = { Views: [{ RTL: true }] };
   const techs = XLSX.utils.aoa_to_sheet(technicianTable(ws));
-  techs['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 10 }];
+  techs['!cols'] = [{ wch: 28 }, { wch: 8 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 20 }, { wch: 10 }];
   const help = XLSX.utils.aoa_to_sheet(instructionsTable(ws));
   help['!cols'] = [{ wch: 18 }, { wch: 60 }];
   XLSX.utils.book_append_sheet(book, techs, 'الفنيين');
@@ -43,7 +43,7 @@ export function readTable(bytes: Uint8Array): unknown[][] {
   const book = binary
     ? XLSX.read(bytes, { type: 'array', cellDates: false })
     : XLSX.read(utf8(bytes).replace(/^\uFEFF/, ''), { type: 'string', raw: true });
-  const sheetName = book.SheetNames.find((name) => name.trim() === 'الفنيين') ?? book.SheetNames[0];
+  const sheetName = book.SheetNames.find((name) => name.trim().startsWith('الفنيين')) ?? book.SheetNames[0];
   if (!sheetName) return [];
   return XLSX.utils.sheet_to_json<unknown[]>(book.Sheets[sheetName], { header: 1, raw: true, defval: '' });
 }

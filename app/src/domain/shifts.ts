@@ -94,6 +94,14 @@ export function shiftLabel(slot: Slot | null | undefined): string {
 export const shiftName = (ws: Workspace, tech: Technician) =>
   ws.departments.find((item) => item.id === tech.departmentId)?.shifts.find((shift) => shift.id === tech.baseShiftId)?.name ?? '—';
 
+export const isTeam = (tech: Technician) => tech.kind === 'team';
+
+/** وصف قصير يعرّف الفني أو الفريق: الرقم الوظيفي، أو «فريق · مقاول ...». */
+export function techTag(tech: Technician, long = false): string {
+  if (!isTeam(tech)) return (long ? 'الرقم الوظيفي ' : '') + tech.employeeNumber;
+  return ['فريق', tech.contractor ? 'مقاول ' + tech.contractor : '', tech.employeeNumber ? 'رقم ' + tech.employeeNumber : ''].filter(Boolean).join(' · ');
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')) || '؟';

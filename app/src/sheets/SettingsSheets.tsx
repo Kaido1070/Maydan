@@ -213,10 +213,14 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
   const [number, setNumber] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [shiftId, setShiftId] = useState('');
+  const [kind, setKind] = useState<'person' | 'team'>('person');
+  const [contractor, setContractor] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!technicianId) return;
+    setKind(existing?.kind ?? 'person');
+    setContractor(existing?.contractor ?? '');
     const first = ws.departments[0];
     setName(existing?.name ?? '');
     setNumber(existing?.employeeNumber ?? '');
@@ -231,17 +235,17 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
 
   const save = () => {
     const failure = apply((current) =>
-      upsertTechnician(current, { id: existing?.id, name, employeeNumber: number, departmentId, baseShiftId: shiftId, active: existing?.active ?? true }),
+      upsertTechnician(current, { id: existing?.id, name, employeeNumber: number, kind, contractor, departmentId, baseShiftId: shiftId, active: existing?.active ?? true }),
     );
     if (failure) return setError(failure);
-    onSaved(existing ? 'تم تحديث بيانات الفني' : 'تمت إضافة الفني');
+    onSaved(existing ? 'تم تحديث البيانات' : kind === 'team' ? 'تمت إضافة الفريق' : 'تمت إضافة الفني');
   };
 
   return (
     <Sheet
       visible
       onClose={onClose}
-      title={existing ? 'تعديل فني' : 'إضافة فني'}
+      title={existing ? 'تعديل' : 'إضافة فني أو فريق'}
       footer={
         <>
           {error ? <T style={{ color: C.red, fontSize: 13 }}>{error}</T> : null}
@@ -265,8 +269,26 @@ export function TechnicianEditSheet({ technicianId, onClose, onSaved }: { techni
         </>
       }
     >
-      <Field label="اسم الفني" value={name} onChangeText={setName} testID="tech-name" />
-      <Field label="الرقم الوظيفي" value={number} onChangeText={setNumber} keyboardType="number-pad" testID="tech-number" />
+      <Segmented
+        options={[
+          { value: 'person', label: 'فني' },
+          { value: 'team', label: 'فريق / مقاول' },
+        ]}
+        value={kind}
+        onChange={setKind}
+      />
+      <Sub style={{ marginVertical: 8 }}>
+        {kind === 'team' ? 'للإنشاءات والصيانة: سجّل الفريق باسمه أو باسم المقاول. يُحسب له هدف الزيارات والاجتماعات مثل الفني.' : 'فني باسمه ورقمه الوظيفي.'}
+      </Sub>
+      <Field label={kind === 'team' ? 'اسم الفريق' : 'اسم الفني'} value={name} onChangeText={setName} testID="tech-name" placeholder={kind === 'team' ? 'مثال: فريق الحفريات 1' : ''} />
+      {kind === 'team' ? <Field label="اسم المقاول (اختياري)" value={contractor} onChangeText={setContractor} testID="tech-contractor" /> : null}
+      <Field
+        label={kind === 'team' ? 'رقم الفريق أو العقد (اختياري)' : 'الرقم الوظيفي'}
+        value={number}
+        onChangeText={setNumber}
+        keyboardType={kind === 'team' ? 'default' : 'number-pad'}
+        testID="tech-number"
+      />
       <T style={{ fontWeight: '700', fontSize: 12, marginBottom: 6 }}>القسم</T>
       <Segmented
         wrap
