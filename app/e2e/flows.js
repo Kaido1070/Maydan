@@ -94,7 +94,8 @@ const OUT = process.env.SHOTS || null;
   assert(/الأحد 8 نوفمبر 2026 · 13:45/.test(body), 'سجل الحضور فيه التاريخ والوقت المحددين');
 
   // 3) نقل فني بين الشفتات
-  await id('tab-roster').click();
+  await id('tab-day').click();
+  await id('open-roster').click();
   await page.getByText('الشفت الأساسي للفنيين').click();
   await id('roster-move-b11').click();
   await page.getByRole('button', { name: 'طوارئ ب' }).first().click();
@@ -108,8 +109,8 @@ const OUT = process.env.SHOTS || null;
   await id('dept-b').click();
   await page.getByText('كل فنيي القسم').click();
   body = await page.locator('body').innerText();
-  assert(/وليد علي[\s\S]{0,40}الأساسي: طوارئ ب/.test(body), 'الشفت الأساسي الجديد يظهر بجانب الاسم');
-  assert(/حسن يحيى[\s\S]{0,40}الأساسي: طوارئ أ/.test(body), 'الشفت الأساسي يظهر بجانب الاسم');
+  assert(/وليد علي[\s\S]{0,40}طوارئ ب/.test(body), 'الشفت الأساسي الجديد يظهر بجانب الاسم');
+  assert(/حسن يحيى[\s\S]{0,40}طوارئ أ/.test(body), 'الشفت الأساسي يظهر بجانب الاسم');
 
   // 4) أرقام التقرير
   await id('tab-reports').click();
@@ -129,11 +130,17 @@ const OUT = process.env.SHOTS || null;
   await id('dept-b').click();
   assert((await page.locator('body').innerText()).includes('موقع الاختبار الأول'), 'البيانات محفوظة بعد إعادة التشغيل');
 
+  // بطاقة اليوم: التقدم والسلسلة والمهمة التالية
+  await id('tab-day').click();
+  assert(/\d+ \/ \d+/.test(await id('hero-progress').innerText()), 'تقدم مهام اليوم ظاهر');
+  assert((await id('hero-streak').innerText()).includes('🔥'), 'سلسلة الإنجاز ظاهرة');
+  assert(await id('next-task').isVisible(), 'المهمة التالية ظاهرة');
+
   // مهام اليوم: تذكير زيارة → تفاصيل الفني → تسجيل زيارة له → تصير منجزة
   await id('tab-day').click();
   const dailyTask = page.locator('[data-testid^="daily-visit-"]').first();
   const techId = (await dailyTask.getAttribute('data-testid')).replace('daily-visit-', '');
-  assert((await dailyTask.innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر');
+  assert((await id('next-task').innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر في المهمة التالية');
   await dailyTask.click();
   await page.waitForSelector('text=الزيارات · آخر 6 أشهر');
   await id('person-visit').click();

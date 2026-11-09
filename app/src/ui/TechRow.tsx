@@ -10,11 +10,10 @@ export function TechStatus({ ws, tech, asOf }: { ws: Workspace; tech: Technician
   const progress = techProgress(ws, tech, asOf);
   return (
     <Row gap={4} style={{ flexWrap: 'wrap' }}>
-      <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} label={'زيارات ' + ratio(progress.visitCount, ws.settings.visitTarget)} />
-      <Chip
-        tone={tone(progress.attended.size, progress.meetingTarget)}
-        label={'اجتماعات ' + ratio(progress.attended.size, progress.meetingTarget)}
-      />
+      <Chip tone={tone(progress.visitCount, ws.settings.visitTarget)} icon="map-pin" label={'زيارات ' + ratio(progress.visitCount, ws.settings.visitTarget)} />
+      {progress.meetingTarget ? (
+        <Chip tone={tone(progress.attended.size, progress.meetingTarget)} icon="users" label={'اجتماعات ' + ratio(progress.attended.size, progress.meetingTarget)} />
+      ) : null}
     </Row>
   );
 }
@@ -67,10 +66,9 @@ export function TechRow({
           <View style={{ flex: 1, gap: 3 }}>
             <Row gap={6} style={{ flexWrap: 'wrap' }}>
               <T style={{ fontWeight: '700', fontSize: 14 }}>{tech.name}</T>
-              {showShift ? <Chip tone="purple" icon="layers" label={'الأساسي: ' + shiftName(ws, tech)} /> : null}
               {badge}
             </Row>
-            <Sub>{techTag(tech, true)}</Sub>
+            <Sub>{techTag(tech) + (showShift ? ' · ' + shiftName(ws, tech) : '')}</Sub>
             <TechStatus ws={ws} tech={tech} asOf={asOf} />
           </View>
           <Icon name={open ? 'chevron-up' : 'chevron-down'} size={16} color={C.muted} />

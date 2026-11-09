@@ -29,7 +29,6 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'meetings', label: 'الاجتماعات', icon: 'users' },
   { id: 'equipment', label: 'المعدات', icon: 'tool' },
   { id: 'reports', label: 'التقارير', icon: 'bar-chart-2' },
-  { id: 'roster', label: 'الشفتات', icon: 'calendar' },
 ];
 
 const TITLES: Record<Tab, string> = {
@@ -233,7 +232,7 @@ const styles = StyleSheet.create({
   gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
   tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
-  tabIcon: { width: 40, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 11, color: '#5f5975' },
+  tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tabText: { fontSize: 12, color: '#5f5975' },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
 });

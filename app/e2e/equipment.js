@@ -52,7 +52,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   // الشعار يرجع لمهام اليوم
   await id('tab-reports').click();
   await id('brand-home').click();
-  assert((await page.locator('body').innerText()).includes('تحدي اليوم'), 'الشعار يرجع لصفحة اليوم');
+  assert(await id('hero-progress').isVisible(), 'الشعار يرجع لصفحة اليوم');
 
   assert.deepStrictEqual(errors, []);
   console.log('✓ معدات التوزيع وزر الشعار نجحوا');

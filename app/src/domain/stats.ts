@@ -1,4 +1,4 @@
-import { monthsBefore } from './dates';
+import { addDays, monthsBefore } from './dates';
 import { activeTechnicians, crewForShift, shiftName } from './shifts';
 import type { Department, Meeting, Shift, Technician, Visit, Workspace } from './types';
 
@@ -150,4 +150,19 @@ export function dayProgress(ws: Workspace, date: string) {
 export function findByEmployeeNumber(ws: Workspace, number: string): Technician | undefined {
   const key = number.trim();
   return key ? ws.technicians.find((tech) => tech.employeeNumber === key) : undefined;
+}
+
+/**
+ * سلسلة الإنجاز: عدد الأيام المتتالية اللي حققت فيها هدف الزيارات اليومي.
+ * إذا ما تحقق هدف اليوم بعد، تُحسب السلسلة لين أمس (ما تنكسر قبل نهاية اليوم).
+ */
+export function visitStreak(ws: Workspace, today: string): { days: number; todayDone: boolean } {
+  const goal = ws.settings.dailyVisitGoal;
+  const perDay = new Map<string, number>();
+  for (const visit of ws.visits) if (!visit.seed) perDay.set(visit.date, (perDay.get(visit.date) ?? 0) + 1);
+  const met = (date: string) => (perDay.get(date) ?? 0) >= goal;
+  const todayDone = met(today);
+  let days = 0;
+  for (let date = todayDone ? today : addDays(today, -1); met(date); date = addDays(date, -1)) days++;
+  return { days, todayDone };
 }

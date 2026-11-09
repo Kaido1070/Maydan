@@ -109,7 +109,7 @@ export function SettingsScreen() {
         <IconLine icon="zap" text={'كل زيارة +' + ws.settings.xpVisit + ' XP وكل تسجيل حضور اجتماع +' + ws.settings.xpMeeting + ' XP، وكل 100 XP مستوى جديد.'} />
       </Card>
 
-      <SectionTitle title="الأقسام والشفتات" sub="بداية الدورات وأوقات الدوام" />
+      <SectionTitle title="الأقسام والشفتات" sub="بداية الدورات وأوقات الدوام" right={<Button small variant="secondary" icon="calendar" label="جدول الشفتات" onPress={() => ui.go('roster')} />} />
       {ws.departments.map((department) => (
         <Card key={department.id}>
           <Spread style={{ alignItems: 'flex-start' }}>

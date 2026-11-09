@@ -63,7 +63,7 @@ const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
   await id('dept-b').click();
   await page.getByText('كل فنيي القسم').click();
   body = await page.locator('body').innerText();
-  assert(/فني تجربة أول[\s\S]{0,40}الأساسي: طوارئ أ/.test(body), 'الفني ظاهر بشفته');
+  assert(/فني تجربة أول[\s\S]{0,40}طوارئ أ/.test(body), 'الفني ظاهر بشفته');
 
   // وضع التجربة ما تأثر
   await id('open-settings').click();
