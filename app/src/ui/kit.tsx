@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Tone } from '../domain/stats';
+import { FONTS, fontFor, MIN_FONT_SIZE } from './fonts';
 
 export const C = {
   bg: '#f6f5f9',
@@ -42,11 +43,29 @@ export function Icon({ name, size = 18, color = C.purple }: { name: IconName; si
   return <Feather name={name} size={size} color={color} />;
 }
 
-export function T({ style, children, ...props }: React.ComponentProps<typeof Text>) {
+/** نص بخط التطبيق: يختار ملف الوزن المناسب، ويضمن حجمًا مقروءًا ومسافة أسطر مريحة. */
+export function AppText({ style, children, ...props }: React.ComponentProps<typeof Text>) {
+  const flat = StyleSheet.flatten(style) ?? {};
+  const fontSize = Math.max(MIN_FONT_SIZE, flat.fontSize ?? 15);
+  const resolved: TextStyle = {
+    ...flat,
+    fontSize,
+    fontFamily: fontFor(flat.fontWeight),
+    fontWeight: 'normal',
+    lineHeight: flat.lineHeight ? Math.max(flat.lineHeight, Math.round(fontSize * 1.4)) : Math.round(fontSize * 1.55),
+  };
   return (
-    <Text {...props} style={[s.text, style]}>
+    <Text {...props} style={resolved}>
       {children}
     </Text>
+  );
+}
+
+export function T({ style, children, ...props }: React.ComponentProps<typeof Text>) {
+  return (
+    <AppText {...props} style={[s.text, style]}>
+      {children}
+    </AppText>
   );
 }
 
@@ -79,7 +98,7 @@ export function Chip({ tone, label, icon }: { tone: Tone | 'neutral' | 'purple';
   return (
     <View style={[s.chip, { backgroundColor: bg }]}>
       {icon ? <Icon name={icon} size={11} color={fg} /> : <View style={[s.dot, { backgroundColor: fg }]} />}
-      <Text style={[s.chipText, { color: fg }]}>{label}</Text>
+      <AppText style={[s.chipText, { color: fg }]}>{label}</AppText>
     </View>
   );
 }
@@ -131,7 +150,7 @@ export function Button({
       ]}
     >
       {icon ? <Icon name={icon} size={small ? 13 : 15} color={fg} /> : null}
-      <Text style={[s.buttonText, small && { fontSize: 12 }, { color: fg }]}>{label}</Text>
+      <AppText style={[s.buttonText, small && { fontSize: 13 }, { color: fg }]}>{label}</AppText>
     </Pressable>
   );
 }
@@ -139,7 +158,7 @@ export function Button({
 export function Avatar({ text, size = 34 }: { text: string; size?: number }) {
   return (
     <View style={[s.avatar, { width: size, height: size, borderRadius: size / 3 }]}>
-      <Text style={{ color: '#5335ae', fontWeight: '700', fontSize: size * 0.36 }}>{text}</Text>
+      <AppText style={{ color: '#5335ae', fontWeight: '700', fontSize: size * 0.36, lineHeight: size * 0.6 }}>{text}</AppText>
     </View>
   );
 }
@@ -196,7 +215,7 @@ export function Segmented<V extends string | number>({ options, value, onChange,
             onPress={() => onChange(option.value)}
             style={[s.segment, wrap && { flexGrow: 0, flexBasis: 'auto' }, active && s.segmentOn]}
           >
-            <Text style={[s.segmentText, active && { color: C.white }]}>{option.label}</Text>
+            <AppText style={[s.segmentText, active && { color: C.white }]}>{option.label}</AppText>
           </Pressable>
         );
       })}
@@ -274,18 +293,18 @@ export function Divider() {
 }
 
 export const s = StyleSheet.create({
-  text: { color: C.ink, fontSize: 14 },
-  sub: { color: C.muted, fontSize: 12, lineHeight: 18 },
+  text: { color: C.ink, fontSize: 15 },
+  sub: { color: '#5d5873', fontSize: 13, lineHeight: 20 },
   h2: { fontSize: 19, fontWeight: '800', color: C.ink },
   h3: { fontSize: 15, fontWeight: '700', color: C.ink },
-  label: { fontSize: 12, fontWeight: '700', color: C.ink },
+  label: { fontSize: 13, fontWeight: '700', color: C.ink },
   card: { backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 14, marginBottom: 10 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
-  chipText: { fontSize: 11, fontWeight: '700' },
+  chipText: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 11, paddingHorizontal: 14, minHeight: 44 },
   buttonSmall: { minHeight: 34, paddingHorizontal: 10, borderRadius: 9 },
-  buttonText: { fontSize: 14, fontWeight: '700' },
+  buttonText: { fontSize: 15, fontWeight: '700' },
   avatar: { backgroundColor: '#f1edff', alignItems: 'center', justifyContent: 'center' },
   iconBox: { alignItems: 'center', justifyContent: 'center' },
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: '#b8afd0', alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
@@ -293,8 +312,8 @@ export const s = StyleSheet.create({
   segmented: { flexDirection: 'row', backgroundColor: '#ece8f5', borderRadius: 11, padding: 3, gap: 3 },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 10, minHeight: 34 },
   segmentOn: { backgroundColor: C.purple },
-  segmentText: { fontSize: 13, fontWeight: '700', color: '#4a4160' },
-  input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16 },
+  segmentText: { fontSize: 14, fontWeight: '600', color: '#4a4160' },
+  input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16, fontFamily: FONTS.regular },
   stepBtn: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   sheet: { flex: 1, backgroundColor: C.bg },
   sheetHead: { padding: 16, paddingBottom: 12, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line },

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
@@ -13,7 +13,8 @@ import { ChangelogSheet, WhatsNewSheet } from './src/sheets/ChangelogSheet';
 import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftSheets';
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { StoreProvider, useStore } from './src/store';
-import { C, Icon, IconName } from './src/ui/kit';
+import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
+import { useAppFonts } from './src/ui/fonts';
 import { Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
 
@@ -193,6 +194,8 @@ function Shell() {
 }
 
 export default function App() {
+  const fontsReady = useAppFonts();
+  if (!fontsReady) return <View style={{ flex: 1, backgroundColor: C.night }} />;
   return (
     <SafeAreaProvider>
       <StoreProvider>
@@ -208,16 +211,16 @@ const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#a78bfa', alignItems: 'center', justifyContent: 'center' },
   brandName: { color: '#fff', fontSize: 19, fontWeight: '800' },
-  brandSub: { color: '#bdb7d1', fontSize: 11 },
+  brandSub: { color: '#cfc9e0', fontSize: 12 },
   modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
   demo: { backgroundColor: '#3a2d18', borderColor: '#6b5320' },
   live: { backgroundColor: '#163528', borderColor: '#24614a' },
-  modeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  modeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   dot: { width: 7, height: 7, borderRadius: 4 },
   gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
   tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
   tabIcon: { width: 44, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 11, color: '#6f6984' },
+  tabText: { fontSize: 12, color: '#5f5975' },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
 });
