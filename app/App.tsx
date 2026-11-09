@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EquipmentScreen } from './src/screens/EquipmentScreen';
+import { FollowScreen, OvertimeSheet } from './src/screens/FollowScreen';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
 import { ReportsScreen } from './src/screens/ReportsScreen';
 import { RosterScreen } from './src/screens/RosterScreen';
@@ -29,7 +29,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'day', label: 'اليوم', icon: 'grid' },
   { id: 'visits', label: 'الزيارات', icon: 'map-pin' },
   { id: 'meetings', label: 'الاجتماعات', icon: 'users' },
-  { id: 'equipment', label: 'المعدات', icon: 'tool' },
+  { id: 'follow', label: 'المتابعة', icon: 'flag' },
   { id: 'reports', label: 'التقارير', icon: 'bar-chart-2' },
 ];
 
@@ -37,7 +37,7 @@ const TITLES: Record<Tab, string> = {
   day: 'مهام اليوم',
   visits: 'الزيارات',
   meetings: 'الاجتماعات',
-  equipment: 'معدات التوزيع',
+  follow: 'المتابعة',
   reports: 'الإحصائيات والتقارير',
   roster: 'جدول الشفتات',
   settings: 'الإعدادات',
@@ -59,6 +59,7 @@ function Shell() {
   const [whatsNew, setWhatsNew] = useState<Release[]>([]);
   const [changelog, setChangelog] = useState(false);
   const [person, setPerson] = useState<string | null>(null);
+  const [overtime, setOvertime] = useState<{ id: string | null } | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(SEEN_VERSION_KEY)
@@ -96,6 +97,7 @@ function Shell() {
       openSlot: setSlot,
       openChangelog: () => setChangelog(true),
       openPerson: setPerson,
+      openOvertime: (id) => setOvertime({ id }),
       focusMeetingId,
       departmentId,
       setDepartmentId,
@@ -123,7 +125,7 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, level, allDone, week.visits, week.goal]);
 
-  const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, equipment: EquipmentScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
+  const Screen = { day: TodayScreen, visits: VisitsScreen, meetings: MeetingsScreen, follow: FollowScreen, reports: ReportsScreen, roster: RosterScreen, settings: SettingsScreen }[tab];
 
   return (
     <UiContext.Provider value={ui}>
@@ -225,6 +227,7 @@ function Shell() {
         />
         <ChangelogSheet visible={changelog} onClose={() => setChangelog(false)} />
         <PersonSheet technicianId={person} onClose={() => setPerson(null)} />
+        <OvertimeSheet visible={!!overtime} entryId={overtime?.id ?? null} onClose={() => setOvertime(null)} />
         <SlotSheet
           target={slot}
           onClose={() => setSlot(null)}

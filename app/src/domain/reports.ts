@@ -1,6 +1,8 @@
 import { addDays, dateOf, formatDate, MONTHS_AR } from './dates';
 import { techTag } from './shifts';
 import { activeTechnicians } from './shifts';
+import { findingStats, FindingStats } from './findings';
+import { formatDuration, overtimeSummary, OvertimeSummary } from './worktime';
 import { coverageByDepartment, DepartmentCoverage, followUpList, FollowUp, techProgress, yearMeetings } from './stats';
 import type { Workspace } from './types';
 
@@ -42,6 +44,9 @@ export type Report = {
   meetingTitles: string[];
   /** توزيع الفنيين: بدون / جزئي / مكتمل، للزيارات وللاجتماعات. */
   statusMix: { visits: StatusMix; meetings: StatusMix };
+  /** الملاحظات والمخالفات المسجلة في الفترة، والعمل خارج الدوام. */
+  findings: { observation: FindingStats; violation: FindingStats };
+  overtime: OvertimeSummary;
 };
 
 export type StatusMix = { none: number; partial: number; complete: number };
@@ -124,6 +129,11 @@ export function buildReport(ws: Workspace, params: ReportParams, today: string):
     pending: followUpList(ws, asOf, params.departmentId),
     meetingTitles: yearMeetings(ws, Number(asOf.slice(0, 4))).map((item) => item.title),
     statusMix: statusMix(ws, asOf, params.departmentId),
+    findings: {
+      observation: findingStats(ws, 'observation', today, { start: period.start, end: period.end }),
+      violation: findingStats(ws, 'violation', today, { start: period.start, end: period.end }),
+    },
+    overtime: overtimeSummary(ws, period.start, period.end),
   };
 }
 
@@ -157,6 +167,13 @@ export function reportRows(report: Report): (string | number)[][] {
       ]),
       [dept.department.name, 'الإجمالي', dept.coverage.people, dept.coverage.visitRemaining, dept.coverage.attendanceRemaining, dept.coverage.visitComplete, dept.coverage.meetingComplete],
     ]),
+    [],
+    ['الملاحظات والمخالفات', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
+    ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
+    ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+    [],
+    ['العمل خارج الدوام', 'مرات مسجلة', 'الوقت', 'أيام', 'نشاط خارج الدوام'],
+    ['الفترة', report.overtime.entries, formatDuration(report.overtime.minutes), report.overtime.days, report.overtime.outOfHoursActivities],
     [],
     ['الفنيون والفرق المتبقي عليهم', 'الرقم الوظيفي / الفريق', 'القسم', 'الشفت', 'زيارات متبقية', 'اجتماعات متبقية', 'الاجتماعات الناقصة'],
     ...report.pending.map((row) => [
@@ -255,6 +272,16 @@ export function reportHtml(report: Report, engineerName: string): string {
         dept.shifts.map((row) => [dept.department.name, row.shift.name, row.coverage.people, row.coverage.visitRemaining, row.coverage.attendanceRemaining]),
       ),
     ) +
+    '<h2>الملاحظات والمخالفات</h2>' +
+    table(
+      ['', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
+      [
+        ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
+        ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+      ],
+    ) +
+    '<h2>العمل خارج الدوام</h2>' +
+    table(['مرات مسجلة', 'الوقت', 'أيام', 'نشاط خارج الدوام'], [[report.overtime.entries, formatDuration(report.overtime.minutes), report.overtime.days, report.overtime.outOfHoursActivities]]) +
     '<h2>الفنيون المتبقي عليهم (' + report.pending.length + ')</h2>' +
     (report.pending.length
       ? table(

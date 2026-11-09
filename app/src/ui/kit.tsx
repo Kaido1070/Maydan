@@ -229,7 +229,7 @@ export function Segmented<V extends string | number>({ options, value, onChange,
             onPress={() => onChange(option.value)}
             style={[s.segment, wrap && { flexGrow: 0, flexBasis: 'auto' }, active && s.segmentOn]}
           >
-            <AppText style={[s.segmentText, active && { color: C.white }]}>{option.label}</AppText>
+            <AppText numberOfLines={wrap ? undefined : 1} style={[s.segmentText, !wrap && options.length >= 3 && { fontSize: 13 }, active && { color: C.white }]}>{option.label}</AppText>
           </Pressable>
         );
       })}
@@ -324,7 +324,7 @@ export const s = StyleSheet.create({
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: '#b8afd0', alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
   checkboxOn: { backgroundColor: C.purple, borderColor: C.purple },
   segmented: { flexDirection: 'row', backgroundColor: '#ece8f5', borderRadius: 11, padding: 3, gap: 3 },
-  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 10, minHeight: 34 },
+  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 6, minHeight: 36 },
   segmentOn: { backgroundColor: C.purple },
   segmentText: { fontSize: 14, fontWeight: '600', color: '#4a4160' },
   input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16, fontFamily: FONTS.regular },

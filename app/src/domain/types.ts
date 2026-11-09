@@ -99,11 +99,47 @@ export type EquipmentRecord = {
   updatedAt: string;
 };
 
+/** دوام المهندس نفسه: أيام وساعات العمل (جزء ميدان وجزء مكتب). */
+export type WorkSchedule = { days: number[]; start: string; end: string };
+
+export type FindingKind = 'observation' | 'violation';
+export type FindingStatus = 'open' | 'progress' | 'closed';
+
+/** تحديث على ملاحظة أو مخالفة: ملاحظة متابعة، أو سبب تأخير، أو إغلاق. */
+export type FindingUpdate = { id: string; date: string; kind: 'note' | 'delay' | 'close' | 'reopen'; text: string };
+
+/** ملاحظة سلامة أو مخالفة تُتابع لين تنقفل. */
+export type Finding = {
+  id: string;
+  kind: FindingKind;
+  title: string;
+  description: string;
+  departmentId?: string;
+  location: string;
+  /** المسؤول عن الإغلاق: فني أو مقاول أو جهة. */
+  responsible: string;
+  date: string;
+  dueDate?: string;
+  status: FindingStatus;
+  closedAt?: string;
+  photos: Photo[];
+  updates: FindingUpdate[];
+  /** خانات إضافية (نموذج المخالفات لاحقًا). */
+  extra?: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** عمل خارج الدوام. */
+export type OvertimeEntry = { id: string; date: string; start: string; end: string; reason: string; createdAt: string };
+
 export type Settings = {
   engineerName: string;
   dailyVisitGoal: number;
-  /** هدف الزيارات الأسبوعي (الأحد إلى السبت). الافتراضي 5 أضعاف الهدف اليومي. */
+  /** هدف الزيارات الأسبوعي. الافتراضي = الهدف اليومي × أيام الدوام. */
   weeklyVisitGoal?: number;
+  /** دوام المهندس. الافتراضي الأحد–الخميس 7:00–15:00. */
+  workSchedule?: WorkSchedule;
   visitTarget: number;
   visitWindowMonths: number;
   xpVisit: number;
@@ -121,6 +157,8 @@ export type Workspace = {
   attendance: MeetingAttendance[];
   /** سجلات معدات التوزيع (اختياري للبيانات القديمة). */
   equipment?: EquipmentRecord[];
+  findings?: Finding[];
+  overtime?: OvertimeEntry[];
 };
 
 export type Mode = 'demo' | 'live';

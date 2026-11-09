@@ -1,4 +1,5 @@
 import { addDays, monthsBefore, weekdayOf } from './dates';
+import { isWorkDay, previousWorkDay, scheduleOf } from './worktime';
 import { activeTechnicians, crewForShift, shiftName } from './shifts';
 import type { Department, Meeting, Shift, Technician, Visit, Workspace } from './types';
 
@@ -140,9 +141,12 @@ export function xpSummary(ws: Workspace) {
 }
 
 export function dayProgress(ws: Workspace, date: string) {
+  const workDay = isWorkDay(ws.settings, date);
   return {
     visits: ws.visits.filter((visit) => visit.date === date).length,
-    goal: ws.settings.dailyVisitGoal,
+    /** هدف اليوم: صفر في أيام الإجازة. */
+    goal: workDay ? ws.settings.dailyVisitGoal : 0,
+    workDay,
     meetings: ws.attendance.filter((item) => item.date === date).length,
   };
 }
@@ -153,8 +157,8 @@ export function findByEmployeeNumber(ws: Workspace, number: string): Technician 
 }
 
 /**
- * سلسلة الإنجاز: عدد الأيام المتتالية اللي حققت فيها هدف الزيارات اليومي.
- * إذا ما تحقق هدف اليوم بعد، تُحسب السلسلة لين أمس (ما تنكسر قبل نهاية اليوم).
+ * سلسلة الإنجاز: عدد أيام الدوام المتتالية اللي حققت فيها هدف الزيارات اليومي.
+ * أيام الإجازة ما تكسر السلسلة، واليوم ما يكسرها قبل ما يخلص.
  */
 export function visitStreak(ws: Workspace, today: string): { days: number; todayDone: boolean } {
   const goal = ws.settings.dailyVisitGoal;
@@ -162,12 +166,12 @@ export function visitStreak(ws: Workspace, today: string): { days: number; today
   for (const visit of ws.visits) if (!visit.seed) perDay.set(visit.date, (perDay.get(visit.date) ?? 0) + 1);
   const met = (date: string) => (perDay.get(date) ?? 0) >= goal;
   const todayDone = met(today);
-  let days = 0;
-  for (let date = todayDone ? today : addDays(today, -1); met(date); date = addDays(date, -1)) days++;
+  let days = todayDone ? 1 : 0;
+  for (let date = previousWorkDay(ws.settings, today); met(date) && days < 400; date = previousWorkDay(ws.settings, date)) days++;
   return { days, todayDone };
 }
 
-export const weeklyGoal = (ws: Workspace) => ws.settings.weeklyVisitGoal ?? ws.settings.dailyVisitGoal * 5;
+export const weeklyGoal = (ws: Workspace) => ws.settings.weeklyVisitGoal ?? ws.settings.dailyVisitGoal * scheduleOf(ws.settings).days.length;
 
 /** تقدم الأسبوع: الزيارات من يوم الأحد لين اليوم (بدون بيانات التجربة الأولية). */
 export function weekProgress(ws: Workspace, today: string): { visits: number; goal: number; start: string } {

@@ -4,6 +4,9 @@ import { formatDate } from '../domain/dates';
 import { deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName, techTag } from '../domain/shifts';
 import { weeklyGoal } from '../domain/stats';
+import { scheduleOf } from '../domain/worktime';
+import { isTime, WEEKDAYS_AR } from '../domain/dates';
+import { Pressable } from 'react-native';
 import { addDepartment } from '../domain/plan';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
@@ -112,6 +115,9 @@ export function SettingsScreen() {
         <NumberRow label="نافذة الزيارات (أشهر)" value={ws.settings.visitWindowMonths} min={1} onChange={(v) => setSetting('visitWindowMonths', v)} />
         <IconLine icon="zap" text={'كل زيارة +' + ws.settings.xpVisit + ' XP وكل تسجيل حضور اجتماع +' + ws.settings.xpMeeting + ' XP، وكل 100 XP مستوى جديد.'} />
       </Card>
+
+      <SectionTitle title="دوامي" sub="جزء ميدان وجزء مكتب. يحدد أيام الأهداف والعمل خارج الدوام." />
+      <WorkScheduleCard />
 
       <SectionTitle title="الأقسام والشفتات" sub="بداية الدورات وأوقات الدوام" right={<Button small variant="secondary" icon="calendar" label="جدول الشفتات" onPress={() => ui.go('roster')} />} />
       {ws.departments.map((department) => (
@@ -264,9 +270,49 @@ function MeetingRow({ title, first, onRename, onDelete }: { title: string; first
   const [value, setValue] = useState(title);
   return (
     <Row style={{ paddingVertical: 8, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
-      <TextInput value={value} onChangeText={setValue} style={[s.input, { flex: 1, minHeight: 38, fontSize: 14 }]} />
+      <TextInput value={value} onChangeText={setValue} style={[s.input, { flex: 1, minWidth: 0, minHeight: 38, fontSize: 14 }]} />
       <Button small variant="secondary" label="حفظ" disabled={value.trim() === title} onPress={() => onRename(value)} />
       <Button small variant="danger" label="حذف" onPress={onDelete} />
     </Row>
+  );
+}
+
+function WorkScheduleCard() {
+  const { ws } = useStore();
+  const apply = useApply();
+  const schedule = scheduleOf(ws.settings);
+  const [start, setStart] = useState(schedule.start);
+  const [end, setEnd] = useState(schedule.end);
+  const save = (patch: Partial<typeof schedule>) =>
+    apply((c) => ({ ...c, settings: { ...c.settings, workSchedule: { ...scheduleOf(c.settings), ...patch } } }));
+  return (
+    <Card>
+      <T style={{ fontWeight: '700', fontSize: 13, marginBottom: 6 }}>أيام الدوام</T>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {WEEKDAYS_AR.map((name, day) => {
+          const on = schedule.days.includes(day);
+          return (
+            <Pressable
+              key={day}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              onPress={() => save({ days: on ? schedule.days.filter((d) => d !== day) : [...schedule.days, day].sort() })}
+              style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
+            >
+              <T style={{ color: on ? C.white : C.ink, fontSize: 14 }}>{name}</T>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Row style={{ marginTop: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Field testID="work-start" label="من" value={start} maxLength={5} keyboardType="numbers-and-punctuation" onChangeText={(v) => (setStart(v), isTime(v) && save({ start: v }))} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Field testID="work-end" label="إلى" value={end} maxLength={5} keyboardType="numbers-and-punctuation" onChangeText={(v) => (setEnd(v), isTime(v) && save({ end: v }))} />
+        </View>
+      </Row>
+      <Sub>{'هدف الأسبوع = الهدف اليومي × ' + schedule.days.length + ' أيام. الإجازة ما تكسر سلسلة الإنجاز.'}</Sub>
+    </Card>
   );
 }

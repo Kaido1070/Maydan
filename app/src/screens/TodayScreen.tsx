@@ -4,6 +4,7 @@ import { DailyTask, dailyTasks, taskReason } from '../domain/daily';
 import { formatDate } from '../domain/dates';
 import { currentSlot, periodRange, shiftLabel } from '../domain/shifts';
 import { dayProgress, visitStreak, weekProgress, xpSummary } from '../domain/stats';
+import { isWorkTime, scheduleOf } from '../domain/worktime';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Icon, IconBox, KIND, Progress, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
@@ -22,6 +23,8 @@ export function TodayScreen() {
   const today = dayProgress(ws, now.date);
   const streak = visitStreak(ws, now.date);
   const week = weekProgress(ws, now.date);
+  const schedule = scheduleOf(ws.settings);
+  const outside = !isWorkTime(ws.settings, now.date, now.time);
   const all = dailyTasks(ws, now);
   const open = all.filter((task) => !task.done);
   const doneAll = all.filter((task) => task.done);
@@ -30,7 +33,9 @@ export function TodayScreen() {
   const name = ws.settings.engineerName.trim();
   const hour = Number(now.time.slice(0, 2));
   const greeting = (hour < 12 ? 'صباح الخير' : 'مساء الخير') + (name ? ' يا ' + name : '');
-  const message = !all.length
+  const message = !today.workDay
+    ? 'يوم إجازة 🌴 استرح، أهدافك ترجع يوم الدوام'
+    : !all.length
     ? ws.technicians.length
       ? 'ما فيه أحد يداوم اليوم باقي عليه زيارة أو اجتماع.'
       : 'أضف الفنيين من الإعدادات لتبدأ.'
@@ -69,7 +74,7 @@ export function TodayScreen() {
             value={streak.days ? streak.days + (streak.days === 1 ? ' يوم' : ' أيام') : 'ابدأ اليوم'}
             label={streak.days ? 'سلسلة الإنجاز' : 'حقق ' + today.goal + ' زيارات'}
           />
-          <HeroPill emoji="📍" value={'\u2066' + today.visits + '/' + today.goal + '\u2069'} label="زيارات اليوم" />
+          <HeroPill emoji={today.workDay ? '📍' : '🌴'} value={today.workDay ? '\u2066' + today.visits + '/' + today.goal + '\u2069' : String(today.visits)} label={today.workDay ? 'زيارات اليوم' : 'يوم إجازة'} />
           <HeroPill emoji="⭐" value={'مستوى ' + xp.level} label={'\u2066' + xp.levelXp + '/100 XP\u2069'} />
         </Row>
         <View testID="hero-week" style={{ marginTop: 12 }}>
@@ -80,6 +85,17 @@ export function TodayScreen() {
           <Progress value={week.visits} max={week.goal} color="#ffd27a" track="#ffffff2e" height={8} />
         </View>
       </View>
+
+      {outside ? (
+        <View testID="outside-hours" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff7e6', borderRadius: 16, borderWidth: 1, borderColor: '#f5dca3', padding: 12, marginTop: 12 }}>
+          <T style={{ fontSize: 24, lineHeight: 30 }}>🌙</T>
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '700' }}>أنت خارج الدوام الحين</T>
+            <Sub>{'دوامك ' + (schedule.days.length === 5 && schedule.days.join() === '0,1,2,3,4' ? 'الأحد–الخميس' : schedule.days.length + ' أيام') + ' \u2066' + schedule.start + '–' + schedule.end + '\u2069. إذا تشتغل الحين سجّله.'}</Sub>
+          </View>
+          <Button testID="log-overtime" small label="سجّل" icon="clock" onPress={() => ui.openOvertime(null)} />
+        </View>
+      ) : null}
 
       {next ? (
         <View testID="next-task" style={[styles.next, { borderColor: KIND[next.kind].solid }]}>
@@ -109,8 +125,8 @@ export function TodayScreen() {
             <Segmented
               options={[
                 { value: 'all', label: 'الكل' },
-                { value: 'visit', label: 'زيارات · ' + open.filter((t) => t.kind === 'visit').length },
-                { value: 'meeting', label: 'اجتماعات · ' + open.filter((t) => t.kind === 'meeting').length },
+                { value: 'visit', label: 'زيارات ' + open.filter((t) => t.kind === 'visit').length },
+                { value: 'meeting', label: 'اجتماعات ' + open.filter((t) => t.kind === 'meeting').length },
               ]}
               value={filter}
               onChange={(value) => {

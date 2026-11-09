@@ -5,6 +5,7 @@ import { buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportF
 import { shiftName, techTag } from '../domain/shifts';
 import { findByEmployeeNumber, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
+import { formatDuration } from '../domain/worktime';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Progress, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { CHART, ColumnChart, ProgressRows, StackedBar } from '../ui/charts';
@@ -82,10 +83,10 @@ export function ReportsScreen() {
         <T style={{ fontWeight: '800', fontSize: 16 }}>{report.label + ' · ' + report.scopeLabel}</T>
         <Sub>{'من ' + formatDate(report.start) + ' إلى ' + formatDate(report.last) + ' · من السجلات المحفوظة'}</Sub>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-          <Kpi testID="kpi-visits" label="زيارات" value={report.totals.visits} hint="الزيارة الجماعية = 1" />
-          <Kpi label="زيارات الفنيين" value={report.totals.technicianVisits} hint={report.totals.techniciansVisited + ' فني مختلف'} />
-          <Kpi testID="kpi-meetings" label="تسجيلات اجتماعات" value={report.totals.meetingSessions} hint={report.totals.meetingsHeld + ' اجتماع مختلف'} />
-          <Kpi label="مرات حضور" value={report.totals.attendance} />
+          <Kpi half testID="kpi-visits" label="زيارات" value={report.totals.visits} hint="الزيارة الجماعية = 1" />
+          <Kpi half label="زيارات الفنيين" value={report.totals.technicianVisits} hint={report.totals.techniciansVisited + ' فني مختلف'} />
+          <Kpi half testID="kpi-meetings" label="تسجيلات اجتماعات" value={report.totals.meetingSessions} hint={report.totals.meetingsHeld + ' اجتماع مختلف'} />
+          <Kpi half label="مرات حضور" value={report.totals.attendance} />
         </View>
         {!report.totals.visits && !report.totals.meetingSessions ? <Sub style={{ marginTop: 8 }}>ما فيه إنجاز مسجل لهذه الفترة.</Sub> : null}
 
@@ -108,6 +109,24 @@ export function ReportsScreen() {
         />
         <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله.</Sub>
       </Card>
+
+      <SectionTitle title="الملاحظات وخارج الدوام" sub={'المسجلة في ' + report.label} />
+      <View testID="report-follow">
+        <Card>
+          <Table
+            head={['', 'مفتوحة', 'متأخرة', 'مقفلة', 'إغلاق (يوم)']}
+            rows={[
+              ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
+              ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+            ]}
+          />
+          <T style={{ fontWeight: '700', marginTop: 12 }}>العمل خارج الدوام</T>
+          <Row gap={8} style={{ marginTop: 6 }}>
+            <Kpi label="مرات مسجلة" value={report.overtime.entries} hint={formatDuration(report.overtime.minutes)} />
+            <Kpi label="نشاط خارج الدوام" value={report.overtime.outOfHoursActivities} hint={report.overtime.days + ' يوم'} />
+          </Row>
+        </Card>
+      </View>
 
       <SectionTitle title="صورة التغطية" sub={'حالة الفنيين حتى ' + formatDate(report.asOf, { year: true }) + ' · ' + report.scopeLabel} />
       <Card>
@@ -267,9 +286,9 @@ function EmployeeSearch() {
   );
 }
 
-function Kpi({ label, value, hint, testID }: { label: string; value: number; hint?: string; testID?: string }) {
+function Kpi({ label, value, hint, testID, half }: { label: string; value: number; hint?: string; testID?: string; half?: boolean }) {
   return (
-    <View testID={testID} style={{ flexBasis: '46%', flexGrow: 1, backgroundColor: '#f7f5fb', borderRadius: 12, padding: 9 }}>
+    <View testID={testID} style={{ flexBasis: half ? '46%' : 0, flexGrow: 1, minWidth: 0, backgroundColor: '#f7f5fb', borderRadius: 12, padding: 9 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       <T style={{ fontSize: 20, fontWeight: '800' }}>{value}</T>
       {hint ? <Sub style={{ fontSize: 10 }}>{hint}</Sub> : null}
