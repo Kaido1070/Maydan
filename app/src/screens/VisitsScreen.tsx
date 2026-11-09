@@ -7,7 +7,6 @@ import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Row, SectionTitle, Segmented, Spread, Sub, T } from '../ui/kit';
 import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
-import { equipmentVisits } from '../domain/places';
 import { PlacesView } from './PlacesView';
 import { DepartmentPicker } from './DepartmentPicker';
 
@@ -98,59 +97,22 @@ function CrewVisits() {
   );
 }
 
-/** زيارات معدات التوزيع: محطة، محول، لوحة... بدون فنيين ولا مكان مسجل. */
-function EquipmentVisits() {
-  const { ws, now } = useStore();
-  const ui = useUi();
-  const [limit, setLimit] = useState(10);
-  const history = equipmentVisits(ws);
-  const month = history.filter((visit) => visit.date.startsWith(now.date.slice(0, 7))).length;
-  return (
-    <View>
-      <SectionTitle
-        title="زيارات معدات التوزيع"
-        sub="محطة، محول، لوحة... سجّل الزيارة على المعدة نفسها بدون فنيين."
-        right={<Button testID="add-equipment-visit" icon="plus" label="زيارة معدة" onPress={() => ui.openVisit({ departmentId: '', equipment: true })} />}
-      />
-      <Card style={{ paddingVertical: 4 }}>
-        {history.length ? <Sub style={{ paddingTop: 8 }}>{history.length + ' زيارة · ' + month + ' هالشهر'}</Sub> : null}
-        {history.length ? (
-          history.slice(0, limit).map((visit, index) => (
-            <Spread key={visit.id} style={{ paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
-              <View style={{ flex: 1 }}>
-                <T style={{ fontWeight: '700' }}>{visit.location || visitTitle(visit)}</T>
-                <Sub>{formatDate(visit.date, { weekday: true, year: true }) + ' · ' + visit.time}</Sub>
-                {visit.taskNumber || visit.site ? <Sub numberOfLines={2}>{[visit.taskNumber ? 'رقم ' + visit.taskNumber : '', visit.site].filter(Boolean).join(' · ')}</Sub> : null}
-              </View>
-              <Button small variant="secondary" label="تعديل" testID={'edit-visit-' + visit.id} onPress={() => ui.openVisit({ departmentId: '', visitId: visit.id })} />
-            </Spread>
-          ))
-        ) : (
-          <Empty text="ما سجلت زيارات معدات للحين." />
-        )}
-        {history.length > limit ? <Button small variant="ghost" label="عرض المزيد" onPress={() => setLimit(limit + 15)} /> : null}
-      </Card>
-    </View>
-  );
-}
-
 /** الزيارات: الفنيون، المستودعات ونقاط الانطلاق، أو معدات التوزيع. */
 export function VisitsScreen() {
-  const [view, setView] = useState<'crew' | 'places' | 'equipment'>('crew');
+  const [view, setView] = useState<'crew' | 'places'>('crew');
   return (
     <View>
       <View style={{ marginTop: 6 }}>
         <Segmented
           options={[
             { value: 'crew', label: 'الفنيون' },
-            { value: 'places', label: 'المستودعات' },
-            { value: 'equipment', label: 'المعدات' },
+            { value: 'places', label: 'المستودعات والمعدات' },
           ]}
           value={view}
           onChange={setView}
         />
       </View>
-      {view === 'crew' ? <CrewVisits /> : view === 'places' ? <PlacesView /> : <EquipmentVisits />}
+      {view === 'crew' ? <CrewVisits /> : <PlacesView />}
     </View>
   );
 }

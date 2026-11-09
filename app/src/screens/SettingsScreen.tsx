@@ -8,7 +8,7 @@ import { scheduleOf } from '../domain/worktime';
 import { isTime, WEEKDAYS_AR } from '../domain/dates';
 import { Pressable } from 'react-native';
 import { addDepartment } from '../domain/plan';
-import { addPlace, deletePlace, PLACE_NOUN, placesOf } from '../domain/places';
+import { addPlace, deletePlace, PLACE_HINT, PLACE_NOUN, placesOf } from '../domain/places';
 import type { PlaceKind } from '../domain/types';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
@@ -109,7 +109,7 @@ export function SettingsScreen() {
       <SectionTitle title="بياناتي" sub={mode === 'demo' ? 'بيانات تجريبية. بدّل إلى «بيانات العمل» وأدخل بياناتك.' : 'أدخل بياناتك من هنا، والتطبيق يرتب الباقي.'} />
       <Card style={{ paddingVertical: 2 }}>
         <MenuRow first testID="settings-people" icon="users" title="الموظفون والفرق" sub="استيراد من Excel أو إضافة يدوية" count={ws.technicians.filter((t) => t.active !== false).length} onPress={() => ui.go('settings', { section: 'people' })} />
-        <MenuRow testID="settings-places" icon="package" title="المستودعات ونقاط الانطلاق" sub="مستودعين كل ربع سنة" count={placesOf(ws).length} onPress={() => ui.go('settings', { section: 'places' })} />
+        <MenuRow testID="settings-places" icon="package" title="المستودعات والمواقع والمعدات" sub="مستودعات، نقاط انطلاق، معدات توزيع" count={placesOf(ws).length} onPress={() => ui.go('settings', { section: 'places' })} />
         <MenuRow testID="settings-meetings" icon="message-square" title="عناوين الاجتماعات" sub={'اجتماعات سنة ' + year} count={ws.meetings.filter((m) => m.year === year).length} onPress={() => ui.go('settings', { section: 'meetings' })} />
         <MenuRow testID="settings-departments" icon="layers" title="الأقسام والشفتات" sub="الدورات وأوقات الدوام" count={ws.departments.length} onPress={() => ui.go('settings', { section: 'departments' })} />
       </Card>
@@ -485,6 +485,7 @@ function PlacesCard() {
         options={[
           { value: 'warehouse', label: 'مستودع' },
           { value: 'staging', label: 'نقطة انطلاق' },
+          { value: 'equipment', label: 'معدة' },
         ]}
         value={kind}
         onChange={setKind}
@@ -494,7 +495,7 @@ function PlacesCard() {
           testID="new-place-name"
           value={name}
           onChangeText={setName}
-          placeholder={kind === 'warehouse' ? 'اسم المستودع' : 'اسم نقطة الانطلاق'}
+          placeholder={PLACE_HINT[kind]}
           placeholderTextColor={C.placeholder}
           style={[s.input, { flex: 1, minWidth: 0 }]}
         />

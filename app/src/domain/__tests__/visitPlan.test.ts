@@ -104,6 +104,12 @@ describe('المستودعات ونقاط الانطلاق', () => {
     ws = addVisit(ws, { ...base, target: 'equipment', workType: 'زيارة معدات التوزيع', location: 'محطة توزيع 12' }, MONDAY.date).ws;
     expect(equipmentVisits(ws).map((v) => v.location)).toEqual(['محطة توزيع 12']);
     expect(dayProgress(ws, MONDAY.date).visits).toBe(1);
+    // معدة مسجلة كنوع ثالث: تنزار مثل المستودع وتطلع مع زيارات المعدات، وما تدخل في هدف المستودعات
+    ws = addPlace(ws, { kind: 'equipment', name: 'محول 7' });
+    const item = ws.places!.find((place) => place.kind === 'equipment')!;
+    ws = addVisit(ws, { ...base, placeId: item.id, workType: 'زيارة معدات التوزيع', location: item.name }, MONDAY.date).ws;
+    expect(equipmentVisits(ws)).toHaveLength(2);
+    expect(warehouseQuarter(ws, MONDAY.date)).toMatchObject({ visited: 0, total: 0 });
   });
 });
 

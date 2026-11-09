@@ -1,8 +1,11 @@
 import { newId } from './records';
 import type { Place, PlaceKind, Visit, Workspace } from './types';
 
-export const PLACE_NOUN: Record<PlaceKind, string> = { warehouse: 'مستودع', staging: 'نقطة انطلاق' };
-export const PLACE_WORK_TYPE: Record<PlaceKind, string> = { warehouse: 'زيارة مستودع', staging: 'زيارة نقطة انطلاق' };
+export const PLACE_NOUN: Record<PlaceKind, string> = { warehouse: 'مستودع', staging: 'نقطة انطلاق', equipment: 'معدة' };
+export const PLACE_KINDS: PlaceKind[] = ['warehouse', 'staging', 'equipment'];
+export const PLACE_HINT: Record<PlaceKind, string> = { warehouse: 'اسم المستودع', staging: 'اسم نقطة الانطلاق', equipment: 'اسم المعدة، مثل: محطة توزيع 12' };
+export const PLACE_ICON = { warehouse: 'package', staging: 'navigation', equipment: 'zap' } as const;
+export const PLACE_WORK_TYPE: Record<PlaceKind, string> = { warehouse: 'زيارة مستودع', staging: 'زيارة نقطة انطلاق', equipment: 'زيارة معدات التوزيع' };
 
 export const placesOf = (ws: Workspace): Place[] => ws.places ?? [];
 
@@ -60,6 +63,8 @@ export function renamePlace(ws: Workspace, id: string, input: { name: string; ki
   return { ...ws, places: placesOf(ws).map((place) => (place.id === id ? { ...place, name, kind: input.kind } : place)) };
 }
 
-/** زيارات معدات التوزيع، الأحدث أولًا. */
-export const equipmentVisits = (ws: Workspace): Visit[] =>
-  ws.visits.filter((visit) => visit.target === 'equipment').sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+/** زيارات معدات التوزيع (المسجلة وغير المسجلة)، الأحدث أولًا. */
+export function equipmentVisits(ws: Workspace): Visit[] {
+  const ids = new Set(placesOf(ws).filter((place) => place.kind === 'equipment').map((place) => place.id));
+  return ws.visits.filter((visit) => visit.target === 'equipment' || (!!visit.placeId && ids.has(visit.placeId))).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+}

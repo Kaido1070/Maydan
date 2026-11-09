@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
-import { PLACE_NOUN } from '../domain/places';
+import { PLACE_ICON, PLACE_NOUN } from '../domain/places';
 import { periodRange } from '../domain/shifts';
 import { DayPlan, PlanItem, PlannedPlace, PlannedVisit, visitPlan } from '../domain/visitPlan';
 import { useStore } from '../store';
@@ -65,7 +65,7 @@ function PlaceRow({ item, index, onAct }: { item: PlannedPlace; index: number; o
         <T style={{ fontWeight: '700' }}>{item.place.name}</T>
         <Sub>{PLACE_NOUN[item.place.kind] + ' · ' + (item.lastVisitDate ? 'آخر زيارة ' + formatDate(item.lastVisitDate) : 'ما انزار أبدًا') + ' · باقي على هدف الربع'}</Sub>
       </View>
-      <Button testID="plan-place" small label="ابدأ" icon={item.place.kind === 'warehouse' ? 'package' : 'navigation'} style={{ backgroundColor: C.green }} onPress={() => (onAct?.(), ui.openVisit({ departmentId: item.place.departmentId ?? '', placeId: item.place.id }))} />
+      <Button testID="plan-place" small label="ابدأ" icon={PLACE_ICON[item.place.kind]} style={{ backgroundColor: C.green }} onPress={() => (onAct?.(), ui.openVisit({ departmentId: item.place.departmentId ?? '', placeId: item.place.id }))} />
     </View>
   );
 }

@@ -96,7 +96,7 @@ export type PlanItem = {
 };
 
 /** مستودع أو نقطة انطلاق تُزار دوريًا. */
-export type PlaceKind = 'warehouse' | 'staging';
+export type PlaceKind = 'warehouse' | 'staging' | 'equipment';
 export type Place = { id: string; kind: PlaceKind; name: string; departmentId?: string };
 
 /** صورة محفوظة على الجهاز (أو data URI في نسخة الويب). */
