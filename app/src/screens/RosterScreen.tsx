@@ -43,8 +43,8 @@ export function RosterScreen() {
       {view === 'day' ? (
         <>
           <Card>
-            <Spread>
-              <View>
+            <Spread style={{ flexWrap: 'wrap' }}>
+              <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
                 <T style={{ fontWeight: '800' }}>{formatDate(date, { weekday: true, year: true })}</T>
                 {date !== now.date ? <Button small variant="ghost" label="العودة لليوم" onPress={() => ui.setRosterDate(now.date)} style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} /> : <Sub>اليوم</Sub>}
               </View>

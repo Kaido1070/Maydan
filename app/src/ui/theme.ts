@@ -2,74 +2,76 @@
 export type ThemeMode = 'light' | 'dark';
 
 const LIGHT = {
-  bg: '#f4f3f8',
+  /** خلفية ورقية دافئة بدل الأبيض الصريح: أريح للعين. */
+  bg: '#f2f0eb',
   /** سطح البطاقات والحقول. */
-  white: '#ffffff',
-  ink: '#1d1930',
-  muted: '#676279',
-  line: '#e7e3ef',
-  /** لون الأزرار والتعبئة. */
-  purple: '#5636c6',
-  purpleDark: '#4525ad',
-  /** نص وأيقونات بلون التمييز (على خلفية فاتحة أو داكنة). */
-  link: '#5133b8',
-  soft: '#eee9ff',
-  softLine: '#cdbff3',
+  white: '#fbfaf8',
+  ink: '#2a2933',
+  muted: '#6d6a76',
+  line: '#e3dfd7',
+  /** لون الأزرار والتعبئة: نيلي هادئ. */
+  purple: '#56579c',
+  purpleDark: '#48498a',
+  /** نص وأيقونات بلون التمييز. */
+  link: '#4b4c93',
+  soft: '#e9e8f5',
+  softLine: '#cfcde8',
   /** خلفية محايدة خفيفة داخل البطاقات. */
-  subtle: '#f6f4fb',
+  subtle: '#f5f3ee',
   /** مسار أشرطة التقدم وخلفية الأزرار المقسمة. */
-  track: '#ebe7f4',
-  placeholder: '#a29db3',
+  track: '#e9e6df',
+  placeholder: '#a3a0aa',
   /** نص وأيقونات فوق لون التمييز. */
   onAccent: '#ffffff',
-  night: '#19172c',
-  hero: '#4a2f9a',
-  green: '#17664b',
-  greenBg: '#e5f6ed',
-  greenLine: '#cdebdb',
-  amber: '#7d5100',
-  amberBg: '#fff2d6',
-  amberLine: '#f3dca6',
-  red: '#a12c48',
-  redBg: '#fce9ee',
-  redLine: '#f3b7c4',
+  night: '#24232e',
+  hero: '#4a4b8c',
+  green: '#2f6b55',
+  greenBg: '#e3efe8',
+  greenLine: '#c9dfd3',
+  amber: '#7a5a1c',
+  amberBg: '#f6ecd6',
+  amberLine: '#e6d5ae',
+  red: '#9a3b4d',
+  redBg: '#f6e4e7',
+  redLine: '#e6bcc4',
 };
 
 const DARK: typeof LIGHT = {
-  bg: '#100e17',
-  white: '#1c1927',
-  ink: '#f2eff9',
-  muted: '#a7a2ba',
-  line: '#2f2a40',
-  purple: '#6f52e0',
-  purpleDark: '#5a3fcb',
-  link: '#b9a6ff',
-  soft: '#2a2347',
-  softLine: '#46397a',
-  subtle: '#231f31',
-  track: '#2c2740',
-  placeholder: '#77718d',
+  /** رمادي داكن دافئ بدل الأسود، ونص مطفي بدل الأبيض الصريح. */
+  bg: '#17171c',
+  white: '#202027',
+  ink: '#e4e2e9',
+  muted: '#9c99a8',
+  line: '#30303a',
+  purple: '#6465b0',
+  purpleDark: '#5556a0',
+  link: '#b0b0ea',
+  soft: '#2b2b45',
+  softLine: '#45456e',
+  subtle: '#26262e',
+  track: '#2d2d37',
+  placeholder: '#72707e',
   onAccent: '#ffffff',
-  night: '#0b0a11',
-  hero: '#33217a',
-  green: '#74d9ab',
-  greenBg: '#14322a',
-  greenLine: '#1f4a3c',
-  amber: '#f2c366',
-  amberBg: '#392d12',
-  amberLine: '#5a4718',
-  red: '#ff93a9',
-  redBg: '#3c1a25',
-  redLine: '#6a2a3b',
+  night: '#121216',
+  hero: '#35366e',
+  green: '#86cfae',
+  greenBg: '#1b3129',
+  greenLine: '#27473b',
+  amber: '#e3c07a',
+  amberBg: '#342c18',
+  amberLine: '#544623',
+  red: '#f0a0ae',
+  redBg: '#3a2026',
+  redLine: '#5e2f3a',
 };
 
 const KIND_LIGHT = {
-  visit: { fg: '#1f66bd', bg: '#e6f0fb', solid: '#2a78d6' },
-  meeting: { fg: '#b4471b', bg: '#fdece4', solid: '#eb6834' },
+  visit: { fg: '#2f6298', bg: '#e4edf5', solid: '#3f7cba' },
+  meeting: { fg: '#a2532e', bg: '#f6e8df', solid: '#cf6f43' },
 };
 const KIND_DARK: typeof KIND_LIGHT = {
-  visit: { fg: '#86b9f7', bg: '#15273d', solid: '#2a78d6' },
-  meeting: { fg: '#f6a783', bg: '#3a2118', solid: '#e0602f' },
+  visit: { fg: '#93bce6', bg: '#1b2a3b', solid: '#3f7cba' },
+  meeting: { fg: '#eeae8f', bg: '#39251c', solid: '#c96a40' },
 };
 
 export const C = { ...LIGHT };
@@ -130,3 +132,7 @@ export const BLUR_LEVELS = [
 
 /** لون سداسي مع شفافية (0..1). */
 export const alpha = (hex: string, opacity: number) => hex.slice(0, 7) + Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0');
+
+/** مقاسات موحدة للزوايا والمسافات في كل الشاشات. */
+export const R = { card: 20, inner: 14, control: 13, small: 10, pill: 999 };
+export const SPACE = { screen: 16, card: 16, gap: 12 };

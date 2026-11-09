@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Tone } from '../domain/stats';
 import { FONTS, fontFor, MIN_FONT_SIZE } from './fonts';
 import { Touch } from './touch';
-import { C, KIND, themed } from './theme';
+import { C, KIND, R, SPACE, themed } from './theme';
 
 export { C, KIND };
 
@@ -31,7 +31,7 @@ export function Icon({ name, size = 18, color = C.link }: { name: IconName; size
 /** نص بخط التطبيق: يختار ملف الوزن المناسب، ويضمن حجمًا مقروءًا ومسافة أسطر مريحة. */
 export function AppText({ style, children, ...props }: React.ComponentProps<typeof Text>) {
   const flat = StyleSheet.flatten(style) ?? {};
-  const fontSize = Math.max(MIN_FONT_SIZE, flat.fontSize ?? 15);
+  const fontSize = Math.max(MIN_FONT_SIZE, flat.fontSize ?? 16);
   const resolved: TextStyle = {
     ...flat,
     fontSize,
@@ -238,7 +238,7 @@ export function Stepper({ label, onPrev, onNext, prevDisabled, nextDisabled }: {
 
 export function SectionTitle({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
-    <Spread style={{ marginTop: 18, marginBottom: 10, alignItems: 'flex-end' }}>
+    <Spread style={{ marginTop: 22, marginBottom: 10, alignItems: 'flex-end' }}>
       <View style={{ flex: 1 }}>
         <T style={s.h2}>{title}</T>
         {sub ? <Sub>{sub}</Sub> : null}
@@ -283,33 +283,33 @@ export function Divider() {
 }
 
 export const s = themed(() => ({
-  text: { color: C.ink, fontSize: 15 },
-  sub: { color: C.muted, fontSize: 13, lineHeight: 20 },
-  h2: { fontSize: 19, fontWeight: '800', color: C.ink },
-  h3: { fontSize: 15, fontWeight: '700', color: C.ink },
+  text: { color: C.ink, fontSize: 16 },
+  sub: { color: C.muted, fontSize: 13.5, lineHeight: 21 },
+  h2: { fontSize: 20, fontWeight: '700', color: C.ink },
+  h3: { fontSize: 16, fontWeight: '700', color: C.ink },
   label: { fontSize: 13, fontWeight: '700', color: C.ink },
-  card: { backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 14, marginBottom: 10 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
+  card: { backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: R.card, padding: SPACE.card, marginBottom: SPACE.gap },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, alignSelf: 'flex-start' },
   chipText: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 11, paddingHorizontal: 14, minHeight: 44 },
-  buttonSmall: { minHeight: 34, paddingHorizontal: 10, borderRadius: 9 },
+  button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: R.control, paddingHorizontal: 16, minHeight: 46 },
+  buttonSmall: { minHeight: 36, paddingHorizontal: 12, borderRadius: R.small },
   buttonText: { fontSize: 15, fontWeight: '700' },
   avatar: { backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
   iconBox: { alignItems: 'center', justifyContent: 'center' },
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: C.softLine, alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
   checkboxOn: { backgroundColor: C.purple, borderColor: C.purple },
-  segmented: { flexDirection: 'row', backgroundColor: C.track, borderRadius: 11, padding: 3, gap: 3 },
-  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 6, minHeight: 36 },
+  segmented: { flexDirection: 'row', backgroundColor: C.track, borderRadius: R.control, padding: 3, gap: 3 },
+  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: R.small, paddingVertical: 7, paddingHorizontal: 6, minHeight: 38 },
   /** وضع الشبكة: خياران في كل سطر بعرض ثابت (ما ينضغط النص على الآيفون). */
   segmentGrid: { flexGrow: 1, flexShrink: 0, flexBasis: '47%' },
   segmentOn: { backgroundColor: C.purple },
   segmentText: { fontSize: 14, fontWeight: '600', color: C.muted },
-  input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16, fontFamily: FONTS.regular },
-  stepBtn: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  input: { borderWidth: 1, borderColor: C.line, borderRadius: R.control, backgroundColor: C.white, color: C.ink, paddingHorizontal: 13, minHeight: 46, fontSize: 16, fontFamily: FONTS.regular },
+  stepBtn: { width: 36, height: 36, borderRadius: R.small, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   sheet: { flex: 1, backgroundColor: C.bg },
   sheetHead: { padding: 16, paddingBottom: 12, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line },
   sheetFooter: { paddingHorizontal: 16, paddingTop: 10, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, gap: 8 },
   webBackdrop: { backgroundColor: '#1d123c89', justifyContent: 'flex-end' },
-  webSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '92%', flex: 0, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' },
+  webSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '92%', flex: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
 }) as const satisfies Record<string, object>);
