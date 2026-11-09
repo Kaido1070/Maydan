@@ -7,6 +7,7 @@ import { findByEmployeeNumber, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
 import { useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Progress, ratio, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
+import { CHART, ColumnChart, ProgressRows, StackedBar } from '../ui/charts';
 import { TechDetails } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 
@@ -24,7 +25,6 @@ export function ReportsScreen() {
   const [busy, setBusy] = useState(false);
   const report = useMemo(() => buildReport(ws, params, now.date), [ws, params, now.date]);
   const set = (patch: Partial<ReportParams>) => setParams((prev) => ({ ...prev, ...patch }));
-  const peak = Math.max(1, ...report.buckets.map((b) => Math.max(b.visits, b.meetingSessions)));
   const currentYear = Number(now.date.slice(0, 4));
 
   const run = async (kind: 'csv' | 'pdf') => {
@@ -89,20 +89,17 @@ export function ReportsScreen() {
         </View>
         {!report.totals.visits && !report.totals.meetingSessions ? <Sub style={{ marginTop: 8 }}>ما فيه إنجاز مسجل لهذه الفترة.</Sub> : null}
 
-        <T style={{ fontWeight: '800', marginTop: 14 }}>الإنجاز عبر الفترة</T>
-        <Row gap={10} style={{ marginTop: 4 }}>
-          <Chip tone="purple" label="زيارات" />
-          <Chip tone="green" label="اجتماعات" />
-        </Row>
-        {report.buckets.map((bucket) => (
-          <Row key={bucket.start} style={{ marginTop: 6 }}>
-            <Sub style={{ width: 62 }}>{bucket.label}</Sub>
-            <View style={{ flex: 1 }}>
-              <Bar value={bucket.visits} peak={peak} color="#7653e2" />
-              <Bar value={bucket.meetingSessions} peak={peak} color="#278969" />
-            </View>
-          </Row>
-        ))}
+        <T style={{ fontWeight: '800', marginTop: 16, marginBottom: 6 }}>{params.mode === 'month' ? 'الإنجاز أسبوعًا بأسبوع' : 'الإنجاز شهرًا بشهر'}</T>
+        <View testID="chart-period">
+          <ColumnChart
+            series={[
+              { name: 'زيارات', color: CHART.visits },
+              { name: 'اجتماعات', color: CHART.meetings },
+            ]}
+            buckets={report.buckets.map((bucket) => ({ label: bucket.label, values: [bucket.visits, bucket.meetingSessions] }))}
+          />
+        </View>
+        <Sub style={{ marginTop: 4 }}>اضغط على أي عمود لعرض أرقامه.</Sub>
 
         <T style={{ fontWeight: '800', marginTop: 14, marginBottom: 4 }}>التوزيع حسب القسم</T>
         <Table
@@ -110,6 +107,45 @@ export function ReportsScreen() {
           rows={report.sections.map((row) => [row.name, row.visits, row.technicianVisits, row.meetingSessions, row.attendance])}
         />
         <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله.</Sub>
+      </Card>
+
+      <SectionTitle title="صورة التغطية" sub={'حالة الفنيين حتى ' + formatDate(report.asOf, { year: true }) + ' · ' + report.scopeLabel} />
+      <Card>
+        <StackedBar
+          testID="chart-visit-status"
+          title={'الزيارات (الهدف ' + ws.settings.visitTarget + ' خلال ' + ws.settings.visitWindowMonths + ' أشهر)'}
+          segments={[
+            { label: 'بدون زيارة', value: report.statusMix.visits.none, color: CHART.critical, icon: 'x-circle' },
+            { label: 'جزئي', value: report.statusMix.visits.partial, color: CHART.warning, icon: 'alert-circle' },
+            { label: 'مكتمل', value: report.statusMix.visits.complete, color: CHART.good, icon: 'check-circle' },
+          ]}
+        />
+        {report.meetingTitles.length ? (
+          <StackedBar
+            testID="chart-meeting-status"
+            title={'الاجتماعات (' + report.meetingTitles.length + ' هالسنة)'}
+            segments={[
+              { label: 'ما حضر', value: report.statusMix.meetings.none, color: CHART.critical, icon: 'x-circle' },
+              { label: 'جزئي', value: report.statusMix.meetings.partial, color: CHART.warning, icon: 'alert-circle' },
+              { label: 'حضر الكل', value: report.statusMix.meetings.complete, color: CHART.good, icon: 'check-circle' },
+            ]}
+          />
+        ) : null}
+        <T style={{ fontWeight: '800', marginTop: 4, marginBottom: 8 }}>نسبة من أكمل الزيارات حسب القسم</T>
+        <ProgressRows
+          testID="chart-dept-visits"
+          color={CHART.visits}
+          rows={report.coverage.map((dept) => ({ label: dept.department.name, done: dept.coverage.visitComplete, total: dept.coverage.people }))}
+        />
+        {report.meetingTitles.length ? (
+          <>
+            <T style={{ fontWeight: '800', marginTop: 4, marginBottom: 8 }}>نسبة من حضر كل الاجتماعات حسب القسم</T>
+            <ProgressRows
+              color={CHART.meetings}
+              rows={report.coverage.map((dept) => ({ label: dept.department.name, done: dept.coverage.meetingComplete, total: dept.coverage.people }))}
+            />
+          </>
+        ) : null}
       </Card>
 
       <SectionTitle title="المتبقي على كل قسم وشفت" sub={'محسوب حتى ' + formatDate(report.asOf, { year: true }) + ' · الزيارات لآخر ' + ws.settings.visitWindowMonths + ' أشهر والاجتماعات لسنة ' + report.asOf.slice(0, 4)} />
@@ -253,16 +289,6 @@ function Metric({ label, remaining, total, done }: { label: string; remaining: n
   );
 }
 
-function Bar({ value, peak, color }: { value: number; peak: number; color: string }) {
-  return (
-    <Row gap={5}>
-      <View style={{ flex: 1, height: 7, backgroundColor: '#eeeaf6', borderRadius: 99, overflow: 'hidden', marginVertical: 2 }}>
-        <View style={{ width: `${(100 * value) / peak}%`, height: '100%', backgroundColor: color, borderRadius: 99 }} />
-      </View>
-      <T style={{ fontSize: 11, fontWeight: '700', minWidth: 18 }}>{value}</T>
-    </Row>
-  );
-}
 
 function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
   return (

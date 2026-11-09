@@ -114,6 +114,8 @@ const OUT = process.env.SHOTS || null;
   // 4) أرقام التقرير
   await id('tab-reports').click();
   assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 2, 'الزيارة الجماعية تُحسب مرة: +2 زيارة');
+  for (const chart of ['chart-period', 'chart-visit-status', 'chart-dept-visits']) assert(await id(chart).isVisible(), 'الرسم البياني ظاهر: ' + chart);
+  assert((await id('chart-visit-status').innerText()).includes('بدون زيارة'), 'الرسم فيه تسميات الحالة');
   assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 3, '+3 تسجيلات اجتماع (اجتماعان اليوم وواحد أمس)');
   await id('employee-search').fill('١٢٠١');
   await id('employee-search-go').click();

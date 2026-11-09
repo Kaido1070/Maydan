@@ -235,6 +235,8 @@ describe('التقارير', () => {
     expect(shiftB.coverage).toMatchObject({ people: 1, visitRemaining: 1, attendanceRemaining: 0 });
     expect(b.coverage.visitRemaining).toBe(2);
     expect(report.pending.map((p) => p.technician.id)).toEqual(['t2', 't3']);
+    // t1 زيارتان، t2 و t3 زيارة وحدة. الاجتماع: t1 و t3 حضروا، t2 لا
+    expect(report.statusMix).toEqual({ visits: { none: 0, partial: 2, complete: 1 }, meetings: { none: 1, partial: 0, complete: 2 } });
     const csv = reportCsv(report);
     expect(csv.startsWith('﻿')).toBe(true);
     expect(csv).toContain('"فني اثنان","502","طوارئ","طوارئ أ","1","1"');
