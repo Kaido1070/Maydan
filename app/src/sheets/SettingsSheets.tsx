@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { addDays, formatDate, isDateKey, isTime, WEEKDAYS_AR } from '../domain/dates';
 import { addPlanItem, removeTechnician, updateDepartment, upsertTechnician } from '../domain/plan';
 import { newId } from '../domain/records';
@@ -8,6 +8,7 @@ import type { Department, EntryKind, PlanItem, Rotation } from '../domain/types'
 import { useApply, useStore } from '../store';
 import { Button, C, Divider, Field, Icon, Row, Segmented, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
 import { confirm } from './VisitSheet';
+import { Touch } from '../ui/touch';
 
 /* ───────────── تعديل القسم: الشفتات وأوقات الدوام وبداية الدورة ───────────── */
 
@@ -154,7 +155,7 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
           {WEEKDAYS_AR.map((name, day) => {
             const on = rotation.workDays.includes(day);
             return (
-              <Pressable
+              <Touch
                 key={day}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: on }}
@@ -162,7 +163,7 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
                 style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
               >
                 <T style={{ color: on ? C.white : C.ink, fontSize: 12 }}>{name}</T>
-              </Pressable>
+              </Touch>
             );
           })}
         </View>
@@ -180,7 +181,7 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
           <T style={{ fontSize: 12, fontWeight: '700', marginTop: 10 }}>نمط الأيام (اضغط اليوم لتغييره)</T>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             {rotation.pattern.map((value, index) => (
-              <Pressable
+              <Touch
                 key={index}
                 accessibilityRole="button"
                 accessibilityLabel={'اليوم ' + (index + 1) + ': ' + periodName(value)}
@@ -192,7 +193,7 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
               >
                 <Sub style={{ fontSize: 10 }}>{'يوم ' + (index + 1)}</Sub>
                 <T style={{ fontSize: 12, fontWeight: '700', color: value === OFF ? C.muted : C.purple }}>{periodName(value)}</T>
-              </Pressable>
+              </Touch>
             ))}
           </View>
           <Row style={{ marginTop: 8 }}>

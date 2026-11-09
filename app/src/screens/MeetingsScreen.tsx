@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import { addMeeting, attendanceFor, saveAttendanceBatch } from '../domain/records';
 import { activeTechnicians, currentSlot, shiftLabel, shiftName, slotAt, techTag } from '../domain/shifts';
@@ -10,6 +10,7 @@ import { TechRow } from '../ui/TechRow';
 import { useUi } from '../ui/ui';
 import { TalkCard } from '../ui/TalkCard';
 import { DepartmentPicker } from './DepartmentPicker';
+import { Touch } from '../ui/touch';
 
 export function MeetingsScreen() {
   const { ws, now } = useStore();
@@ -136,7 +137,7 @@ export function MeetingsScreen() {
             meetings.map((meeting) => {
               const on = selected.includes(meeting.id);
               return (
-                <Pressable
+                <Touch
                   key={meeting.id}
                   testID={'pick-meeting-' + meeting.id}
                   accessibilityRole="checkbox"
@@ -156,7 +157,7 @@ export function MeetingsScreen() {
                 >
                   <Icon name={on ? 'check-square' : 'square'} size={16} color={on ? C.purple : C.muted} />
                   <T style={{ fontSize: 13, color: on ? '#4827ac' : '#55466e', fontWeight: on ? '700' : '400' }}>{meeting.title}</T>
-                </Pressable>
+                </Touch>
               );
             })
           ) : (
@@ -213,7 +214,7 @@ export function MeetingsScreen() {
                   <Row style={{ borderBottomWidth: 1, borderBottomColor: C.line, paddingBottom: 6 }} gap={0}>
                     <Sub style={{ flex: 1, fontWeight: '700' }}>الفني</Sub>
                     {chosen.map((meeting) => (
-                      <Pressable
+                      <Touch
                         key={meeting.id}
                         accessibilityRole="button"
                         accessibilityLabel={'تحديد الكل في ' + meeting.title}
@@ -227,7 +228,7 @@ export function MeetingsScreen() {
                           {meeting.title}
                         </Sub>
                         <T style={{ color: C.purple, fontSize: 10 }}>الكل</T>
-                      </Pressable>
+                      </Touch>
                     ))}
                   </Row>
                   {crew.map((tech) => (
@@ -339,7 +340,7 @@ function MeetingFollowUp() {
         <Progress value={result.attended} max={Math.max(result.total, 1)} color={C.green} track="#ffffffaa" />
       </View>
       {result.remaining.slice(0, limit).map((tech, index) => (
-        <Pressable
+        <Touch
           key={tech.id}
           accessibilityRole="button"
           onPress={() => ui.openPerson(tech.id)}
@@ -350,7 +351,7 @@ function MeetingFollowUp() {
             <Sub>{deptName(tech.departmentId) + ' · ' + (tech.workplace === 'office' ? 'مكتبي' : shiftName(ws, tech))}</Sub>
           </View>
           <Icon name="chevron-left" size={16} color={C.muted} />
-        </Pressable>
+        </Touch>
       ))}
       {result.remaining.length > limit ? <Button small variant="ghost" label={'عرض الباقين · ' + (result.remaining.length - limit)} onPress={() => setLimit(limit + 20)} /> : null}
     </Card>

@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FollowScreen, OvertimeSheet } from './src/screens/FollowScreen';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
@@ -21,6 +22,10 @@ import { Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
 import { dailyTasks } from './src/domain/daily';
 import { weekProgress, xpSummary } from './src/domain/stats';
+import { haptic, Touch } from './src/ui/touch';
+
+/** iOS 26 وأحدث: شريط التبويبات زجاج سائل عائم فوق المحتوى. */
+const GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 /** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
 export const SEEN_VERSION_KEY = 'maydan-seen-version';
@@ -84,12 +89,14 @@ function Shell() {
       notify: (message) => {
         clearTimeout(toastTimer.current);
         setToast(message);
+        if (celebrate(message)) haptic.success();
         toastTimer.current = setTimeout(() => setToast(null), 3000);
       },
       celebrateMilestone: (message) => {
         // يُضاف تحت رسالة الحفظ الحالية بدل ما يمسحها.
         clearTimeout(toastTimer.current);
         setToast((current) => (current ? current + '\n' + message : message));
+        haptic.success();
         toastTimer.current = setTimeout(() => setToast(null), 4000);
       },
       openVisit: setVisit,
@@ -132,7 +139,7 @@ function Shell() {
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <StatusBar style="light" />
         <View style={styles.header}>
-          <Pressable
+          <Touch
             testID="brand-home"
             accessibilityRole="button"
             accessibilityLabel="ميدان، الرجوع لمهام اليوم"
@@ -140,15 +147,18 @@ function Shell() {
             style={({ pressed }) => [styles.brand, pressed && { opacity: 0.7 }]}
           >
             <View style={styles.brandMark}>
-              <Icon name="shield" size={20} color="#211345" />
+              <Icon name="shield" size={22} color="#fff" />
+              <View style={styles.brandCheck}>
+                <Icon name="check" size={10} color="#eb6834" />
+              </View>
             </View>
             <View>
               <Text style={styles.brandName}>ميدان</Text>
               <Text style={styles.brandSub}>{TITLES[tab]}</Text>
             </View>
-          </Pressable>
+          </Touch>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Pressable
+            <Touch
               accessibilityRole="button"
               accessibilityLabel={mode === 'demo' ? 'وضع التجربة مفعّل. افتح الإعدادات للتبديل' : 'وضع العمل'}
               onPress={() => ui.go('settings')}
@@ -157,38 +167,40 @@ function Shell() {
             >
               <View style={[styles.dot, { backgroundColor: mode === 'demo' ? '#ffd27a' : '#7ce0b0' }]} />
               <Text style={styles.modeText}>{mode === 'demo' ? 'وضع التجربة' : 'بيانات العمل'}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="الإعدادات" onPress={() => ui.go('settings')} style={styles.gear} testID="open-settings">
+            </Touch>
+            <Touch accessibilityRole="button" accessibilityLabel="الإعدادات" onPress={() => ui.go('settings')} style={styles.gear} testID="open-settings">
               <Icon name="settings" size={18} color="#ddd8ec" />
-            </Pressable>
+            </Touch>
           </View>
         </View>
 
-        <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: GLASS ? 30 + 72 + Math.max(insets.bottom, 8) : 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {ready ? <Screen /> : null}
         </ScrollView>
 
-        <View style={[styles.tabbar, { paddingBottom: Math.max(insets.bottom, 8) }]} accessibilityRole="tablist">
+        <TabBar glassBottom={Math.max(insets.bottom, 8)}>
           {TABS.map((item) => {
             const active = item.id === tab;
             return (
-              <Pressable
+              <Touch
                 key={item.id}
                 testID={'tab-' + item.id}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={item.label}
                 onPress={() => ui.go(item.id)}
+                feedback="select"
+                scaleTo={0.92}
                 style={styles.tab}
               >
                 <View style={[styles.tabIcon, active && { backgroundColor: C.soft }]}>
                   <Icon name={item.icon} size={20} color={active ? C.purple : '#8a849c'} />
                 </View>
                 <Text style={[styles.tabText, active && { color: C.purple, fontWeight: '800' }]}>{item.label}</Text>
-              </Pressable>
+              </Touch>
             );
           })}
-        </View>
+        </TabBar>
 
         {toast ? (
           celebrate(toast) ? (
@@ -241,6 +253,21 @@ function Shell() {
   );
 }
 
+function TabBar({ children, glassBottom }: { children: React.ReactNode; glassBottom: number }) {
+  if (GLASS) {
+    return (
+      <GlassView glassEffectStyle="regular" isInteractive style={[styles.tabbarGlass, { bottom: glassBottom }]} accessibilityRole="tablist">
+        {children}
+      </GlassView>
+    );
+  }
+  return (
+    <View style={[styles.tabbar, { paddingBottom: glassBottom }]} accessibilityRole="tablist">
+      {children}
+    </View>
+  );
+}
+
 /** رسائل الإنجاز تطلع كاحتفال كبير. */
 const celebrate = (message: string) => /XP|^[🎉⭐🏅🏆]/u.test(message);
 const celebrationEmoji = (message: string) => message.match(/^[🎉⭐🏅🏆]/u)?.[0] ?? '🎉';
@@ -261,7 +288,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.night },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#a78bfa', alignItems: 'center', justifyContent: 'center' },
+  brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#6142d1', alignItems: 'center', justifyContent: 'center' },
+  brandCheck: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 1 },
   brandName: { color: '#fff', fontSize: 19, fontWeight: '800' },
   brandSub: { color: '#cfc9e0', fontSize: 12 },
   modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
@@ -270,6 +298,7 @@ const styles = StyleSheet.create({
   modeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   dot: { width: 7, height: 7, borderRadius: 4 },
   gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
+  tabbarGlass: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', borderRadius: 32, paddingVertical: 6, overflow: 'hidden' },
   tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
   tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

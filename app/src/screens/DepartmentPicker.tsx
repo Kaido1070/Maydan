@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { currentSlot } from '../domain/shifts';
 import { useStore } from '../store';
 import { C, Icon, IconName, Sub, T } from '../ui/kit';
+import { Touch } from '../ui/touch';
 
 /** اختيار القسم: أزرار مدمجة في صف واحد قابل للتمرير، مع نقطة خضراء للقسم اللي فيه شفت شغال. */
 export function DepartmentPicker({ value, onChange, icon }: { value: string | null; onChange: (id: string) => void; icon: IconName }) {
@@ -13,7 +14,7 @@ export function DepartmentPicker({ value, onChange, icon }: { value: string | nu
         const active = department.id === value;
         const slot = currentSlot(ws, department, now);
         return (
-          <Pressable
+          <Touch
             key={department.id}
             testID={'dept-' + department.id}
             accessibilityRole="button"
@@ -35,7 +36,7 @@ export function DepartmentPicker({ value, onChange, icon }: { value: string | nu
             <Icon name={icon} size={15} color={active ? C.white : C.purple} />
             <T style={{ fontWeight: '700', color: active ? C.white : C.ink }}>{department.name}</T>
             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: slot ? '#2fbf71' : '#c9c4d6' }} />
-          </Pressable>
+          </Touch>
         );
       })}
       <View style={{ justifyContent: 'center', paddingHorizontal: 4 }}>
