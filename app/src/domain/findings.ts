@@ -2,7 +2,24 @@ import { daysBetween, isDateKey } from './dates';
 import { newId } from './records';
 import type { Finding, FindingKind, FindingStatus, FindingUpdate, Photo, Technician, Workspace } from './types';
 
-export const FINDING_NOUN: Record<FindingKind, string> = { observation: 'ملاحظة', violation: 'مخالفة' };
+export const FINDING_KINDS: FindingKind[] = ['observation', 'violation', 'lsr'];
+export const FINDING_NOUN: Record<FindingKind, string> = { observation: 'ملاحظة', violation: 'مخالفة', lsr: 'LSR' };
+/** الاسم معرّفًا داخل الجمل: «تم تسجيل الملاحظة». */
+export const FINDING_THE: Record<FindingKind, string> = { observation: 'الملاحظة', violation: 'المخالفة', lsr: 'مخالفة LSR' };
+/** الجمع: عناوين الأقسام والجداول. */
+export const FINDING_PLURAL: Record<FindingKind, string> = { observation: 'ملاحظات', violation: 'مخالفات', lsr: 'LSR' };
+/** قواعد الحفاظ على الحياة الشائعة (IOGP) كاقتراحات سريعة. تقدر تكتب قاعدة شركتك بنفسك. */
+export const LSR_RULES = [
+  'العزل وفصل الطاقة',
+  'تصريح العمل',
+  'العمل على ارتفاع',
+  'الأماكن المحصورة',
+  'الرفع الآمن',
+  'خط النار',
+  'تجاوز أنظمة السلامة',
+  'الأعمال الساخنة',
+  'القيادة الآمنة',
+];
 export const STATUS_LABEL: Record<FindingStatus, string> = { open: 'مفتوحة', progress: 'قيد المعالجة', closed: 'مقفلة' };
 
 export type FindingInput = {
@@ -20,7 +37,7 @@ export type FindingInput = {
 };
 
 export function validateFinding(input: FindingInput): string | null {
-  if (!input.title.trim()) return 'اكتب عنوان ال' + FINDING_NOUN[input.kind];
+  if (!input.title.trim()) return 'اكتب عنوان ' + FINDING_THE[input.kind];
   if (!isDateKey(input.date)) return 'التاريخ غير صحيح';
   if (input.dueDate && (!isDateKey(input.dueDate) || input.dueDate < input.date)) return 'موعد الإغلاق لازم يكون بعد تاريخ التسجيل';
   return null;
@@ -118,7 +135,7 @@ export type FindingRow = {
 };
 
 export type KindCount = { open: number; closed: number };
-export type TechnicianFindings = { technician: Technician; departmentName: string; observation: KindCount; violation: KindCount };
+export type TechnicianFindings = { technician: Technician; departmentName: string } & Record<FindingKind, KindCount>;
 
 export type FindingsDetail = {
   byTechnician: TechnicianFindings[];
@@ -155,13 +172,13 @@ export function findingsDetail(ws: Workspace, today: string, range?: { start: st
     for (const id of new Set(finding.technicianIds ?? [])) {
       const tech = byId.get(id);
       if (!tech || (departmentId !== 'all' && tech.departmentId !== departmentId)) continue;
-      const entry = people.get(id) ?? { technician: tech, departmentName: deptName(tech.departmentId), observation: { open: 0, closed: 0 }, violation: { open: 0, closed: 0 } };
+      const entry = people.get(id) ?? { technician: tech, departmentName: deptName(tech.departmentId), observation: { open: 0, closed: 0 }, violation: { open: 0, closed: 0 }, lsr: { open: 0, closed: 0 } };
       entry[finding.kind][finding.status === 'closed' ? 'closed' : 'open']++;
       people.set(id, entry);
     }
   }
-  const openOf = (entry: TechnicianFindings) => entry.observation.open + entry.violation.open;
-  const totalOf = (entry: TechnicianFindings) => openOf(entry) + entry.observation.closed + entry.violation.closed;
+  const openOf = (entry: TechnicianFindings) => FINDING_KINDS.reduce((sum, kind) => sum + entry[kind].open, 0);
+  const totalOf = (entry: TechnicianFindings) => openOf(entry) + FINDING_KINDS.reduce((sum, kind) => sum + entry[kind].closed, 0);
   return {
     byTechnician: [...people.values()].sort(
       (a, b) => openOf(b) - openOf(a) || totalOf(b) - totalOf(a) || a.technician.name.localeCompare(b.technician.name, 'ar'),

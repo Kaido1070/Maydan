@@ -76,6 +76,16 @@ async function overflow(page) {
     body = await page.locator('body').innerText();
     assert(body.includes('المقفلة · 1') && body.includes('المفتوحة · 0'), 'الملاحظة انقفلت');
 
+    // LSR: مخالفة قواعد الحفاظ على الحياة مع القاعدة
+    await page.getByText('LSR', { exact: true }).first().click();
+    await id('add-lsr').click();
+    await id('finding-title').fill('العمل على خط بدون عزل');
+    await page.getByText('العزل وفصل الطاقة', { exact: true }).click();
+    await id('finding-save').click();
+    await page.waitForTimeout(200);
+    body = await page.locator('body').innerText();
+    assert(body.includes('مخالفات LSR') && body.includes('القاعدة: العزل وفصل الطاقة'), 'LSR انسجلت مع القاعدة');
+
     await page.getByText('خارج الدوام', { exact: true }).first().click();
     body = await page.locator('body').innerText();
     assert(body.includes('بلاغ طوارئ') && body.includes('ساعة و30 دقيقة'), 'تسجيل خارج الدوام مع المدة');
@@ -83,7 +93,7 @@ async function overflow(page) {
     await id('tab-reports').click();
     assert((await id('report-follow').innerText()).includes('ملاحظات'), 'التقرير فيه الملاحظات وخارج الدوام');
     const named = await id('report-findings').innerText();
-    assert(named.includes('فيصل عمر المرواني') && named.includes('المقفلة · 1') && named.includes('الباقية · 0'), 'التقرير فيه الملاحظات بأسماء الفنيين');
+    assert(named.includes('فيصل عمر المرواني') && named.includes('المقفلة · 1') && named.includes('الباقية · 1') && named.includes('LSR'), 'التقرير فيه الملاحظات وLSR بأسماء الفنيين');
     await page.getByText('المقفلة · 1', { exact: true }).click();
     assert((await id('report-findings').innerText()).includes('غطاء غرفة تفتيش مفتوح'), 'قائمة المقفلة فيها الملاحظة');
 

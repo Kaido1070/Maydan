@@ -1,10 +1,10 @@
 import { addDays, dateOf, formatDate, MONTHS_AR } from './dates';
 import { techTag } from './shifts';
 import { activeTechnicians } from './shifts';
-import { FINDING_NOUN, findingsDetail, FindingsDetail, FindingRow, findingStats, FindingStats, STATUS_LABEL } from './findings';
+import { FINDING_KINDS, FINDING_NOUN, FINDING_PLURAL, findingsDetail, FindingsDetail, FindingRow, findingStats, FindingStats, STATUS_LABEL } from './findings';
 import { formatDuration, overtimeSummary, OvertimeSummary } from './worktime';
 import { coverageByDepartment, DepartmentCoverage, followUpList, FollowUp, techProgress, yearMeetings } from './stats';
-import type { Workspace } from './types';
+import type { FindingKind, Workspace } from './types';
 
 export type ReportMode = 'month' | 'quarter' | 'year';
 export type ReportParams = { mode: ReportMode; year: number; month: number; quarter: number; departmentId: string | 'all' };
@@ -45,7 +45,7 @@ export type Report = {
   /** توزيع الفنيين: بدون / جزئي / مكتمل، للزيارات وللاجتماعات. */
   statusMix: { visits: StatusMix; meetings: StatusMix };
   /** الملاحظات والمخالفات المسجلة في الفترة، والعمل خارج الدوام. */
-  findings: { observation: FindingStats; violation: FindingStats };
+  findings: Record<FindingKind, FindingStats>;
   /** حسب الفني، والمقفلة والباقية بالأسماء. */
   findingsDetail: FindingsDetail;
   overtime: OvertimeSummary;
@@ -131,10 +131,7 @@ export function buildReport(ws: Workspace, params: ReportParams, today: string):
     pending: followUpList(ws, asOf, params.departmentId),
     meetingTitles: yearMeetings(ws, Number(asOf.slice(0, 4))).map((item) => item.title),
     statusMix: statusMix(ws, asOf, params.departmentId),
-    findings: {
-      observation: findingStats(ws, 'observation', today, { start: period.start, end: period.end }),
-      violation: findingStats(ws, 'violation', today, { start: period.start, end: period.end }),
-    },
+    findings: Object.fromEntries(FINDING_KINDS.map((kind) => [kind, findingStats(ws, kind, today, { start: period.start, end: period.end })])) as Record<FindingKind, FindingStats>,
     findingsDetail: findingsDetail(ws, today, { start: period.start, end: period.end }, params.departmentId),
     overtime: overtimeSummary(ws, period.start, period.end),
   };
@@ -144,7 +141,7 @@ export function buildReport(ws: Workspace, params: ReportParams, today: string):
 export const FINDING_HEADINGS = ['النوع', 'العنوان', 'الفنيون / الفرق', 'القسم', 'الموقع', 'التاريخ', 'الحالة', 'المدة (يوم)'];
 export const findingValues = (row: FindingRow): (string | number)[] => [
   FINDING_NOUN[row.finding.kind],
-  row.finding.title,
+  row.finding.title + (row.finding.extra?.rule ? ' (' + row.finding.extra.rule + ')' : ''),
   row.names.join('، ') || '—',
   row.departmentName || '—',
   row.finding.location || '—',
@@ -152,7 +149,14 @@ export const findingValues = (row: FindingRow): (string | number)[] => [
   row.finding.status === 'closed' ? 'مقفلة ' + (row.finding.closedAt ?? '') : row.overdue ? 'متأخرة' : STATUS_LABEL[row.finding.status],
   row.age,
 ];
-export const TECH_FINDING_HEADINGS = ['الفني / الفريق', 'القسم', 'ملاحظات باقية', 'ملاحظات مقفلة', 'مخالفات باقية', 'مخالفات مقفلة'];
+export const TECH_FINDING_HEADINGS = ['الفني / الفريق', 'القسم', ...FINDING_KINDS.flatMap((kind) => [FINDING_PLURAL[kind] + ' باقية', FINDING_PLURAL[kind] + ' مقفلة'])];
+export const techFindingValues = (row: FindingsDetail['byTechnician'][number]) => [row.technician.name, row.departmentName, ...FINDING_KINDS.flatMap((kind) => [row[kind].open, row[kind].closed])];
+/** صف إحصاء لكل نوع: مفتوحة، متأخرة، مقفلة، متوسط أيام الإغلاق. */
+export const findingStatRows = (report: Report): (string | number)[][] =>
+  FINDING_KINDS.map((kind) => {
+    const stats = report.findings[kind];
+    return [FINDING_PLURAL[kind], stats.open, stats.overdue, stats.closed, stats.avgDaysToClose ?? '—'];
+  });
 
 const COUNT_HEADINGS = ['زيارات', 'زيارات الفنيين', 'فنيون تمت زيارتهم', 'تسجيلات اجتماعات', 'مرات حضور'];
 const countValues = (row: Counts) => [row.visits, row.technicianVisits, row.techniciansVisited, row.meetingSessions, row.attendance];
@@ -186,11 +190,10 @@ export function reportRows(report: Report): (string | number)[][] {
     ]),
     [],
     ['الملاحظات والمخالفات', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
-    ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
-    ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
+    ...findingStatRows(report),
     [],
     ['الملاحظات والمخالفات حسب الفني', ...TECH_FINDING_HEADINGS.slice(1)],
-    ...report.findingsDetail.byTechnician.map((row) => [row.technician.name, row.departmentName, row.observation.open, row.observation.closed, row.violation.open, row.violation.closed]),
+    ...report.findingsDetail.byTechnician.map(techFindingValues),
     [],
     ['الباقية (' + report.findingsDetail.open.length + ')'],
     FINDING_HEADINGS,
@@ -303,14 +306,11 @@ export function reportHtml(report: Report, engineerName: string): string {
     '<h2>الملاحظات والمخالفات</h2>' +
     table(
       ['', 'مفتوحة', 'متأخرة', 'مقفلة', 'متوسط أيام الإغلاق'],
-      [
-        ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
-        ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
-      ],
+      findingStatRows(report),
     ) +
     (report.findingsDetail.byTechnician.length
       ? '<h2>الملاحظات والمخالفات حسب الفني</h2>' +
-        table(TECH_FINDING_HEADINGS, report.findingsDetail.byTechnician.map((row) => [row.technician.name, row.departmentName, row.observation.open, row.observation.closed, row.violation.open, row.violation.closed]))
+        table(TECH_FINDING_HEADINGS, report.findingsDetail.byTechnician.map(techFindingValues))
       : '') +
     '<h2>الملاحظات والمخالفات الباقية (' + report.findingsDetail.open.length + ')</h2>' +
     (report.findingsDetail.open.length ? table(FINDING_HEADINGS, report.findingsDetail.open.map(findingValues)) : '<p>ما فيه شي باقي.</p>') +

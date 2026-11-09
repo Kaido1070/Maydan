@@ -2,8 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatDate, MONTHS_AR, normalizeDigits } from '../domain/dates';
 import type { FindingRow, FindingsDetail } from '../domain/findings';
-import { FINDING_NOUN, STATUS_LABEL } from '../domain/findings';
-import { buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
+import { FINDING_KINDS, FINDING_NOUN, FINDING_PLURAL, STATUS_LABEL } from '../domain/findings';
+import { findingStatRows, buildReport, REPORT_MODES, ReportMode, ReportParams, reportCsv, reportFileName, reportHtml } from '../domain/reports';
 import { shiftName, techTag } from '../domain/shifts';
 import { searchTechnicians, techProgress, tone } from '../domain/stats';
 import { sharePdf, shareText } from '../exporting';
@@ -114,15 +114,12 @@ export function ReportsScreen() {
         <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله.</Sub>
       </Card>
 
-      <SectionTitle title="الملاحظات وخارج الدوام" sub={'المسجلة في ' + report.label} />
+      <SectionTitle title="الملاحظات والمخالفات وLSR وخارج الدوام" sub={'المسجلة في ' + report.label} />
       <View testID="report-follow">
         <Card>
           <Table
             head={['', 'مفتوحة', 'متأخرة', 'مقفلة', 'إغلاق (يوم)']}
-            rows={[
-              ['ملاحظات', report.findings.observation.open, report.findings.observation.overdue, report.findings.observation.closed, report.findings.observation.avgDaysToClose ?? '—'],
-              ['مخالفات', report.findings.violation.open, report.findings.violation.overdue, report.findings.violation.closed, report.findings.violation.avgDaysToClose ?? '—'],
-            ]}
+            rows={findingStatRows(report)}
           />
           <T style={{ fontWeight: '700', marginTop: 12 }}>العمل خارج الدوام</T>
           <Row gap={8} style={{ marginTop: 6 }}>
@@ -132,7 +129,7 @@ export function ReportsScreen() {
         </Card>
       </View>
 
-      <SectionTitle title="الملاحظات والمخالفات بالأسماء" sub={'المسجلة في ' + report.label + ' · ' + report.scopeLabel} />
+      <SectionTitle title="الملاحظات والمخالفات وLSR بالأسماء" sub={'المسجلة في ' + report.label + ' · ' + report.scopeLabel} />
       <FindingsByName detail={report.findingsDetail} />
 
       <SectionTitle title="صورة التغطية" sub={'حالة الفنيين حتى ' + formatDate(report.asOf, { year: true }) + ' · ' + report.scopeLabel} />
@@ -320,10 +317,13 @@ function FindingsByName({ detail }: { detail: FindingsDetail }) {
       <Card>
         <T style={{ fontWeight: '800', marginBottom: 6 }}>حسب الفني</T>
         {detail.byTechnician.length ? (
-          <Table
-            head={['الفني / الفريق', 'ملاحظات باقية', 'ملاحظات مقفلة', 'مخالفات باقية', 'مخالفات مقفلة']}
-            rows={detail.byTechnician.map((row) => [row.technician.name, row.observation.open, row.observation.closed, row.violation.open, row.violation.closed])}
-          />
+          <>
+            <Table
+              head={['الفني / الفريق', ...FINDING_KINDS.map((kind) => FINDING_PLURAL[kind])]}
+              rows={detail.byTechnician.map((row) => [row.technician.name, ...FINDING_KINDS.map((kind) => '\u2066' + row[kind].open + ' / ' + row[kind].closed + '\u2069')])}
+            />
+            <Sub style={{ marginTop: 6 }}>الرقم: باقية / مقفلة</Sub>
+          </>
         ) : (
           <Sub>ما فيه ملاحظات مربوطة بفنيين في هالفترة. اختر الفنيين المعنيين وقت تسجيل الملاحظة أو المخالفة.</Sub>
         )}
@@ -362,9 +362,10 @@ function FindingLine({ row }: { row: FindingRow }) {
       <Spread style={{ alignItems: 'flex-start' }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <T style={{ fontWeight: '700' }}>{row.finding.title}</T>
+          {row.finding.extra?.rule ? <Sub style={{ color: C.red }}>{'القاعدة: ' + row.finding.extra.rule}</Sub> : null}
           <Sub numberOfLines={2}>{[row.names.join('، ') || 'بدون فني محدد', row.departmentName, row.finding.location].filter(Boolean).join(' · ')}</Sub>
         </View>
-        <Chip tone={row.finding.kind === 'violation' ? 'red' : 'purple'} label={FINDING_NOUN[row.finding.kind]} />
+        <Chip tone={row.finding.kind === 'observation' ? 'purple' : 'red'} label={FINDING_NOUN[row.finding.kind]} />
       </Spread>
       <Sub style={{ marginTop: 2, color: closed ? C.green : row.overdue ? C.red : C.amber }}>
         {closed

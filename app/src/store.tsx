@@ -5,6 +5,8 @@ import { defaultDepartments, demoWorkspace, emptyWorkspace } from './domain/seed
 import type { AppState, Mode, Now, Workspace } from './domain/types';
 
 const STORAGE_KEY = 'maydan-app-state-v1';
+/** نسخة من البيانات كما كانت قبل آخر ترقية/فتح، للرجوع لها لو صار شي. */
+const SAFETY_KEY = 'maydan-app-state-v1-before-update';
 
 type Store = {
   ready: boolean;
@@ -38,6 +40,20 @@ export function migrate(state: AppState): AppState {
   return { ...state, demo, live: liveOps };
 }
 
+/**
+ * يقرأ البيانات المحفوظة ويرقّيها. يرجع null لو كانت غير مفهومة،
+ * عشان ما نستبدلها ببيانات فاضية.
+ */
+export function loadState(raw: string): AppState | null {
+  try {
+    const parsed = JSON.parse(raw) as AppState;
+    if (parsed?.version !== 1 || !parsed.demo || !parsed.live) return null;
+    return migrate(parsed);
+  } catch {
+    return null;
+  }
+}
+
 function initialState(today: string): AppState {
   return { version: 1, mode: 'demo', demo: demoWorkspace(today), live: emptyWorkspace(today) };
 }
@@ -48,24 +64,33 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  /** إذا ما قدرنا نقرأ البيانات المحفوظة، ما نكتب فوقها أبدًا. */
+  const [locked, setLocked] = useState(false);
+
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
+      .then(async (raw) => {
         if (!raw) return;
-        const parsed = JSON.parse(raw) as AppState;
-        if (parsed?.version === 1 && parsed.demo && parsed.live) setState(migrate(parsed));
+        const loaded = loadState(raw);
+        if (!loaded) {
+          setLocked(true);
+          return;
+        }
+        // نحتفظ بنسخة من البيانات كما هي قبل أي ترقية أو تعديل في هالفتحة.
+        await AsyncStorage.setItem(SAFETY_KEY, raw).catch(() => {});
+        setState(loaded);
       })
-      .catch(() => {})
+      .catch(() => setLocked(true))
       .finally(() => setReady(true));
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || locked) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
     }, 250);
-  }, [state, ready]);
+  }, [state, ready, locked]);
 
   // تحديث الوقت كل 30 ثانية حتى يتبدل الشفت الحالي تلقائيًا.
   useEffect(() => {

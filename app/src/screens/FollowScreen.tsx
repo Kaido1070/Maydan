@@ -5,6 +5,9 @@ import {
   addFindingUpdate,
   deleteFinding,
   FINDING_NOUN,
+  FINDING_PLURAL,
+  FINDING_THE,
+  LSR_RULES,
   findingAge,
   FindingInput,
   findingsOf,
@@ -28,9 +31,9 @@ import { useUi } from '../ui/ui';
 import { EquipmentScreen } from './EquipmentScreen';
 import { Touch } from '../ui/touch';
 
-type Section = 'observation' | 'violation' | 'equipment' | 'overtime';
+type Section = FindingKind | 'equipment' | 'overtime';
 
-/** المتابعة: الملاحظات، المخالفات، معدات التوزيع، والعمل خارج الدوام. */
+/** المتابعة: الملاحظات، المخالفات، مخالفات LSR، معدات التوزيع، والعمل خارج الدوام. */
 export function FollowScreen() {
   const [section, setSection] = useState<Section>('observation');
   return (
@@ -41,6 +44,7 @@ export function FollowScreen() {
           options={[
             { value: 'observation', label: 'الملاحظات' },
             { value: 'violation', label: 'المخالفات' },
+            { value: 'lsr', label: 'LSR' },
             { value: 'equipment', label: 'المعدات' },
             { value: 'overtime', label: 'خارج الدوام' },
           ]}
@@ -66,8 +70,8 @@ function FindingsList({ kind }: { kind: FindingKind }) {
   return (
     <View>
       <SectionTitle
-        title={kind === 'observation' ? 'ملاحظات السلامة' : 'المخالفات'}
-        sub={kind === 'observation' ? 'سجّل الملاحظة وتابعها لين تنقفل، بدل ما تضيع بين الصور والقروبات.' : 'سجل المخالفات ومتابعتها. خانات النموذج تنضاف لما توصلني الصيغة.'}
+        title={SECTION_TITLE[kind]}
+        sub={SECTION_SUB[kind]}
         right={<Button testID={'add-' + kind} icon="plus" label={'إضافة ' + noun} onPress={() => setEditing('new')} />}
       />
       <Row gap={8} style={{ marginBottom: 10 }}>
@@ -77,7 +81,7 @@ function FindingsList({ kind }: { kind: FindingKind }) {
       </Row>
       {stats.open || stats.closed ? (
         <Sub style={{ marginBottom: 8 }}>
-          {(stats.open ? (stats.oldestOpenDays ? 'أقدم ' + noun + ' مفتوحة لها ' + stats.oldestOpenDays + ' يوم' : 'كل المفتوح انسجل اليوم') : 'ما فيه مفتوح') +
+          {(stats.open ? (stats.oldestOpenDays ? 'أقدم ' + (kind === 'lsr' ? 'مخالفة LSR' : noun) + ' مفتوحة لها ' + stats.oldestOpenDays + ' يوم' : 'كل المفتوح انسجل اليوم') : 'ما فيه مفتوح') +
             (stats.avgDaysToClose !== null ? ' · متوسط الإغلاق ' + stats.avgDaysToClose + ' يوم' : '')}
         </Sub>
       ) : null}
@@ -95,7 +99,7 @@ function FindingsList({ kind }: { kind: FindingKind }) {
         list.map((item) => <FindingCard key={item.id} finding={item} onPress={() => setEditing(item.id)} />)
       ) : (
         <Card>
-          <Empty text={filter === 'open' ? 'ما فيه ' + (kind === 'observation' ? 'ملاحظات' : 'مخالفات') + ' مفتوحة 👍' : 'ما فيه شي مقفل للحين.'} />
+          <Empty text={filter === 'open' ? 'ما فيه ' + (kind === 'lsr' ? 'مخالفات LSR' : FINDING_PLURAL[kind]) + ' مفتوحة 👍' : 'ما فيه شي مقفل للحين.'} />
         </Card>
       )}
       <FindingSheet kind={kind} findingId={editing} onClose={() => setEditing(null)} />
@@ -125,6 +129,7 @@ function FindingCard({ finding, onPress }: { finding: Finding; onPress: () => vo
         <Spread style={{ alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '700', fontSize: 16 }}>{finding.title}</T>
+            {finding.extra?.rule ? <Sub style={{ color: C.red }}>{'القاعدة: ' + finding.extra.rule}</Sub> : null}
             <Sub numberOfLines={1}>
               {[
                 (finding.technicianIds ?? []).map((id) => ws.technicians.find((tech) => tech.id === id)?.name).filter(Boolean).join('، '),
@@ -214,6 +219,45 @@ function TechnicianPicker({ value, onChange }: { value: string[]; onChange: (ids
   );
 }
 
+const SECTION_TITLE: Record<FindingKind, string> = {
+  observation: 'ملاحظات السلامة',
+  violation: 'المخالفات',
+  lsr: 'مخالفات LSR',
+};
+const SECTION_SUB: Record<FindingKind, string> = {
+  observation: 'سجّل الملاحظة وتابعها لين تنقفل، بدل ما تضيع بين الصور والقروبات.',
+  violation: 'سجل المخالفات ومتابعتها. خانات النموذج تنضاف لما توصلني الصيغة.',
+  lsr: 'مخالفات قواعد الحفاظ على الحياة: حدد القاعدة والفنيين وتابعها لين تنقفل.',
+};
+const TITLE_HINT: Record<FindingKind, string> = {
+  observation: 'مثال: غطاء غرفة تفتيش مفتوح',
+  violation: 'مثال: عدم لبس الخوذة',
+  lsr: 'مثال: العمل على خط بدون عزل',
+};
+
+/** القاعدة المخالفة في LSR: اقتراحات سريعة، أو اكتبها بنفسك. */
+function RulePicker({ value, onChange }: { value: string; onChange: (rule: string) => void }) {
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Field testID="finding-rule" label="القاعدة المخالفة" value={value} onChangeText={onChange} placeholder="اختر من تحت أو اكتب القاعدة" />
+      <Row gap={6} style={{ flexWrap: 'wrap', marginTop: -4 }}>
+        {LSR_RULES.map((rule) => (
+          <Touch
+            key={rule}
+            accessibilityRole="button"
+            accessibilityState={{ selected: rule === value }}
+            feedback="select"
+            onPress={() => onChange(rule === value ? '' : rule)}
+            style={{ borderRadius: 99, paddingVertical: 5, paddingHorizontal: 10, backgroundColor: rule === value ? C.red : C.redBg }}
+          >
+            <T style={{ fontSize: 13, color: rule === value ? C.white : C.red, fontWeight: '600' }}>{rule}</T>
+          </Touch>
+        ))}
+      </Row>
+    </View>
+  );
+}
+
 const DUE_OPTIONS = [
   { value: 0, label: 'بدون موعد' },
   { value: 3, label: '3 أيام' },
@@ -258,7 +302,7 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
     if (failure) return setError(failure);
     const kept = ids(draft.photos);
     deletePhotoFiles(original.filter((p) => !kept.has(p.id)));
-    ui.notify(existing ? 'تم حفظ التعديل' : 'تم تسجيل ال' + noun);
+    ui.notify(existing ? 'تم حفظ التعديل' : 'تم تسجيل ' + FINDING_THE[kind]);
     onClose();
   };
   const addUpdate = (kindOfUpdate: 'note' | 'delay' | 'close' | 'reopen') => {
@@ -268,7 +312,7 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
     setUpdateText('');
     setError(null);
     if (kindOfUpdate === 'close') {
-      ui.notify('🎉 انقفلت ال' + noun + ' بعد ' + findingAge(existing, now.date) + ' يوم');
+      ui.notify('🎉 انقفلت ' + FINDING_THE[kind] + ' بعد ' + findingAge(existing, now.date) + ' يوم');
       onClose();
     }
   };
@@ -352,7 +396,8 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
         </View>
       ) : null}
 
-      <Field testID="finding-title" label={'عنوان ال' + noun} value={draft.title} onChangeText={(title) => set({ title })} placeholder={kind === 'observation' ? 'مثال: غطاء غرفة تفتيش مفتوح' : 'مثال: عدم لبس الخوذة'} />
+      <Field testID="finding-title" label={'عنوان ' + FINDING_THE[kind]} value={draft.title} onChangeText={(title) => set({ title })} placeholder={TITLE_HINT[kind]} />
+      {kind === 'lsr' ? <RulePicker value={draft.extra?.rule ?? ''} onChange={(rule) => set({ extra: { ...draft.extra, rule } })} /> : null}
       <Field label="الموقع" value={draft.location} onChangeText={(location) => set({ location })} placeholder="مثال: حي الروضة، شارع ..." />
       <Field label="المسؤول عن الإغلاق" value={draft.responsible} onChangeText={(responsible) => set({ responsible })} placeholder="فني، مقاول، أو جهة" />
       <TechnicianPicker
@@ -391,9 +436,9 @@ function FindingSheet({ kind, findingId, onClose }: { kind: FindingKind; finding
         style={[s.input, { minHeight: 70, textAlignVertical: 'top', paddingTop: 10, marginBottom: 10 }]}
       />
       <PhotoField testID="finding-photos" title="الصور" photos={draft.photos} onChange={(photos) => set({ photos })} onError={setError} />
-      {kind === 'violation' ? (
+      {kind !== 'observation' ? (
         <View style={{ backgroundColor: '#f7f5fb', borderRadius: 12, padding: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: '#cfc6e6' }}>
-          <T style={{ fontWeight: '700', fontSize: 13 }}>خانات نموذج المخالفة</T>
+          <T style={{ fontWeight: '700', fontSize: 13 }}>{kind === 'lsr' ? 'خانات نموذج LSR' : 'خانات نموذج المخالفة'}</T>
           <Sub>بتنضاف هنا لما ترسل نموذج المخالفات.</Sub>
         </View>
       ) : null}
