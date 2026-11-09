@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
@@ -8,11 +9,16 @@ import { RosterScreen } from './src/screens/RosterScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TodayScreen } from './src/screens/TodayScreen';
 import { VisitsScreen } from './src/screens/VisitsScreen';
+import { ChangelogSheet, WhatsNewSheet } from './src/sheets/ChangelogSheet';
 import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftSheets';
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { StoreProvider, useStore } from './src/store';
 import { C, Icon, IconName } from './src/ui/kit';
 import { Tab, Ui, UiContext } from './src/ui/ui';
+import { APP_VERSION, Release, releasesSince } from './src/version';
+
+/** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
+export const SEEN_VERSION_KEY = 'maydan-seen-version';
 
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'day', label: 'اليوم', icon: 'grid' },
@@ -44,6 +50,18 @@ function Shell() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const [whatsNew, setWhatsNew] = useState<Release[]>([]);
+  const [changelog, setChangelog] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SEEN_VERSION_KEY)
+      .then((seen) => setWhatsNew(releasesSince(seen)))
+      .catch(() => {});
+  }, []);
+  const closeWhatsNew = () => {
+    setWhatsNew([]);
+    AsyncStorage.setItem(SEEN_VERSION_KEY, APP_VERSION).catch(() => {});
+  };
 
   const ui = useMemo<Ui>(
     () => ({
@@ -63,6 +81,7 @@ function Shell() {
       openVisit: setVisit,
       openTechnician: (id, date) => setTechnician({ id, date }),
       openSlot: setSlot,
+      openChangelog: () => setChangelog(true),
       focusMeetingId,
       departmentId,
       setDepartmentId,
@@ -151,6 +170,15 @@ function Shell() {
           onClose={() => setTechnician(null)}
           onSaved={(message) => ui.notify(message)}
         />
+        <WhatsNewSheet
+          releases={whatsNew}
+          onClose={closeWhatsNew}
+          onShowAll={() => {
+            closeWhatsNew();
+            setChangelog(true);
+          }}
+        />
+        <ChangelogSheet visible={changelog} onClose={() => setChangelog(false)} />
         <SlotSheet
           target={slot}
           onClose={() => setSlot(null)}

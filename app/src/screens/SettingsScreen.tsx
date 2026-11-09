@@ -16,6 +16,7 @@ import { confirm } from '../sheets/VisitSheet';
 import { useApply, useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Field, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
+import { CHANGELOG, versionLabel } from '../version';
 
 export function SettingsScreen() {
   const store = useStore();
@@ -63,6 +64,16 @@ export function SettingsScreen() {
 
   return (
     <View>
+      <Card style={{ marginTop: 14 }}>
+        <Spread>
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '800', fontSize: 16 }}>ميدان</T>
+            <Sub testID="app-version">{'الإصدار ' + versionLabel()}</Sub>
+            <Sub>{CHANGELOG[0].title + ' · ' + formatDate(CHANGELOG[0].date, { year: true })}</Sub>
+          </View>
+          <Button small variant="secondary" icon="list" label="سجل التحديثات" testID="open-changelog" onPress={ui.openChangelog} />
+        </Spread>
+      </Card>
       <SectionTitle title="وضع البيانات" />
       <Card>
         <Segmented
