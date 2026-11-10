@@ -23,6 +23,7 @@ import { useApply, useStore } from '../store';
 import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, IconBox, IconName, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
 import { BLUR_LABELS } from '../ui/theme';
+import { hasNativeTabBar } from '../ui/NativeTabBar';
 import { CHANGELOG, versionLabel } from '../version';
 import { Touch } from '../ui/touch';
 
@@ -170,11 +171,17 @@ export function SettingsScreen() {
               </View>
               <Checkbox testID="pref-glass" label="الشريط السفلي الزجاجي" checked={store.prefs.glass} onChange={(glass) => store.setPrefs({ glass })} />
             </Spread>
-            <T style={{ fontWeight: '700', marginTop: 14, marginBottom: 8, opacity: store.prefs.glass ? 1 : 0.4 }}>درجة التعتيم</T>
-            <View style={{ opacity: store.prefs.glass ? 1 : 0.4 }} pointerEvents={store.prefs.glass ? 'auto' : 'none'}>
-              <Segmented options={BLUR_LABELS.map((label, value) => ({ value: value as 0 | 1 | 2 | 3, label }))} value={store.prefs.blur} onChange={(blur) => store.setPrefs({ blur })} />
-            </View>
-            <Sub style={{ marginTop: 8 }}>«شفاف» يبيّن اللي وراه أكثر، و«قوي» أوضح للقراءة. على iOS 26 وأحدث يستخدم زجاج النظام.</Sub>
+            {hasNativeTabBar ? (
+              <Sub style={{ marginTop: 8 }}>iOS يضبط شفافية الشريط الزجاجي حسب إعدادات الجهاز والمحتوى خلفه.</Sub>
+            ) : (
+              <>
+                <T style={{ fontWeight: '700', marginTop: 14, marginBottom: 8, opacity: store.prefs.glass ? 1 : 0.4 }}>درجة التعتيم</T>
+                <View style={{ opacity: store.prefs.glass ? 1 : 0.4 }} pointerEvents={store.prefs.glass ? 'auto' : 'none'}>
+                  <Segmented options={BLUR_LABELS.map((label, value) => ({ value: value as 0 | 1 | 2 | 3, label }))} value={store.prefs.blur} onChange={(blur) => store.setPrefs({ blur })} />
+                </View>
+                <Sub style={{ marginTop: 8 }}>«شفاف» يبيّن اللي وراه أكثر، و«قوي» أوضح للقراءة.</Sub>
+              </>
+            )}
           </Card>
         </>
       ) : null}
