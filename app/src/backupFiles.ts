@@ -28,8 +28,12 @@ async function readPhoto(photo: Photo): Promise<Uint8Array> {
   throw new Error('فيه صورة مفقودة من سجلات العمل. تعذّر إنشاء نسخة مكتملة.');
 }
 
+export function packWorkspaceBackup(workspace: Workspace) {
+  return packBackup(workspace, readPhoto);
+}
+
 export async function exportBackupZip(workspace: Workspace, date: string) {
-  const bytes = await packBackup(workspace, readPhoto);
+  const bytes = await packWorkspaceBackup(workspace);
   await shareBytes(`Maydan-Backup-${date}.zip`, bytes, MIME, 'public.zip-archive');
 }
 

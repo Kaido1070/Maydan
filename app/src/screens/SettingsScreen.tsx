@@ -15,6 +15,8 @@ import { previewTechnicianImport, type ImportPreview } from '../domain/importer'
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
 import { shareBytes, shareText } from '../exporting';
 import { exportBackupZip, pickBackupZip, restoreBackupPhotos } from '../backupFiles';
+import { DriveBackupCard } from '../drive/DriveBackup';
+import type { unpackBackup } from '../domain/backup';
 import { ImportSheet } from '../sheets/ImportSheet';
 import { DepartmentPicker } from './DepartmentPicker';
 import { rotationText } from './RosterScreen';
@@ -79,9 +81,7 @@ export function SettingsScreen() {
       setBackupBusy(false);
     }
   };
-  const importZip = async () => {
-    const archive = await runBackup(pickBackupZip);
-    if (!archive) return;
+  const confirmRestore = (archive: ReturnType<typeof unpackBackup>) => {
     confirm('استعادة النسخة ستستبدل بيانات العمل الحالية بالسجلات والصور الموجودة فيها. تبي تكمل؟', () => {
       void runBackup(async () => {
         const expected = workState.current;
@@ -91,6 +91,11 @@ export function SettingsScreen() {
         ui.notify('تم استرجاع بيانات العمل والصور');
       });
     });
+  };
+
+  const importZip = async () => {
+    const archive = await runBackup(pickBackupZip);
+    if (archive) confirmRestore(archive);
   };
 
   const importLive = () => {
@@ -347,6 +352,7 @@ export function SettingsScreen() {
         <>
       {mode === 'live' ? (
         <>
+          <DriveBackupCard onRestore={confirmRestore} />
           <SectionTitle title="نسخة احتياطية" sub="احفظ السجلات والصور في ملف ZIP، ثم اختر المجلد السحابي من نافذة المشاركة." />
           <Card>
             <Button testID="export-backup-zip" icon="download" label="حفظ نسخة مضغوطة مع الصور" disabled={backupBusy} onPress={() => { void runBackup(() => exportBackupZip(ws, now.date)); }} />

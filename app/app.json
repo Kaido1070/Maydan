@@ -61,6 +61,7 @@
     "scheme": "maydan",
     "backgroundColor": "#182524",
     "extra": {
+      "googleIosClientId": "",
       "supportsRTL": true,
       "forcesRTL": true
     }
