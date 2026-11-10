@@ -32,10 +32,11 @@ export function parseCoords(text: string): Coords | null {
 export const isMapsLink = (text: string) => /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps|maps\.google\.)/i.test(text.trim());
 
 const round = (value: number) => Math.round(value * 1e6) / 1e6;
-export const formatCoords = (coords: Coords) => round(coords.lat) + ', ' + round(coords.lng);
+/** الإحداثي بالصيغة المعتمدة: «17.7264,42.2774». */
+export const formatCoords = (coords: Coords) => round(coords.lat) + ',' + round(coords.lng);
 
-/** رابط يفتح الموقع في خرائط قوقل (التطبيق إذا موجود، وإلا المتصفح). */
-export const mapsLink = (coords: Coords) => 'https://www.google.com/maps/search/?api=1&query=' + round(coords.lat) + ',' + round(coords.lng);
+/** الرابط المباشر للموقع في خرائط قوقل (يفتح التطبيق إذا موجود، وإلا المتصفح). */
+export const mapsLink = (coords: Coords) => 'https://maps.google.com/?q=' + formatCoords(coords);
 
 /** خريطة قوقل مضمّنة للمعاينة داخل التطبيق. */
 export const mapsEmbed = (coords: Coords) => 'https://maps.google.com/maps?q=' + round(coords.lat) + ',' + round(coords.lng) + '&z=17&hl=ar&output=embed';

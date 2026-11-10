@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Linking, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Linking, Platform, Share, View } from 'react-native';
 import * as Location from 'expo-location';
 import { type Coords, formatCoords, isMapsLink, mapsLink, parseCoords } from '../domain/geo';
-import { Button, C, Field, Icon, Row, Sub, T } from './kit';
+import { Button, C, Field, Row, Sub, T } from './kit';
 import { MapPreview } from './MapPreview';
 import { haptic } from './touch';
 
@@ -31,26 +31,38 @@ export function LocationField({
 }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-
-  // لصق رابط أو إحداثيات من خرائط قوقل في الخانة: تتحول لموقع على الخريطة.
-  const typed = (text: string) => {
-    const found = parseCoords(text);
+  // خانة الإحداثي: تنكتب يدويًا «17.7264,42.2774»، أو ينلصق فيها رابط من خرائط قوقل، أو تتعبى من GPS.
+  const [text, setText] = useState(coords ? formatCoords(coords) : '');
+  const shown = useRef(coords);
+  if (shown.current !== coords) {
+    shown.current = coords;
+    const typed = parseCoords(text);
+    if (coords ? !typed || formatCoords(typed) !== formatCoords(coords) : !!typed) setText(coords ? formatCoords(coords) : '');
+  }
+  const typeCoords = (input: string) => {
+    const found = parseCoords(input);
     if (found) {
+      // رابط كامل انلصق: نكتب مكانه الإحداثي نفسه
+      setText(/^https?:/i.test(input.trim()) ? formatCoords(found) : input);
+      shown.current = found;
       onCoords(found);
       onMapUrl(undefined);
-      // الرابط نفسه ما ينكتب في الخانة: يبقى الوصف اللي كان مكتوب.
-      onChange(value);
-      setNote('انضاف الموقع من خرائط قوقل. اكتب وصف المكان إذا تبي.');
+      setNote(null);
       return;
     }
-    if (isMapsLink(text)) {
-      onMapUrl(text.trim());
-      onChange(value);
-      setNote('انحفظ رابط خرائط قوقل. الرابط المختصر ما فيه إحداثيات، فالمعاينة تفتح في خرائط قوقل.');
+    setText(input);
+    if (isMapsLink(input)) {
+      onMapUrl(input.trim());
+      setNote('الرابط المختصر ما فيه إحداثيات. انحفظ الرابط، واكتب الإحداثي إذا تبي المعاينة.');
       return;
     }
-    onChange(text);
+    if (coords) {
+      shown.current = undefined;
+      onCoords(undefined);
+    }
+    if (!input.trim()) onMapUrl(undefined);
   };
+  const invalid = !!text.trim() && !parseCoords(text) && !isMapsLink(text);
 
   const locate = async () => {
     setBusy(true);
@@ -85,27 +97,54 @@ export function LocationField({
   };
 
   const link = coords ? mapsLink(coords) : mapUrl;
+  const copyLink = async () => {
+    if (!link) return;
+    try {
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(link);
+        setNote('انسخ الرابط');
+      } else await Share.share({ message: link });
+    } catch {
+      setNote(link);
+    }
+  };
   return (
     <View style={{ marginBottom: 12 }}>
-      <Field label={label} value={value} onChangeText={typed} placeholder={placeholder} maxLength={300} testID="visit-site" />
+      <Field label={label} value={value} onChangeText={onChange} placeholder={placeholder} maxLength={200} testID="visit-site" />
+      <Field
+        label="الإحداثي"
+        value={text}
+        onChangeText={typeCoords}
+        placeholder="17.7264,42.2774"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="numbers-and-punctuation"
+        maxLength={400}
+        testID="visit-coords"
+        style={{ textAlign: 'left', writingDirection: 'ltr' }}
+      />
+      {invalid ? <T style={{ color: C.red, fontSize: 12, marginTop: -6, marginBottom: 6 }}>اكتب الإحداثي بهالشكل: 17.7264,42.2774</T> : null}
       <Row gap={8} style={{ marginTop: -4, flexWrap: 'wrap' }}>
-        <Button testID="locate-me" small variant="secondary" icon="crosshair" label={busy ? 'جاري التحديد…' : coords ? 'حدّث موقعي' : 'موقعي الحالي'} disabled={busy} onPress={locate} />
-        {link ? <Button testID="open-maps" small variant="ghost" icon="external-link" label="فتح في خرائط قوقل" onPress={() => Linking.openURL(link).catch(() => setNote('تعذر فتح خرائط قوقل'))} /> : null}
+        <Button testID="locate-me" small variant="secondary" icon="crosshair" label={busy ? 'جاري التحديد…' : coords ? 'حدّث من موقعي' : 'موقعي الحالي'} disabled={busy} onPress={locate} />
       </Row>
-      {!coords && !mapUrl ? <Sub style={{ marginTop: 4 }}>أو الصق في الخانة رابط الموقع أو إحداثياته من خرائط قوقل.</Sub> : null}
+      {!coords && !mapUrl ? <Sub style={{ marginTop: 4 }}>اضغط «موقعي الحالي»، أو اكتب الإحداثي، أو الصق رابط الموقع من خرائط قوقل.</Sub> : null}
       {note ? <Sub style={{ marginTop: 4 }}>{note}</Sub> : null}
-      {coords || mapUrl ? (
-        <View testID="location-pin" style={{ marginTop: 8, backgroundColor: C.subtle, borderRadius: 16, borderWidth: 1, borderColor: C.line, padding: 8, gap: 8 }}>
+      {link ? (
+        <View testID="location-pin" style={{ marginTop: 8, backgroundColor: C.subtle, borderRadius: 16, borderWidth: 1, borderColor: C.line, padding: 10, gap: 8 }}>
           {coords ? <MapPreview coords={coords} /> : null}
-          <Row gap={8}>
-            <Icon name="map-pin" size={15} color={C.green} />
-            <T style={{ flex: 1, fontSize: 13 }} numberOfLines={1}>{coords ? '⁦' + formatCoords(coords) + '⁩' : 'رابط خرائط قوقل محفوظ'}</T>
+          <Sub style={{ fontWeight: '700' }}>رابط خرائط قوقل</Sub>
+          <T testID="maps-link" selectable numberOfLines={2} style={{ fontSize: 13, color: C.link, textAlign: 'left', writingDirection: 'ltr' }}>{link}</T>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            <Button testID="open-maps" small variant="secondary" icon="external-link" label="فتح" onPress={() => Linking.openURL(link).catch(() => setNote('تعذر فتح خرائط قوقل'))} />
+            <Button testID="copy-maps" small variant="secondary" icon="copy" label="نسخ الرابط" onPress={copyLink} />
             <Button
               testID="location-clear"
               small
               variant="ghost"
               label="إزالة"
               onPress={() => {
+                shown.current = undefined;
+                setText('');
                 onCoords(undefined);
                 onMapUrl(undefined);
                 setNote(null);

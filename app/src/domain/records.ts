@@ -1,4 +1,5 @@
 import { isDateKey, isTime } from './dates';
+import { formatCoords } from './geo';
 import type { Meeting, MeetingAttendance, Photo, Visit, Workspace } from './types';
 
 let counter = 0;
@@ -43,9 +44,9 @@ function visitFields(input: VisitInput) {
 export const visitTitle = (visit: Pick<Visit, 'workType' | 'location' | 'site'>) => visit.workType || visit.location || visit.site || 'زيارة';
 
 /** تفاصيل الزيارة تحت العنوان: الموقع ورقم المهمة والوصف (بدون تكرار العنوان). */
-export function visitDetails(visit: Pick<Visit, 'workType' | 'location' | 'site' | 'taskNumber'>): string {
+export function visitDetails(visit: Pick<Visit, 'workType' | 'location' | 'site' | 'taskNumber'> & { coords?: { lat: number; lng: number } }): string {
   const title = visitTitle(visit);
-  return [visit.location !== title ? visit.location : '', visit.taskNumber ? 'رقم ' + visit.taskNumber : '', visit.site && visit.site !== title ? visit.site : '']
+  return [visit.location !== title ? visit.location : '', visit.taskNumber ? 'رقم ' + visit.taskNumber : '', visit.site && visit.site !== title ? visit.site : '', visit.coords ? '\u2066' + formatCoords(visit.coords) + '\u2069' : '']
     .filter(Boolean)
     .join(' · ');
 }

@@ -124,11 +124,16 @@ async function overflow(page) {
     await page.getByText('المعدات', { exact: true }).click();
     await id('add-equipment-visit').click();
     await id('visit-site').fill('محطة توزيع 12');
-    // لصق رابط خرائط قوقل: ينضاف الموقع والمعاينة، والوصف المكتوب يبقى
-    await id('visit-site').fill('https://www.google.com/maps/@24.7136,46.6753,17z');
-    assert((await id('location-pin').innerText()).includes('24.7136, 46.6753'), 'الإحداثيات انقرت من رابط قوقل');
-    assert((await id('visit-site').inputValue()) === 'محطة توزيع 12', 'وصف الموقع بقي بعد لصق الرابط');
-    assert(await id('open-maps').isVisible(), 'زر فتح خرائط قوقل');
+    // خانة الإحداثي: تنكتب يدويًا، ويطلع الرابط المباشر لخرائط قوقل
+    await id('visit-coords').fill('17.7264');
+    assert((await page.locator('body').innerText()).includes('اكتب الإحداثي بهالشكل'), 'تنبيه الإحداثي الناقص');
+    await id('visit-coords').fill('17.7264,42.2774');
+    assert((await id('maps-link').innerText()).trim() === 'https://maps.google.com/?q=17.7264,42.2774', 'الرابط المباشر لخرائط قوقل');
+    // لصق رابط من قوقل ماب في خانة الإحداثي يتحول للإحداثي نفسه
+    await id('visit-coords').fill('https://www.google.com/maps/@24.7136,46.6753,17z');
+    assert((await id('visit-coords').inputValue()) === '24.7136,46.6753', 'الرابط تحول لإحداثي');
+    await id('visit-coords').fill('17.7264,42.2774');
+    assert((await id('visit-site').inputValue()) === 'محطة توزيع 12', 'وصف الموقع ما تغيّر');
     await id('visit-notes').fill('باب المحطة مكسور');
     await id('visit-save').click();
     assert((await page.locator('body').innerText()).includes('أرفق صورة قبل'), 'صورة قبل مطلوبة');
@@ -143,6 +148,10 @@ async function overflow(page) {
     await page.waitForTimeout(200);
     let gear = await id('gear-notes').innerText();
     assert(gear.includes('محطة توزيع 12') && gear.includes('باب المحطة مكسور') && gear.includes('المفتوحة · 1'), 'ملاحظة المعدة مفتوحة');
+    // الإحداثي والرابط محفوظين مع الزيارة
+    await page.locator('[data-testid^="gear-note-"]').first().click();
+    assert((await id('visit-coords').inputValue()) === '17.7264,42.2774' && (await id('maps-link').innerText()).includes('q=17.7264,42.2774'), 'الإحداثي والرابط انحفظوا');
+    await id('sheet-close').click();
     // الإقفال بصورة بعد
     await page.locator('[data-testid^="gear-note-"]').first().click();
     assert(await id('gear-close-save').isDisabled(), 'الإقفال يحتاج صورة بعد');

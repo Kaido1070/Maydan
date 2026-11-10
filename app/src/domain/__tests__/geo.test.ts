@@ -21,7 +21,9 @@ describe('موقع الزيارة من خرائط قوقل', () => {
   });
 
   test('رابط الفتح في خرائط قوقل', () => {
-    expect(mapsLink({ lat: 24.71360004, lng: 46.6753 })).toBe('https://www.google.com/maps/search/?api=1&query=24.7136,46.6753');
-    expect(formatCoords({ lat: 24.7136, lng: 46.6753 })).toBe('24.7136, 46.6753');
+    expect(mapsLink({ lat: 17.72640004, lng: 42.2774 })).toBe('https://maps.google.com/?q=17.7264,42.2774');
+    expect(formatCoords({ lat: 17.7264, lng: 42.2774 })).toBe('17.7264,42.2774');
+    expect(parseCoords('17.7264,42.2774')).toEqual({ lat: 17.7264, lng: 42.2774 });
+    expect(parseCoords(mapsLink({ lat: 17.7264, lng: 42.2774 }))).toEqual({ lat: 17.7264, lng: 42.2774 });
   });
 });
