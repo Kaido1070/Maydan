@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import { PLACE_NOUN, PLACE_WORK_TYPE } from '../domain/places';
@@ -6,10 +6,12 @@ import { addVisit, closeEquipmentVisit, deleteVisit, EQUIPMENT_KINDS, EQUIPMENT_
 import type { Photo } from '../domain/types';
 import { deletePhotoFiles } from '../photos';
 import { PhotoField } from '../ui/PhotoField';
-import { activeTechnicians, shiftName, slotAt, techTag } from '../domain/shifts';
+import { PeoplePicker } from '../ui/PeoplePicker';
+import { s as s2 } from '../ui/kit';
+import { slotAt } from '../domain/shifts';
 import type { PlanItem } from '../domain/types';
 import { useApply, useStore } from '../store';
-import { Button, C, Checkbox, Chip, Field, KIND, Row, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
+import { Button, C, Field, Icon, KIND, Row, Sheet, Spread, Stepper, Sub, T } from '../ui/kit';
 import { Touch } from '../ui/touch';
 
 export type VisitTarget = { departmentId: string; visitId?: string; planItem?: PlanItem; date?: string; technicianIds?: string[]; placeId?: string; equipment?: boolean } | null;
@@ -48,10 +50,13 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   const [before, setBefore] = useState<Photo[]>([]);
   const [after, setAfter] = useState<Photo[]>([]);
   const [closeNote, setCloseNote] = useState('');
+  /** القسم المعروض في قائمة الاختيار (غير قسم الزيارة نفسه). */
+  const [pickDept, setPickDept] = useState<string | null>(null);
 
   useEffect(() => {
     if (!target) return;
     setError(null);
+    setPickDept(null);
     if (existing) {
       setDate(existing.date);
       setTime(existing.time);
@@ -82,19 +87,9 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
-  const { onShift, others } = useMemo(() => {
-    if (!department) return { onShift: [], others: [] };
-    const slot = isTime(time) ? slotAt(ws, department, date, time) : null;
-    const shiftIds = new Set((slot?.crew ?? []).map((tech) => tech.id));
-    // الموظفون المكتبيون ما لهم زيارات ميدانية (إلا لو كانوا محددين في زيارة قديمة)
-    const pool = activeTechnicians(ws).filter((tech) => (tech.workplace !== 'office' || people.includes(tech.id)) && (tech.departmentId === department.id || shiftIds.has(tech.id) || people.includes(tech.id)));
-    return { onShift: pool.filter((tech) => shiftIds.has(tech.id)), others: pool.filter((tech) => !shiftIds.has(tech.id)) };
-  }, [ws, department, date, time, people]);
-
   if (!target || (!department && !place && !equipment)) return null;
   const free = !!place || equipment;
 
-  const toggle = (id: string, value: boolean) => setPeople((list) => (value ? [...list, id] : list.filter((item) => item !== id)));
   const input = { departmentId: department?.id ?? '', placeId: place?.id, target: equipment ? ('equipment' as const) : undefined, before: gear ? before : undefined, date, time, workType, location, taskNumber, site, technicianIds: people, planItemId: existing?.planItemId ?? target.planItem?.id };
 
   // صور انضافت في هالنافذة وما انحفظت: تنحذف من الجهاز إذا تسكرت بدون حفظ.
@@ -133,22 +128,6 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       onSaved('تم حذف الزيارة');
     });
 
-  const list = (title: string, techs: typeof onShift) =>
-    techs.length ? (
-      <View style={{ marginTop: 6 }}>
-        <Sub style={{ fontWeight: '700', marginBottom: 4 }}>{title}</Sub>
-        {techs.map((tech) => (
-          <Row key={tech.id} style={{ paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line }}>
-            <Checkbox testID={'visit-tech-' + tech.id} checked={people.includes(tech.id)} onChange={(value) => toggle(tech.id, value)} label={tech.name} />
-            <View style={{ flex: 1 }}>
-              <T>{tech.name}</T>
-              <Sub>{techTag(tech) + ' · ' + shiftName(ws, tech)}</Sub>
-            </View>
-          </Row>
-        ))}
-      </View>
-    ) : null;
-
   return (
     <Sheet
       visible
@@ -159,17 +138,30 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
         <>
           {error ? <T style={{ color: C.red, fontSize: 13 }}>{error}</T> : null}
           <Row>
-            <Button testID="visit-save" style={{ flex: 1 }} label={existing ? 'حفظ التعديل' : 'حفظ الزيارة · \u2066+' + ws.settings.xpVisit + ' XP\u2069'} onPress={save} disabled={!free && !people.length} />
+            <Button testID="visit-save" style={{ flex: 1, backgroundColor: KIND.visit.solid }} icon="check" label={existing ? 'حفظ التعديل' : free ? 'حفظ الزيارة · \u2066+' + ws.settings.xpVisit + ' XP\u2069' : people.length ? 'حفظ زيارة ' + people.length + ' · \u2066+' + ws.settings.xpVisit + ' XP\u2069' : 'حدد الفنيين'} onPress={save} disabled={!free && !people.length} />
             {existing ? <Button variant="danger" label="حذف" onPress={remove} /> : null}
           </Row>
         </>
       }
     >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: KIND.visit.bg, borderRadius: 14, padding: 10, marginBottom: 14 }}>
+        <Icon name="map-pin" size={18} color={KIND.visit.fg} />
+        <T style={{ flex: 1, color: KIND.visit.fg, fontWeight: '700' }}>{existing ? 'تعدّل زيارة محفوظة' : gear ? 'أنت تسجّل زيارة معدة' : place ? 'أنت تسجّل زيارة ' + PLACE_NOUN[place.kind] : 'أنت تسجّل زيارة · ' + department!.name}</T>
+      </View>
       <Spread style={{ marginBottom: 10 }}>
         <T style={{ fontWeight: '700', fontSize: 12 }}>تاريخ الزيارة</T>
         <Stepper label={formatDate(date)} onPrev={() => setDate(addDays(date, -1))} onNext={() => setDate(addDays(date, 1))} nextDisabled={date >= now.date} />
       </Spread>
       <Field label="الوقت (24 ساعة)" value={time} onChangeText={setTime} placeholder="09:30" keyboardType="numbers-and-punctuation" maxLength={5} testID="visit-time" />
+      {gear ? null : free ? (
+        <Sub>{(place ? 'زيارة ' + PLACE_NOUN[place.kind] : 'زيارة معدات') + ': ما تحتاج تحدد فنيين.'}</Sub>
+      ) : (
+        <>
+          <T style={[s2.label, { marginTop: 4, marginBottom: 6 }]}>الفنيون والفرق اللي شملتهم الزيارة</T>
+          <PeoplePicker value={people} onChange={setPeople} departmentId={pickDept ?? department!.id} onDepartment={setPickDept} date={date} time={isTime(time) ? time : now.time} includeOffice={false} testPrefix="visit-tech-" noun="محدد" />
+          <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقارير، وزيارة لكل فني تحدده في سجله.</Sub>
+        </>
+      )}
       {gear ? (
         <>
           <PhotoField testID="gear-before" title="صورة قبل" photos={before} onChange={setBefore} onError={setError} />
@@ -235,20 +227,6 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       ) : null}
       <Field label="رقم المهمة (اختياري)" value={taskNumber} onChangeText={setTaskNumber} placeholder="رقم أمر العمل أو البلاغ" maxLength={30} testID="visit-number" />
       <Field label="وصف إضافي (اختياري)" value={site} onChangeText={setSite} placeholder="ملاحظة قصيرة عن الزيارة" maxLength={120} testID="visit-notes" />
-        </>
-      )}
-      {gear ? null : free ? (
-        <Sub>{(place ? 'زيارة ' + PLACE_NOUN[place.kind] : 'زيارة معدات') + ': ما تحتاج تحدد فنيين.'}</Sub>
-      ) : (
-        <>
-          <Spread>
-            <T style={{ fontWeight: '700', fontSize: 12 }}>الفنيون والفرق الذين شملتهم الزيارة</T>
-            <Chip tone={people.length ? 'green' : 'neutral'} label={people.length + ' محدد'} />
-          </Spread>
-          <Sub>الزيارة تُحسب مرة واحدة في التقارير، وزيارة لكل فني تحدده في سجله.</Sub>
-          {list('على رأس العمل وقت الزيارة', onShift)}
-          {list('بقية فنيي ' + department!.name, others)}
-          {!onShift.length && !others.length ? <Sub style={{ marginTop: 10 }}>ما فيه فنيون في هذا القسم. أضفهم من الإعدادات.</Sub> : null}
         </>
       )}
     </Sheet>

@@ -29,7 +29,7 @@ export function TalkCard({ onAdopt }: { onAdopt: (meetingId: string) => void }) 
     }
     setAll(false);
     onAdopt(id);
-    ui.notify('تم اختيار «' + title + '» كاجتماع. علّم على الحضور تحت');
+    ui.notify('تم اختيار «' + title + '» كاجتماع. حدد الحاضرين');
   };
 
   const share = async (text: string) => {

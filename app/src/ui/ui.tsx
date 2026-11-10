@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { SlotTarget } from '../sheets/ShiftSheets';
 import type { VisitTarget } from '../sheets/VisitSheet';
+import type { MeetingTarget } from '../sheets/MeetingSheet';
 
 export type Tab = 'day' | 'visits' | 'meetings' | 'follow' | 'reports' | 'roster' | 'settings';
 
@@ -16,6 +17,8 @@ export type Ui = {
   /** رسالة إنجاز تنضاف للرسالة الحالية (مستوى جديد، هدف الأسبوع...). */
   celebrateMilestone: (message: string) => void;
   openVisit: (target: NonNullable<VisitTarget>) => void;
+  /** صفحة تسجيل اجتماع (أو تعديل سجل حضور). */
+  openMeeting: (target: NonNullable<MeetingTarget>) => void;
   openTechnician: (id: string, date?: string) => void;
   openSlot: (target: NonNullable<SlotTarget>) => void;
   openChangelog: () => void;

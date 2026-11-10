@@ -200,3 +200,55 @@ export const reopenEquipmentVisit = (ws: Workspace, id: string, stamp = new Date
   ...ws,
   visits: ws.visits.map((visit) => (visit.id === id ? { ...visit, closedAt: undefined, updatedAt: stamp } : visit)),
 });
+
+/**
+ * تسجيل اجتماع: نفس الحاضرين لكل الاجتماعات المختارة، من أي قسم.
+ * كل قسم له سجله (اجتماع × قسم × تاريخ)، والحاضرون ينضافون على المسجلين من قبل.
+ */
+export function recordAttendance(
+  ws: Workspace,
+  input: { meetingIds: string[]; date: string; time?: string; technicianIds: string[] },
+  today: string,
+  stamp = new Date().toISOString(),
+): { ws: Workspace; created: number; people: number } {
+  const meetingIds = [...new Set(input.meetingIds)];
+  const people = [...new Set(input.technicianIds)];
+  if (!meetingIds.length) throw new Error('اختر الاجتماع');
+  if (meetingIds.some((id) => !ws.meetings.some((item) => item.id === id))) throw new Error('اجتماع غير معروف');
+  if (!people.length) throw new Error('حدد حاضرًا واحدًا على الأقل');
+  if (!isDateKey(input.date)) throw new Error('التاريخ غير صحيح');
+  if (input.date > today) throw new Error('ما يمكن تسجيل اجتماع بتاريخ قادم');
+  if (input.time && !isTime(input.time)) throw new Error('اكتب الوقت بصيغة 24 ساعة مثل 09:30');
+  const byDepartment = new Map<string, string[]>();
+  for (const id of people) {
+    const tech = ws.technicians.find((item) => item.id === id);
+    if (!tech) continue;
+    byDepartment.set(tech.departmentId, [...(byDepartment.get(tech.departmentId) ?? []), id]);
+  }
+  const attendance = [...ws.attendance];
+  let created = 0;
+  for (const meetingId of meetingIds) {
+    for (const [departmentId, ids] of byDepartment) {
+      const index = attendance.findIndex((item) => item.meetingId === meetingId && item.departmentId === departmentId && item.date === input.date);
+      if (index >= 0) {
+        attendance[index] = { ...attendance[index], technicianIds: [...new Set([...attendance[index].technicianIds, ...ids])], ...(input.time ? { time: input.time } : {}), updatedAt: stamp };
+      } else {
+        attendance.push({ id: newId('a'), meetingId, departmentId, date: input.date, ...(input.time ? { time: input.time } : {}), technicianIds: ids, updatedAt: stamp });
+        created++;
+      }
+    }
+  }
+  return { ws: { ...ws, attendance }, created, people: people.length };
+}
+
+/** تعديل سجل حضور محفوظ: الحاضرون والوقت. القائمة الفارغة تحذف السجل. */
+export function updateAttendanceRecord(ws: Workspace, id: string, input: { technicianIds: string[]; time?: string }, stamp = new Date().toISOString()): Workspace {
+  const people = [...new Set(input.technicianIds)];
+  if (input.time && !isTime(input.time)) throw new Error('اكتب الوقت بصيغة 24 ساعة مثل 09:30');
+  return {
+    ...ws,
+    attendance: people.length
+      ? ws.attendance.map((item) => (item.id === id ? { ...item, technicianIds: people, ...(input.time ? { time: input.time } : {}), updatedAt: stamp } : item))
+      : ws.attendance.filter((item) => item.id !== id),
+  };
+}
