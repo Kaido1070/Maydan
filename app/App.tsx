@@ -191,13 +191,14 @@ function Shell() {
               accessibilityRole="button"
               accessibilityLabel={mode === 'demo' ? 'وضع التجربة مفعّل. افتح الإعدادات للتبديل' : 'وضع العمل'}
               onPress={() => ui.go('settings')}
+              hitSlop={{ top: 10, bottom: 10 }}
               style={[styles.modeBadge, mode === 'demo' ? styles.demo : styles.live]}
               testID="mode-badge"
             >
               <View style={[styles.dot, { backgroundColor: mode === 'demo' ? C.amber : C.green }]} />
               <Text style={[styles.modeText, { color: mode === 'demo' ? C.amber : C.green }]}>{mode === 'demo' ? 'وضع التجربة' : 'بيانات العمل'}</Text>
             </Touch>
-            <Touch accessibilityRole="button" accessibilityLabel="الإعدادات" onPress={() => ui.go('settings')} style={styles.gear} testID="open-settings">
+            <Touch accessibilityRole="button" accessibilityLabel="الإعدادات" onPress={() => ui.go('settings')} hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }} feedback="select" style={styles.gear} testID="open-settings">
               <Icon name="settings" size={19} color={C.muted} />
             </Touch>
           </View>
@@ -369,12 +370,12 @@ const styles = themed(() => ({
   brandMark: { width: 38, height: 38, borderRadius: 13 },
   brandName: { color: C.ink, fontSize: 20, fontWeight: '700' },
   brandSub: { color: C.muted, fontSize: 12.5 },
-  modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
+  modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 12, minHeight: 44, borderWidth: 1 },
   demo: { backgroundColor: C.amberBg, borderColor: C.amberLine },
   live: { backgroundColor: C.greenBg, borderColor: C.greenLine },
   modeText: { fontSize: 12.5, fontWeight: '600' },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  gear: { width: 36, height: 36, borderRadius: 12, backgroundColor: C.track, alignItems: 'center', justifyContent: 'center' },
+  gear: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.track, alignItems: 'center', justifyContent: 'center' },
   tabbarWrap: { position: 'absolute', left: 16, right: 16 },
   nativeTabbarWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   tabbarGlass: { flexDirection: 'row', borderRadius: 30, paddingVertical: 7, paddingHorizontal: 4, overflow: 'hidden', borderWidth: 1 },

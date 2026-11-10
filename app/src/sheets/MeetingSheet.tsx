@@ -130,7 +130,7 @@ export function MeetingSheet({ target, onClose, onSaved }: { target: MeetingTarg
                   aria-checked={on}
                   feedback="select"
                   onPress={() => setSelected((list) => (on ? list.filter((id) => id !== meeting.id) : [...list, meeting.id]))}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, minHeight: 40, borderRadius: 12, borderWidth: 1, borderColor: on ? KIND.meeting.solid : C.line, backgroundColor: on ? KIND.meeting.bg : C.white }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: on ? KIND.meeting.solid : C.line, backgroundColor: on ? KIND.meeting.bg : C.white }}
                 >
                   <Icon name={on ? 'check-circle' : 'circle'} size={16} color={on ? KIND.meeting.fg : C.muted} />
                   <T style={{ fontSize: 14, color: on ? KIND.meeting.fg : C.ink, fontWeight: on ? '700' : '500' }}>{meeting.title}</T>

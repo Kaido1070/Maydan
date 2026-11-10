@@ -183,7 +183,7 @@ export function Checkbox({ checked, onChange, label, disabled, testID }: { check
       onPress={() => onChange(!checked)}
       feedback="select"
       scaleTo={0.88}
-      hitSlop={8}
+      hitSlop={10}
       style={[s.checkbox, checked && s.checkboxOn, disabled && { opacity: 0.4 }]}
     >
       {checked ? <Icon name="check" size={15} color={C.onAccent} /> : null}
@@ -264,7 +264,7 @@ export function Sheet({ visible, title, sub, onClose, children, footer }: { visi
               <T style={s.h2}>{title}</T>
               {sub ? <Sub>{sub}</Sub> : null}
             </View>
-            <Touch accessibilityRole="button" accessibilityLabel="إغلاق" onPress={onClose} style={s.stepBtn} testID="sheet-close">
+            <Touch accessibilityRole="button" accessibilityLabel="إغلاق" onPress={onClose} hitSlop={8} style={s.stepBtn} testID="sheet-close">
               <Icon name="x" size={18} color={C.ink} />
             </Touch>
           </Spread>
@@ -293,20 +293,20 @@ export const s = themed(() => ({
   chipText: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: R.control, paddingHorizontal: 16, minHeight: 46 },
-  buttonSmall: { minHeight: 36, paddingHorizontal: 12, borderRadius: R.small },
+  buttonSmall: { minHeight: 44, paddingHorizontal: 14, borderRadius: R.small },
   buttonText: { fontSize: 15, fontWeight: '700' },
   avatar: { backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
   iconBox: { alignItems: 'center', justifyContent: 'center' },
-  checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: C.softLine, alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
+  checkbox: { width: 28, height: 28, borderRadius: 8, borderWidth: 1.5, borderColor: C.softLine, alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
   checkboxOn: { backgroundColor: C.brand, borderColor: C.brand },
   segmented: { flexDirection: 'row', backgroundColor: C.track, borderRadius: R.control, padding: 3, gap: 3 },
-  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: R.small, paddingVertical: 7, paddingHorizontal: 6, minHeight: 38 },
+  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: R.small, paddingVertical: 8, paddingHorizontal: 6, minHeight: 44 },
   /** وضع الشبكة: خياران في كل سطر بعرض ثابت (ما ينضغط النص على الآيفون). */
   segmentGrid: { flexGrow: 1, flexShrink: 0, flexBasis: '47%' },
   segmentOn: { backgroundColor: C.brand },
   segmentText: { fontSize: 14, fontWeight: '600', color: C.muted },
   input: { borderWidth: 1, borderColor: C.line, borderRadius: R.control, backgroundColor: C.white, color: C.ink, paddingHorizontal: 13, minHeight: 46, fontSize: 16, fontFamily: FONTS.regular },
-  stepBtn: { width: 36, height: 36, borderRadius: R.small, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  stepBtn: { width: 44, height: 44, borderRadius: R.small, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   sheet: { flex: 1, backgroundColor: C.bg },
   sheetHead: { padding: 16, paddingBottom: 12, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line },
   sheetFooter: { paddingHorizontal: 16, paddingTop: 10, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, gap: 8 },

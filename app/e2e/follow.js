@@ -6,6 +6,22 @@ const { chromium, devices } = require('playwright');
 const assert = require('assert');
 const URL = process.env.MAYDAN_URL || 'http://localhost:8089';
 
+/** أزرار منطقة لمسها أصغر من 44 نقطة (الحد اللي توصي به Apple). */
+async function smallTargets(page) {
+  return page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll('[role=button],[role=checkbox],[role=tab],[role=switch],[role=link],[role=imagebutton]')) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      // مربع الاختيار داخل صف كامل قابل للضغط: الصف هو منطقة اللمس
+      const host = el.parentElement && el.parentElement.closest('[role=button],[role=switch]');
+      if (host && host.getBoundingClientRect().height >= 44) continue;
+      if (r.width < 44 || r.height < 44) out.push(Math.round(r.width) + 'x' + Math.round(r.height) + ' ' + (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30));
+    }
+    return [...new Set(out)].slice(0, 10);
+  });
+}
+
 /** عناصر تطلع برا عرض الشاشة (بدون الصفوف القابلة للسحب أفقيًا). */
 async function overflow(page) {
   return page.evaluate(() => {
@@ -234,6 +250,8 @@ async function overflow(page) {
       await page.waitForTimeout(150);
       const bad = await overflow(page);
       assert.deepStrictEqual(bad, [], `عرض ${width}: عناصر طالعة برا الشاشة في ${name}: ${bad.join(' | ')}`);
+      const tiny = await smallTargets(page);
+      assert.deepStrictEqual(tiny, [], `عرض ${width}: أزرار منطقة لمسها صغيرة في ${name}: ${tiny.join(' | ')}`);
     }
     const sheets = [
       ['نافذة الزيارة', async () => (await id('tab-visits').click(), await id('add-visit').click())],

@@ -177,7 +177,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
           {!place ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -4, marginBottom: 12 }}>
               {EQUIPMENT_KINDS.map((option) => (
-                <Touch key={option} accessibilityRole="button" feedback="select" onPress={() => setLocation(location.trim() ? location : option + ' ')} style={{ paddingHorizontal: 12, minHeight: 34, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.white }}>
+                <Touch key={option} accessibilityRole="button" feedback="select" onPress={() => setLocation(location.trim() ? location : option + ' ')} style={{ paddingHorizontal: 12, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.white }}>
                   <T style={{ fontSize: 13 }}>{option}</T>
                 </Touch>
               ))}
@@ -213,7 +213,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
               onPress={() => setWorkType(on ? '' : option)}
-              style={{ paddingHorizontal: 12, minHeight: 34, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: on ? KIND.visit.solid : C.line, backgroundColor: on ? KIND.visit.bg : C.white }}
+              style={{ paddingHorizontal: 12, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: on ? KIND.visit.solid : C.line, backgroundColor: on ? KIND.visit.bg : C.white }}
             >
               <T style={{ fontSize: 13, color: on ? KIND.visit.fg : C.ink }}>{option}</T>
             </Touch>
@@ -226,7 +226,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       {equipment ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -4, marginBottom: 12 }}>
           {EQUIPMENT_KINDS.map((option) => (
-            <Touch key={option} accessibilityRole="button" feedback="select" onPress={() => setLocation(location.trim() ? location : option + ' ')} style={{ paddingHorizontal: 12, minHeight: 34, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.white }}>
+            <Touch key={option} accessibilityRole="button" feedback="select" onPress={() => setLocation(location.trim() ? location : option + ' ')} style={{ paddingHorizontal: 12, minHeight: 44, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.white }}>
               <T style={{ fontSize: 13 }}>{option}</T>
             </Touch>
           ))}
