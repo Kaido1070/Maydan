@@ -1,6 +1,6 @@
 {
   "name": "maydan",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",

@@ -9,23 +9,33 @@ import { useApply, useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Field, Icon, Progress, Row, s, SectionTitle, Segmented, Sheet, Spread, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
 
-/** زيارات المستودعات ونقاط الانطلاق: الهدف عدد مستودعات كل ربع سنة. */
-export function PlacesView() {
+/**
+ * قسمين منفصلين في الزيارات بنفس الشكل:
+ * المستودعات ونقاط الانطلاق (هدف المستودعات كل ربع سنة)، ومعدات التوزيع.
+ */
+export function PlacesView({ mode = 'places' }: { mode?: 'places' | 'equipment' }) {
   const { ws, now } = useStore();
   const ui = useUi();
-  const status = placeStatus(ws, now.date);
+  const equipment = mode === 'equipment';
+  const status = placeStatus(ws, now.date).filter((item) => (item.place.kind === 'equipment') === equipment);
   const quarter = warehouseQuarter(ws, now.date);
   const placeIds = new Set(status.map((item) => item.place.id));
   const [editing, setEditing] = useState<Place | null>(null);
-  const history = ws.visits.filter((visit) => visit.target === 'equipment' || (visit.placeId && placeIds.has(visit.placeId))).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 15);
+  const history = ws.visits.filter((visit) => (equipment && visit.target === 'equipment') || (visit.placeId && placeIds.has(visit.placeId))).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 15);
 
   return (
     <View>
       <SectionTitle
-        title="المستودعات والمواقع والمعدات"
-        sub={status.length ? 'المطلوب زيارة ' + (quarter.goal === 2 ? 'مستودعين' : quarter.goal + ' مستودعات') + ' كل ربع سنة.' : 'سجّل مستودعاتك ونقاط الانطلاق ومعدات التوزيع، وبعدها تسجّل زياراتها هنا.'}
+        title={equipment ? 'معدات التوزيع' : 'المستودعات ونقاط الانطلاق'}
+        sub={
+          equipment
+            ? 'محطة، محول، لوحة... سجّل المعدة مرة وحدة، وزرها بدون فنيين.'
+            : status.length
+              ? 'المطلوب زيارة ' + (quarter.goal === 2 ? 'مستودعين' : quarter.goal + ' مستودعات') + ' كل ربع سنة.'
+              : 'سجّل مستودعاتك ونقاط الانطلاق، وبعدها تسجّل زياراتها هنا.'
+        }
       />
-      {quarter.total ? (
+      {!equipment && quarter.total ? (
         <View testID="warehouse-quarter" style={{ backgroundColor: quarter.remaining ? C.amberBg : C.greenBg, borderRadius: 16, padding: 14, marginBottom: 12 }}>
           <Spread>
             <View style={{ flex: 1 }}>
@@ -37,7 +47,7 @@ export function PlacesView() {
           <Progress value={quarter.visited} max={quarter.goal} color={quarter.remaining ? '#d98a00' : C.green} track="#ffffffaa" />
         </View>
       ) : null}
-      <AddPlace />
+      <AddPlace kinds={equipment ? ['equipment'] : ['warehouse', 'staging']} />
       {status.length ? (
         <Card style={{ paddingVertical: 4 }}>
           {status.map((item, index) => (
@@ -59,10 +69,12 @@ export function PlacesView() {
         </Card>
       ) : (
         <Card>
-          <Empty text="ما سجلت مستودعات أو نقاط انطلاق أو معدات للحين. أضفها من فوق." />
+          <Empty text={equipment ? 'ما سجلت معدات للحين. أضفها من فوق.' : 'ما سجلت مستودعات أو نقاط انطلاق للحين. أضفها من فوق.'} />
         </Card>
       )}
-      <Button testID="add-equipment-visit" variant="secondary" icon="zap" label="زيارة معدة بدون تسجيلها" style={{ marginBottom: 4 }} onPress={() => ui.openVisit({ departmentId: '', equipment: true })} />
+      {equipment ? (
+        <Button testID="add-equipment-visit" variant="secondary" icon="zap" label="زيارة معدة بدون تسجيلها" style={{ marginBottom: 4 }} onPress={() => ui.openVisit({ departmentId: '', equipment: true })} />
+      ) : null}
       {history.length ? (
         <>
           <SectionTitle title="آخر زياراتها" />
@@ -84,10 +96,11 @@ export function PlacesView() {
   );
 }
 
-function AddPlace() {
+function AddPlace({ kinds }: { kinds: PlaceKind[] }) {
   const apply = useApply();
   const ui = useUi();
-  const [kind, setKind] = useState<PlaceKind>('warehouse');
+  const [picked, setKind] = useState<PlaceKind>(kinds[0]);
+  const kind = kinds.includes(picked) ? picked : kinds[0];
   const [name, setName] = useState('');
   const add = () => {
     const error = apply((c) => addPlace(c, { kind, name }));
@@ -97,17 +110,9 @@ function AddPlace() {
   };
   return (
     <Card>
-      <T style={{ fontWeight: '700', marginBottom: 6 }}>تسجيل مكان جديد</T>
-      <Segmented
-        options={[
-          { value: 'warehouse', label: 'مستودع' },
-          { value: 'staging', label: 'نقطة انطلاق' },
-          { value: 'equipment', label: 'معدة' },
-        ]}
-        value={kind}
-        onChange={setKind}
-      />
-      <Row style={{ marginTop: 8 }}>
+      <T style={{ fontWeight: '700', marginBottom: 6 }}>{kinds.length === 1 ? 'تسجيل ' + PLACE_NOUN[kinds[0]] + ' جديدة' : 'تسجيل مكان جديد'}</T>
+      {kinds.length > 1 ? <Segmented options={kinds.map((value) => ({ value, label: PLACE_NOUN[value] }))} value={kind} onChange={setKind} /> : null}
+      <Row style={{ marginTop: kinds.length > 1 ? 8 : 0 }}>
         <TextInput
           testID="place-name"
           value={name}

@@ -97,22 +97,23 @@ function CrewVisits() {
   );
 }
 
-/** الزيارات: الفنيون، المستودعات ونقاط الانطلاق، أو معدات التوزيع. */
+/** الزيارات: الفنيون، المستودعات ونقاط الانطلاق، ومعدات التوزيع. */
 export function VisitsScreen() {
-  const [view, setView] = useState<'crew' | 'places'>('crew');
+  const [view, setView] = useState<'crew' | 'places' | 'equipment'>('crew');
   return (
     <View>
       <View style={{ marginTop: 6 }}>
         <Segmented
           options={[
             { value: 'crew', label: 'الفنيون' },
-            { value: 'places', label: 'المستودعات والمعدات' },
+            { value: 'places', label: 'المستودعات' },
+            { value: 'equipment', label: 'المعدات' },
           ]}
           value={view}
           onChange={setView}
         />
       </View>
-      {view === 'crew' ? <CrewVisits /> : <PlacesView />}
+      {view === 'crew' ? <CrewVisits /> : <PlacesView key={view} mode={view} />}
     </View>
   );
 }

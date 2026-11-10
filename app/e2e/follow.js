@@ -116,17 +116,18 @@ async function overflow(page) {
     await id('visit-save').click();
     await page.waitForTimeout(200);
     await id('tab-visits').click();
-    await page.getByText('المستودعات والمعدات', { exact: true }).click();
+    await page.getByText('المستودعات', { exact: true }).click();
     assert((await page.locator('body').innerText()).includes('انزار هالربع'), 'المستودع صار مزار هالربع');
     assert((await id('warehouse-quarter').innerText()).replace(/[^0-9/ ]/g, '').includes('1 / 2'), 'هدف الربع: مستودع من مستودعين');
 
     // زيارة معدات التوزيع: بدون فنيين
+    await page.getByText('المعدات', { exact: true }).click();
     await id('add-equipment-visit').click();
     await id('visit-site').fill('محطة توزيع 12');
     await id('visit-save').click();
     await page.waitForTimeout(200);
     assert((await page.locator('body').innerText()).includes('محطة توزيع 12'), 'زيارة المعدة انسجلت');
-    await page.getByText('المستودعات والمعدات', { exact: true }).click();
+    await page.getByText('المستودعات', { exact: true }).click();
     assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
 
     // تسجيل مستودع جديد من صفحة الأماكن، وتعديله، وتسجيل زيارته
@@ -178,7 +179,8 @@ async function overflow(page) {
     const screens = [
       ['اليوم', async () => id('tab-day').click()],
       ['الزيارات', async () => (await id('tab-visits').click(), await id('dept-b').click())],
-      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات والمعدات', { exact: true }).click())],
+      ['المعدات', async () => (await id('tab-visits').click(), await page.getByText('المعدات', { exact: true }).click())],
+      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات', { exact: true }).click())],
       ['الاجتماعات', async () => (await id('tab-meetings').click(), await id('dept-b').click())],
       ['المتابعة', async () => id('tab-follow').click()],
       ['التقارير', async () => id('tab-reports').click()],
