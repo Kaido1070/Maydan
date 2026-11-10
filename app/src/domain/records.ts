@@ -1,5 +1,5 @@
 import { isDateKey, isTime } from './dates';
-import type { Meeting, MeetingAttendance, Visit, Workspace } from './types';
+import type { Meeting, MeetingAttendance, Photo, Visit, Workspace } from './types';
 
 let counter = 0;
 export function newId(prefix: string): string {
@@ -21,6 +21,8 @@ export type VisitInput = {
   placeId?: string;
   /** زيارة معدات التوزيع: ما تحتاج فنيين ولا قسم. */
   target?: 'equipment';
+  /** صور قبل (زيارة المعدة). */
+  before?: Photo[];
 };
 
 const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
@@ -86,6 +88,7 @@ export function addVisit(ws: Workspace, input: VisitInput, today: string, stamp 
     ...(input.planItemId ? { planItemId: input.planItemId } : {}),
     ...(input.placeId ? { placeId: input.placeId } : {}),
     ...(input.target ? { target: input.target } : {}),
+    ...(input.before?.length ? { before: input.before } : {}),
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -179,3 +182,21 @@ export function saveAttendanceBatch(
   }
   return { ws: { ...ws, attendance }, created, updated, removed };
 }
+
+/** إقفال ملاحظة المعدة بصور بعد. */
+export function closeEquipmentVisit(ws: Workspace, id: string, input: { after: Photo[]; note: string; date: string }, stamp = new Date().toISOString()): Workspace {
+  if (!input.after.length) throw new Error('أضف صورة بعد عشان تقفلها');
+  if (!isDateKey(input.date)) throw new Error('التاريخ غير صحيح');
+  return {
+    ...ws,
+    visits: ws.visits.map((visit) =>
+      visit.id === id ? { ...visit, after: input.after, closedAt: input.date, closeNote: input.note.trim() || undefined, updatedAt: stamp } : visit,
+    ),
+  };
+}
+
+/** إعادة فتح ملاحظة المعدة (الصور تبقى). */
+export const reopenEquipmentVisit = (ws: Workspace, id: string, stamp = new Date().toISOString()): Workspace => ({
+  ...ws,
+  visits: ws.visits.map((visit) => (visit.id === id ? { ...visit, closedAt: undefined, updatedAt: stamp } : visit)),
+});

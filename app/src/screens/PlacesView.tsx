@@ -8,6 +8,10 @@ import { visitDetails, visitTitle } from '../domain/records';
 import { useApply, useStore } from '../store';
 import { Button, C, Card, Chip, Empty, Field, Icon, Progress, Row, s, SectionTitle, Segmented, Sheet, Spread, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
+import { Image } from 'react-native';
+import { photoSrc } from '../photos';
+import type { Visit } from '../domain/types';
+import { Touch } from '../ui/touch';
 
 /**
  * قسمين منفصلين في الزيارات بنفس الشكل:
@@ -21,7 +25,8 @@ export function PlacesView({ mode = 'places' }: { mode?: 'places' | 'equipment' 
   const quarter = warehouseQuarter(ws, now.date);
   const placeIds = new Set(status.map((item) => item.place.id));
   const [editing, setEditing] = useState<Place | null>(null);
-  const history = ws.visits.filter((visit) => (equipment && visit.target === 'equipment') || (visit.placeId && placeIds.has(visit.placeId))).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 15);
+  const all = ws.visits.filter((visit) => (equipment && visit.target === 'equipment') || (visit.placeId && placeIds.has(visit.placeId))).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const history = equipment ? all : all.slice(0, 15);
 
   return (
     <View>
@@ -75,7 +80,8 @@ export function PlacesView({ mode = 'places' }: { mode?: 'places' | 'equipment' 
       {equipment ? (
         <Button testID="add-equipment-visit" variant="secondary" icon="zap" label="زيارة معدة بدون تسجيلها" style={{ marginBottom: 4 }} onPress={() => ui.openVisit({ departmentId: '', equipment: true })} />
       ) : null}
-      {history.length ? (
+      {equipment ? <GearNotes visits={history} /> : null}
+      {!equipment && history.length ? (
         <>
           <SectionTitle title="آخر زياراتها" />
           <Card style={{ paddingVertical: 4 }}>
@@ -92,6 +98,72 @@ export function PlacesView({ mode = 'places' }: { mode?: 'places' | 'equipment' 
         </>
       ) : null}
       <EditPlace place={editing} onClose={() => setEditing(null)} />
+    </View>
+  );
+}
+
+/** ملاحظات المعدات: المفتوحة (تحتاج صورة بعد) والمقفلة، مع صورة قبل وبعد. */
+function GearNotes({ visits }: { visits: Visit[] }) {
+  const { ws, now } = useStore();
+  const ui = useUi();
+  const [list, setList] = useState<'open' | 'closed'>('open');
+  const [limit, setLimit] = useState(10);
+  const open = visits.filter((visit) => !visit.closedAt);
+  const closed = visits.filter((visit) => visit.closedAt).sort((a, b) => (b.closedAt ?? '').localeCompare(a.closedAt ?? ''));
+  const rows = list === 'open' ? open : closed;
+  const thumb = (photos?: { id: string; uri: string; takenAt: string }[]) =>
+    photos?.[0] ? (
+      <Image source={{ uri: photoSrc(photos[0]) }} style={{ width: 54, height: 54, borderRadius: 12, backgroundColor: C.track }} />
+    ) : (
+      <View style={{ width: 54, height: 54, borderRadius: 12, backgroundColor: C.subtle, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="image" size={16} color={C.muted} />
+      </View>
+    );
+  return (
+    <View testID="gear-notes">
+      <SectionTitle title="ملاحظات المعدات" sub="كل زيارة معدة تبقى مفتوحة لين تقفلها بصورة بعد." />
+      <View style={{ marginBottom: 10 }}>
+        <Segmented
+          options={[
+            { value: 'open', label: 'المفتوحة · ' + open.length },
+            { value: 'closed', label: 'المقفلة · ' + closed.length },
+          ]}
+          value={list}
+          onChange={(value) => (setList(value), setLimit(10))}
+        />
+      </View>
+      <Card style={{ paddingVertical: 4 }}>
+        {rows.slice(0, limit).map((visit, index) => {
+          const name = ws.places?.find((place) => place.id === visit.placeId)?.name ?? (visit.location || 'معدة');
+          const age = Math.max(0, Math.round((new Date((visit.closedAt ?? now.date) + 'T12:00:00Z').getTime() - new Date(visit.date + 'T12:00:00Z').getTime()) / 86400000));
+          return (
+            <Touch
+              key={visit.id}
+              testID={'gear-note-' + visit.id}
+              accessibilityRole="button"
+              accessibilityLabel={name}
+              scaleTo={0.98}
+              onPress={() => ui.openVisit({ departmentId: '', visitId: visit.id })}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}
+            >
+              {thumb(visit.before)}
+              {visit.closedAt ? thumb(visit.after) : null}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <T style={{ fontWeight: '700' }} numberOfLines={1}>{name}</T>
+                {visit.site ? <Sub numberOfLines={2}>{visit.site}</Sub> : null}
+                <Sub style={{ color: visit.closedAt ? C.green : age > 7 ? C.red : C.amber }}>
+                  {visit.closedAt ? 'انقفلت بعد ' + age + ' يوم' : age ? 'مفتوحة من ' + age + ' يوم' : 'انسجلت اليوم'}
+                  {visit.location && visit.placeId ? ' · ' + visit.location : ''}
+                </Sub>
+              </View>
+              <Icon name="chevron-left" size={16} color={C.muted} />
+            </Touch>
+          );
+        })}
+        {!rows.length ? <Empty text={list === 'open' ? 'ما فيه ملاحظات مفتوحة 👍' : 'ما قفلت شي للحين.'} /> : null}
+        {rows.length > limit ? <Button small variant="ghost" label="عرض المزيد" onPress={() => setLimit(limit + 15)} /> : null}
+      </Card>
+      <Sub style={{ marginTop: 2 }}>تقرير صور قبل وبعد يتجهز لما ترسل صيغته.</Sub>
     </View>
   );
 }

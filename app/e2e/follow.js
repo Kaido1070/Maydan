@@ -124,9 +124,28 @@ async function overflow(page) {
     await page.getByText('المعدات', { exact: true }).click();
     await id('add-equipment-visit').click();
     await id('visit-site').fill('محطة توزيع 12');
+    await id('visit-notes').fill('باب المحطة مكسور');
+    await id('visit-save').click();
+    assert((await page.locator('body').innerText()).includes('أرفق صورة قبل'), 'صورة قبل مطلوبة');
+    const png = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 120, height: 90 } });
+    const attach = async (field) => {
+      const [chooser] = await Promise.all([page.waitForEvent('filechooser'), id(field + '-library').click()]);
+      await chooser.setFiles({ name: field + '.png', mimeType: 'image/png', buffer: png });
+      await page.waitForTimeout(400);
+    };
+    await attach('gear-before');
     await id('visit-save').click();
     await page.waitForTimeout(200);
-    assert((await page.locator('body').innerText()).includes('محطة توزيع 12'), 'زيارة المعدة انسجلت');
+    let gear = await id('gear-notes').innerText();
+    assert(gear.includes('محطة توزيع 12') && gear.includes('باب المحطة مكسور') && gear.includes('المفتوحة · 1'), 'ملاحظة المعدة مفتوحة');
+    // الإقفال بصورة بعد
+    await page.locator('[data-testid^="gear-note-"]').first().click();
+    assert(await id('gear-close-save').isDisabled(), 'الإقفال يحتاج صورة بعد');
+    await attach('gear-after');
+    await id('gear-close-save').click();
+    await page.waitForTimeout(200);
+    gear = await id('gear-notes').innerText();
+    assert(gear.includes('المفتوحة · 0') && gear.includes('المقفلة · 1'), 'ملاحظة المعدة انقفلت');
     await page.getByText('المستودعات', { exact: true }).click();
     assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
 

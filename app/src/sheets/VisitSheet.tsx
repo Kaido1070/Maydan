@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
 import { addDays, formatDate, isTime } from '../domain/dates';
 import { PLACE_NOUN, PLACE_WORK_TYPE } from '../domain/places';
-import { addVisit, deleteVisit, EQUIPMENT_KINDS, EQUIPMENT_WORK_TYPE, updateVisit, validateVisit, workTypeSuggestions } from '../domain/records';
+import { addVisit, closeEquipmentVisit, deleteVisit, EQUIPMENT_KINDS, EQUIPMENT_WORK_TYPE, reopenEquipmentVisit, updateVisit, validateVisit, workTypeSuggestions } from '../domain/records';
+import type { Photo } from '../domain/types';
+import { deletePhotoFiles } from '../photos';
+import { PhotoField } from '../ui/PhotoField';
 import { activeTechnicians, shiftName, slotAt, techTag } from '../domain/shifts';
 import type { PlanItem } from '../domain/types';
 import { useApply, useStore } from '../store';
@@ -31,6 +34,8 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   const place = (ws.places ?? []).find((item) => item.id === (existing?.placeId ?? target?.placeId));
 
   const equipment = (existing?.target ?? (target?.equipment ? 'equipment' : undefined)) === 'equipment';
+  /** زيارة معدة (مسجلة أو لا): صور قبل، ووصف الملاحظة، والموقع، وتنقفل بصور بعد. */
+  const gear = equipment || place?.kind === 'equipment';
 
   const [date, setDate] = useState(now.date);
   const [time, setTime] = useState(now.time);
@@ -40,6 +45,9 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   const [taskNumber, setTaskNumber] = useState('');
   const [people, setPeople] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [before, setBefore] = useState<Photo[]>([]);
+  const [after, setAfter] = useState<Photo[]>([]);
+  const [closeNote, setCloseNote] = useState('');
 
   useEffect(() => {
     if (!target) return;
@@ -53,14 +61,20 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       setLocation(existing.location ?? (existing.workType || existing.taskNumber ? '' : existing.site));
       setTaskNumber(existing.taskNumber ?? '');
       setPeople(existing.technicianIds);
+      setBefore(existing.before ?? []);
+      setAfter(existing.after ?? []);
+      setCloseNote(existing.closeNote ?? '');
     } else {
+      setBefore([]);
+      setAfter([]);
+      setCloseNote('');
       const date = target.date ?? now.date;
       const time = target.planItem?.time ?? now.time;
       setDate(date);
       setTime(time);
       setSite('');
       setWorkType(place ? PLACE_WORK_TYPE[place.kind] : target.equipment ? EQUIPMENT_WORK_TYPE : target.planItem?.title ?? '');
-      setLocation(place ? place.name : '');
+      setLocation(place && place.kind !== 'equipment' ? place.name : '');
       setTaskNumber('');
       const slot = department && isTime(time) ? slotAt(ws, department, date, time) : null;
       setPeople(target.technicianIds ?? (target.planItem ? (slot?.crew ?? []).map((tech) => tech.id) : []));
@@ -81,19 +95,41 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   const free = !!place || equipment;
 
   const toggle = (id: string, value: boolean) => setPeople((list) => (value ? [...list, id] : list.filter((item) => item !== id)));
-  const input = { departmentId: department?.id ?? '', placeId: place?.id, target: equipment ? ('equipment' as const) : undefined, date, time, workType, location, taskNumber, site, technicianIds: people, planItemId: existing?.planItemId ?? target.planItem?.id };
+  const input = { departmentId: department?.id ?? '', placeId: place?.id, target: equipment ? ('equipment' as const) : undefined, before: gear ? before : undefined, date, time, workType, location, taskNumber, site, technicianIds: people, planItemId: existing?.planItemId ?? target.planItem?.id };
+
+  // صور انضافت في هالنافذة وما انحفظت: تنحذف من الجهاز إذا تسكرت بدون حفظ.
+  const added = (list: Photo[], saved?: Photo[]) => list.filter((photo) => !(saved ?? []).some((item) => item.id === photo.id));
+  const dismiss = () => {
+    deletePhotoFiles([...added(before, existing?.before), ...added(after, existing?.after)]);
+    onClose();
+  };
+  const closeIt = () => {
+    if (!existing) return;
+    const failure = apply((current) => closeEquipmentVisit(updateVisit(current, existing.id, input, now.date), existing.id, { after, note: closeNote, date: now.date }));
+    if (failure) return setError(failure);
+    onSaved('🎉 انقفلت ملاحظة ' + (place?.name ?? location));
+  };
+  const reopen = () => {
+    if (!existing) return;
+    apply((current) => reopenEquipmentVisit(current, existing.id));
+    onSaved('رجعت مفتوحة');
+  };
 
   const save = () => {
+    if (gear && !before.length) return setError('أرفق صورة قبل');
+    if (gear && !site.trim()) return setError('اكتب وصف الملاحظة');
     const problem = validateVisit(ws, input, now.date);
     if (problem) return setError(problem);
     const failure = apply((current) => (existing ? updateVisit(current, existing.id, input, now.date) : addVisit(current, input, now.date).ws));
     if (failure) return setError(failure);
+    if (existing) deletePhotoFiles((existing.before ?? []).filter((photo) => !before.some((item) => item.id === photo.id)));
     onSaved(existing ? 'تم تحديث الزيارة' : 'تم تسجيل الزيارة · \u2066+' + ws.settings.xpVisit + ' XP\u2069');
   };
 
   const remove = () =>
     confirm('حذف هذه الزيارة من السجل؟', () => {
       apply((current) => deleteVisit(current, existing!.id));
+      deletePhotoFiles([...(existing!.before ?? []), ...(existing!.after ?? []), ...before, ...after]);
       onSaved('تم حذف الزيارة');
     });
 
@@ -116,9 +152,9 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   return (
     <Sheet
       visible
-      onClose={onClose}
-      title={existing ? 'تعديل الزيارة' : equipment ? 'زيارة معدات التوزيع' : place ? 'زيارة ' + PLACE_NOUN[place.kind] : target.planItem ? 'تسجيل زيارة مجدولة' : 'إضافة زيارة'}
-      sub={(place ? place.name : equipment ? 'بدون فنيين' : department!.name) + ' · ' + formatDate(date, { weekday: true })}
+      onClose={dismiss}
+      title={gear ? (place?.name ?? 'زيارة معدة') : existing ? 'تعديل الزيارة' : equipment ? 'زيارة معدات التوزيع' : place ? 'زيارة ' + PLACE_NOUN[place.kind] : target.planItem ? 'تسجيل زيارة مجدولة' : 'إضافة زيارة'}
+      sub={(gear ? (existing ? (existing.closedAt ? 'مقفلة' : 'مفتوحة') : 'معدة') : place ? place.name : department!.name) + ' · ' + formatDate(date, { weekday: true })}
       footer={
         <>
           {error ? <T style={{ color: C.red, fontSize: 13 }}>{error}</T> : null}
@@ -134,6 +170,38 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
         <Stepper label={formatDate(date)} onPrev={() => setDate(addDays(date, -1))} onNext={() => setDate(addDays(date, 1))} nextDisabled={date >= now.date} />
       </Spread>
       <Field label="الوقت (24 ساعة)" value={time} onChangeText={setTime} placeholder="09:30" keyboardType="numbers-and-punctuation" maxLength={5} testID="visit-time" />
+      {gear ? (
+        <>
+          <PhotoField testID="gear-before" title="صورة قبل" photos={before} onChange={setBefore} onError={setError} />
+          <Field label="وصف الملاحظة" value={site} onChangeText={setSite} placeholder="وش لاحظت على المعدة؟" maxLength={300} multiline style={{ minHeight: 80, textAlignVertical: 'top', paddingTop: 10 }} testID="visit-notes" />
+          <Field label="الموقع" value={location} onChangeText={setLocation} placeholder="مثال: حي الروضة، شارع الأمير سلطان" maxLength={100} testID="visit-site" />
+          {!place ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -4, marginBottom: 12 }}>
+              {EQUIPMENT_KINDS.map((option) => (
+                <Touch key={option} accessibilityRole="button" feedback="select" onPress={() => setLocation(location.trim() ? location : option + ' ')} style={{ paddingHorizontal: 12, minHeight: 34, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.white }}>
+                  <T style={{ fontSize: 13 }}>{option}</T>
+                </Touch>
+              ))}
+            </View>
+          ) : null}
+          <Field label="رقم المهمة (اختياري)" value={taskNumber} onChangeText={setTaskNumber} placeholder="رقم أمر العمل أو البلاغ" maxLength={30} testID="visit-number" />
+          {existing ? (
+            <View testID="gear-close" style={{ backgroundColor: existing.closedAt ? C.greenBg : C.subtle, borderRadius: 16, borderWidth: 1, borderColor: existing.closedAt ? C.greenLine : C.line, padding: 12, marginTop: 4 }}>
+              <T style={{ fontWeight: '700', marginBottom: 8 }}>{existing.closedAt ? 'انقفلت ' + formatDate(existing.closedAt, { weekday: true }) : 'إقفال الملاحظة'}</T>
+              <PhotoField testID="gear-after" title="صورة بعد" photos={after} onChange={setAfter} onError={setError} />
+              <Field label="ملاحظة الإقفال (اختياري)" value={closeNote} onChangeText={setCloseNote} placeholder="وش انعمل؟" maxLength={200} testID="gear-close-note" />
+              {existing.closedAt ? (
+                <Button small variant="secondary" icon="rotate-ccw" label="إعادة فتح" onPress={reopen} />
+              ) : (
+                <Button testID="gear-close-save" icon="check" label="إقفال بصورة بعد" style={{ backgroundColor: C.green }} disabled={!after.length} onPress={closeIt} />
+              )}
+            </View>
+          ) : (
+            <Sub>تقدر تقفلها بعدين بصورة بعد من قائمة المعدات.</Sub>
+          )}
+        </>
+      ) : (
+        <>
       {equipment ? null : (
         <>
       <Field label="نوع المهمة" value={workType} onChangeText={setWorkType} placeholder="مثال: صيانة، تمديد كابلات" maxLength={60} testID="visit-type" />
@@ -167,7 +235,9 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       ) : null}
       <Field label="رقم المهمة (اختياري)" value={taskNumber} onChangeText={setTaskNumber} placeholder="رقم أمر العمل أو البلاغ" maxLength={30} testID="visit-number" />
       <Field label="وصف إضافي (اختياري)" value={site} onChangeText={setSite} placeholder="ملاحظة قصيرة عن الزيارة" maxLength={120} testID="visit-notes" />
-      {free ? (
+        </>
+      )}
+      {gear ? null : free ? (
         <Sub>{(place ? 'زيارة ' + PLACE_NOUN[place.kind] : 'زيارة معدات') + ': ما تحتاج تحدد فنيين.'}</Sub>
       ) : (
         <>

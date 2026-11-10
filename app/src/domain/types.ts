@@ -64,6 +64,12 @@ export type Visit = {
   placeId?: string;
   /** زيارة على معدات التوزيع (بدون فنيين ولا مكان مسجل). */
   target?: 'equipment';
+  /** زيارة المعدة: صور قبل وقت التسجيل، وصور بعد وقت الإقفال. */
+  before?: Photo[];
+  after?: Photo[];
+  /** تاريخ إقفال ملاحظة المعدة. بدونه تكون مفتوحة. */
+  closedAt?: string;
+  closeNote?: string;
   /** سجل من بيانات التجربة الأولية (لا يُحتسب في نقاط XP). */
   seed?: boolean;
   createdAt: string;
