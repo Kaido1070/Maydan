@@ -26,6 +26,13 @@ describe('نوع المهمة والموقع ورقم المهمة في الزي
     expect(visitTitle({ site: 'متابعة موقع قديم' })).toBe('متابعة موقع قديم');
   });
 
+  test('الإحداثي أو رابط الخريطة يكفي كموقع للزيارة', () => {
+    const coords = { lat: 17.7264, lng: 42.2774 };
+    const mapUrl = 'https://maps.app.goo.gl/example';
+    expect(addVisit(ws0(), { ...base, site: '', coords }, TODAY).visit.coords).toEqual(coords);
+    expect(addVisit(ws0(), { ...base, target: 'equipment', site: 'ملاحظة', mapUrl }, TODAY).visit.mapUrl).toBe(mapUrl);
+  });
+
   test('الاقتراحات: آخر الأنواع المستخدمة أولًا ثم الافتراضية', () => {
     let ws = ws0();
     ws = addVisit(ws, { ...base, time: '08:00', workType: 'نوع خاص', site: '' }, TODAY).ws;

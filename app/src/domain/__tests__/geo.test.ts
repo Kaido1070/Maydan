@@ -23,6 +23,8 @@ describe('موقع الزيارة من خرائط قوقل', () => {
   test('رابط الفتح في خرائط قوقل', () => {
     expect(mapsLink({ lat: 17.72640004, lng: 42.2774 })).toBe('https://maps.google.com/?q=17.7264,42.2774');
     expect(formatCoords({ lat: 17.7264, lng: 42.2774 })).toBe('17.7264,42.2774');
+    expect(parseCoords('17,42.2')).toEqual({ lat: 17, lng: 42.2 });
+    expect(parseCoords(mapsLink({ lat: 17, lng: 42.2 }))).toEqual({ lat: 17, lng: 42.2 });
     expect(parseCoords('17.7264,42.2774')).toEqual({ lat: 17.7264, lng: 42.2774 });
     expect(parseCoords(mapsLink({ lat: 17.7264, lng: 42.2774 }))).toEqual({ lat: 17.7264, lng: 42.2774 });
   });
