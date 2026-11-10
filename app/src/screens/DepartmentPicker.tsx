@@ -29,8 +29,8 @@ export function DepartmentPicker({ value, onChange, icon }: { value: string | nu
               minHeight: 44,
               borderRadius: 999,
               borderWidth: 1,
-              borderColor: active ? C.purple : C.line,
-              backgroundColor: active ? C.purple : C.white,
+              borderColor: active ? C.brand : C.line,
+              backgroundColor: active ? C.brand : C.white,
             }}
           >
             <Icon name={icon} size={15} color={active ? C.onAccent : C.link} />

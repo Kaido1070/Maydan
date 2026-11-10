@@ -2,7 +2,7 @@
   "expo": {
     "name": "ميدان",
     "slug": "maydan",
-    "version": "1.7.2",
+    "version": "1.7.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#3d2c8a",
+        "backgroundColor": "#285556",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -59,7 +59,7 @@
       ]
     ],
     "scheme": "maydan",
-    "backgroundColor": "#19172c",
+    "backgroundColor": "#182524",
     "extra": {
       "supportsRTL": true,
       "forcesRTL": true

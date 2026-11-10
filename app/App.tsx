@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Platform, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Animated, Image, Platform, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -173,15 +173,13 @@ function Shell() {
             onPress={() => ui.go('day')}
             style={({ pressed }) => [styles.brand, pressed && { opacity: 0.7 }]}
           >
-            <View style={styles.brandMark}>
-              <Icon name="shield" size={22} color={C.onAccent} />
-              <View style={styles.brandCheck}>
-                <Icon name="check" size={10} color="#eb6834" />
+            <Image source={require('./assets/icon.png')} style={styles.brandMark} accessible={false} />
+            <View style={styles.brandInfo}>
+              <View style={styles.brandTitle}>
+                <Text style={styles.brandName}>ميدان</Text>
+                <Text testID="header-version" accessibilityLabel={'الإصدار ' + APP_VERSION} style={styles.brandVersion}>{APP_VERSION}</Text>
               </View>
-            </View>
-            <View>
-              <Text style={styles.brandName}>ميدان</Text>
-              <Text style={styles.brandSub}>{TITLES[tab]}</Text>
+              <Text numberOfLines={1} style={styles.brandSub}>{TITLES[tab]}</Text>
             </View>
           </Touch>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -343,9 +341,11 @@ export default function App() {
 const styles = themed(() => ({
   root: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.screen, paddingTop: 8, paddingBottom: 10 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandMark: { width: 38, height: 38, borderRadius: 13, backgroundColor: C.purple, alignItems: 'center', justifyContent: 'center' },
-  brandCheck: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 1 },
+  brand: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 10 },
+  brandInfo: { flexShrink: 1 },
+  brandTitle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  brandVersion: { color: C.link, fontSize: 12, fontWeight: '700', writingDirection: 'ltr' },
+  brandMark: { width: 38, height: 38, borderRadius: 13 },
   brandName: { color: C.ink, fontSize: 20, fontWeight: '700' },
   brandSub: { color: C.muted, fontSize: 12.5 },
   modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
@@ -356,11 +356,11 @@ const styles = themed(() => ({
   gear: { width: 36, height: 36, borderRadius: 12, backgroundColor: C.track, alignItems: 'center', justifyContent: 'center' },
   tabbarWrap: { position: 'absolute', left: 16, right: 16 },
   tabbarGlass: { flexDirection: 'row', borderRadius: 30, paddingVertical: 7, paddingHorizontal: 4, overflow: 'hidden', borderWidth: 1 },
-  tabbarShadow: { shadowColor: '#1a1040', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  tabbarShadow: { shadowColor: C.night, shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
   tabbar: { flexDirection: 'row', backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
   tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontSize: 12, color: C.muted },
   celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: C.hero, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
-  toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
+  toast: { position: 'absolute', alignSelf: 'center', backgroundColor: C.night, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
 }) as const);

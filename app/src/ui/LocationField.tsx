@@ -230,7 +230,7 @@ export function LocationField({
           <Sub accessibilityLiveRegion="polite">{stage === 'done'
             ? accuracy === null ? 'تم تحديد الموقع · الدقة غير متاحة' : `${accuracy > TARGET_ACCURACY_M ? 'تم تحديد موقع تقريبي' : 'تم تحديد الموقع'} · الدقة المقدّرة ±${Math.round(accuracy)} م`
             : accuracy === null ? 'جاري البحث عن الموقع…' : `جاري تحسين الدقة · الدقة الحالية ±${Math.round(accuracy)} م`}</Sub>
-          <Progress value={progress} max={100} color={stage === 'done' ? C.green : C.purple} />
+          <Progress value={progress} max={100} color={stage === 'done' ? C.green : C.brand} />
           {stage === 'searching' ? <Sub>انقضى {progress}% من مهلة البحث</Sub> : null}
         </View>
       ) : null}

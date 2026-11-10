@@ -10,7 +10,7 @@ export const APP_VERSION = CHANGELOG[0].version;
 /** رقم البناء يضعه GitHub Actions وقت البناء. في التطوير يكون فاضيًا. */
 export const BUILD_NUMBER = process.env.EXPO_PUBLIC_BUILD_NUMBER ?? '';
 
-export const versionLabel = () => APP_VERSION + (BUILD_NUMBER ? ' · بناء ' + BUILD_NUMBER : ' · نسخة تطوير');
+export const versionLabel = () => '\u2066' + APP_VERSION + '\u2069' + (BUILD_NUMBER ? ' · بناء \u2066' + BUILD_NUMBER + '\u2069' : ' · نسخة تطوير');
 
 /** الإصدارات الأحدث من آخر إصدار شافه المستخدم (لعرض «الجديد» بعد التحديث). */
 export function releasesSince(seen: string | null): Release[] {

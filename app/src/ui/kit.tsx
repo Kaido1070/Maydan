@@ -111,7 +111,7 @@ export function Button({
   testID?: string;
 }) {
   const colors: Record<ButtonVariant, [string, string]> = {
-    primary: [C.onAccent, C.purple],
+    primary: [C.onAccent, C.brand],
     secondary: [C.link, C.soft],
     done: [C.green, C.greenBg],
     danger: [C.red, C.redBg],
@@ -158,7 +158,7 @@ export function IconBox({ name, tone = 'purple', size = 38 }: { name: IconName; 
   );
 }
 
-export function Progress({ value, max, color = C.purple, track = C.track, height = 7 }: { value: number; max: number; color?: string; track?: string; height?: number }) {
+export function Progress({ value, max, color = C.brand, track = C.track, height = 7 }: { value: number; max: number; color?: string; track?: string; height?: number }) {
   const pct = max > 0 ? Math.min(100, (100 * value) / max) : 0;
   return (
     <View
@@ -298,18 +298,18 @@ export const s = themed(() => ({
   avatar: { backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
   iconBox: { alignItems: 'center', justifyContent: 'center' },
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: C.softLine, alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
-  checkboxOn: { backgroundColor: C.purple, borderColor: C.purple },
+  checkboxOn: { backgroundColor: C.brand, borderColor: C.brand },
   segmented: { flexDirection: 'row', backgroundColor: C.track, borderRadius: R.control, padding: 3, gap: 3 },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: R.small, paddingVertical: 7, paddingHorizontal: 6, minHeight: 38 },
   /** وضع الشبكة: خياران في كل سطر بعرض ثابت (ما ينضغط النص على الآيفون). */
   segmentGrid: { flexGrow: 1, flexShrink: 0, flexBasis: '47%' },
-  segmentOn: { backgroundColor: C.purple },
+  segmentOn: { backgroundColor: C.brand },
   segmentText: { fontSize: 14, fontWeight: '600', color: C.muted },
   input: { borderWidth: 1, borderColor: C.line, borderRadius: R.control, backgroundColor: C.white, color: C.ink, paddingHorizontal: 13, minHeight: 46, fontSize: 16, fontFamily: FONTS.regular },
   stepBtn: { width: 36, height: 36, borderRadius: R.small, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   sheet: { flex: 1, backgroundColor: C.bg },
   sheetHead: { padding: 16, paddingBottom: 12, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line },
   sheetFooter: { paddingHorizontal: 16, paddingTop: 10, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, gap: 8 },
-  webBackdrop: { backgroundColor: '#1d123c89', justifyContent: 'flex-end' },
+  webBackdrop: { backgroundColor: '#18252489', justifyContent: 'flex-end' },
   webSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '92%', flex: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
 }) as const satisfies Record<string, object>);

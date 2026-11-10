@@ -3,28 +3,28 @@ export type ThemeMode = 'light' | 'dark';
 
 const LIGHT = {
   /** خلفية ورقية دافئة بدل الأبيض الصريح: أريح للعين. */
-  bg: '#f2f0eb',
+  bg: '#f4f1e9',
   /** سطح البطاقات والحقول. */
-  white: '#fbfaf8',
-  ink: '#2a2933',
-  muted: '#6d6a76',
-  line: '#e3dfd7',
-  /** لون الأزرار والتعبئة: نيلي هادئ. */
-  purple: '#56579c',
-  purpleDark: '#48498a',
+  white: '#fcfaf5',
+  ink: '#222e2d',
+  muted: '#52605b',
+  line: '#e1dcd1',
+  /** البترولي للأزرار والتعبئة. */
+  brand: '#285556',
+  brandDark: '#203f41',
   /** نص وأيقونات بلون التمييز. */
-  link: '#4b4c93',
-  soft: '#e9e8f5',
-  softLine: '#cfcde8',
+  link: '#285556',
+  soft: '#e1ebe5',
+  softLine: '#bfcec3',
   /** خلفية محايدة خفيفة داخل البطاقات. */
-  subtle: '#f5f3ee',
+  subtle: '#f6f3ec',
   /** مسار أشرطة التقدم وخلفية الأزرار المقسمة. */
-  track: '#e9e6df',
-  placeholder: '#a3a0aa',
+  track: '#e8e5db',
+  placeholder: '#66726c',
   /** نص وأيقونات فوق لون التمييز. */
-  onAccent: '#ffffff',
-  night: '#24232e',
-  hero: '#4a4b8c',
+  onAccent: '#fffdf8',
+  night: '#182524',
+  hero: '#285556',
   green: '#2f6b55',
   greenBg: '#e3efe8',
   greenLine: '#c9dfd3',
@@ -37,23 +37,23 @@ const LIGHT = {
 };
 
 const DARK: typeof LIGHT = {
-  /** رمادي داكن دافئ بدل الأسود، ونص مطفي بدل الأبيض الصريح. */
-  bg: '#17171c',
-  white: '#202027',
-  ink: '#e4e2e9',
-  muted: '#9c99a8',
-  line: '#30303a',
-  purple: '#6465b0',
-  purpleDark: '#5556a0',
-  link: '#b0b0ea',
-  soft: '#2b2b45',
-  softLine: '#45456e',
-  subtle: '#26262e',
-  track: '#2d2d37',
-  placeholder: '#72707e',
-  onAccent: '#ffffff',
-  night: '#121216',
-  hero: '#35366e',
+  /** بترولي داكن وخلفيات هادئة مع نص فاتح. */
+  bg: '#182524',
+  white: '#21312e',
+  ink: '#e9eeea',
+  muted: '#b0c0b8',
+  line: '#394a46',
+  brand: '#3b6c67',
+  brandDark: '#2e5b57',
+  link: '#8dbbb4',
+  soft: '#293e38',
+  softLine: '#425c52',
+  subtle: '#263733',
+  track: '#30413b',
+  placeholder: '#9eafa6',
+  onAccent: '#fffdf8',
+  night: '#14201f',
+  hero: '#244743',
   green: '#86cfae',
   greenBg: '#1b3129',
   greenLine: '#27473b',
@@ -66,19 +66,19 @@ const DARK: typeof LIGHT = {
 };
 
 const KIND_LIGHT = {
-  visit: { fg: '#2f6298', bg: '#e4edf5', solid: '#3f7cba' },
-  meeting: { fg: '#a2532e', bg: '#f6e8df', solid: '#cf6f43' },
+  visit: { fg: '#345978', bg: '#e4edf1', solid: '#3c6481' },
+  meeting: { fg: '#894d35', bg: '#f4e9df', solid: '#8c4d32' },
 };
 const KIND_DARK: typeof KIND_LIGHT = {
-  visit: { fg: '#93bce6', bg: '#1b2a3b', solid: '#3f7cba' },
-  meeting: { fg: '#eeae8f', bg: '#39251c', solid: '#c96a40' },
+  visit: { fg: '#a8c7dd', bg: '#253844', solid: '#3c6481' },
+  meeting: { fg: '#ecc0a5', bg: '#392d26', solid: '#8c4d32' },
 };
 
 export const C = { ...LIGHT };
 
 /**
  * لون ثابت لكل نوع عمل في كل التطبيق (المهام والرسوم): الزيارة أزرق، والاجتماع برتقالي.
- * البنفسجي للأزرار والتنقل فقط، والأخضر/الأصفر/الأحمر لحالة الإنجاز فقط.
+ * البترولي للأزرار والتنقل، والأخضر/الأصفر/الأحمر لحالة الإنجاز فقط.
  */
 export const KIND = { visit: { ...KIND_LIGHT.visit }, meeting: { ...KIND_LIGHT.meeting } };
 
