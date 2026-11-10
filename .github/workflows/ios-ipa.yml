@@ -113,7 +113,7 @@ jobs:
               "الإصدار " + latest.version + " · بناء " + process.env.GITHUB_RUN_NUMBER + " · " + latest.date,
               "",
               "ملف IPA غير موقّع: وقّعه بشهادتك وملف التعريف قبل التثبيت (مثلًا Sideloadly أو ESign).",
-              "معرّف الحزمة: `com.maydan.fieldsafety`. التطبيق يطلب صلاحية الكاميرا والصور فقط عند إضافة صور المعدات.",
+              "معرّف الحزمة: `com.maydan.fieldsafety`. التطبيق يطلب صلاحية الكاميرا والصور عند إضافة الصور، وصلاحية الموقع فقط لما تضغط «موقعي الحالي».",
               "سجل كل التحديثات داخل التطبيق: الإعدادات ← سجل التحديثات.",
             ];
             require("fs").writeFileSync(process.env.RUNNER_TEMP + "/notes.md", lines.join("\n"));

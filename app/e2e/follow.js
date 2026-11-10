@@ -124,6 +124,11 @@ async function overflow(page) {
     await page.getByText('المعدات', { exact: true }).click();
     await id('add-equipment-visit').click();
     await id('visit-site').fill('محطة توزيع 12');
+    // لصق رابط خرائط قوقل: ينضاف الموقع والمعاينة، والوصف المكتوب يبقى
+    await id('visit-site').fill('https://www.google.com/maps/@24.7136,46.6753,17z');
+    assert((await id('location-pin').innerText()).includes('24.7136, 46.6753'), 'الإحداثيات انقرت من رابط قوقل');
+    assert((await id('visit-site').inputValue()) === 'محطة توزيع 12', 'وصف الموقع بقي بعد لصق الرابط');
+    assert(await id('open-maps').isVisible(), 'زر فتح خرائط قوقل');
     await id('visit-notes').fill('باب المحطة مكسور');
     await id('visit-save').click();
     assert((await page.locator('body').innerText()).includes('أرفق صورة قبل'), 'صورة قبل مطلوبة');

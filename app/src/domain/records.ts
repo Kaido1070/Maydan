@@ -23,6 +23,8 @@ export type VisitInput = {
   target?: 'equipment';
   /** صور قبل (زيارة المعدة). */
   before?: Photo[];
+  coords?: { lat: number; lng: number };
+  mapUrl?: string;
 };
 
 const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
@@ -89,6 +91,8 @@ export function addVisit(ws: Workspace, input: VisitInput, today: string, stamp 
     ...(input.placeId ? { placeId: input.placeId } : {}),
     ...(input.target ? { target: input.target } : {}),
     ...(input.before?.length ? { before: input.before } : {}),
+    ...(input.coords ? { coords: input.coords } : {}),
+    ...(input.mapUrl ? { mapUrl: input.mapUrl } : {}),
     createdAt: stamp,
     updatedAt: stamp,
   };

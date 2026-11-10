@@ -54,6 +54,10 @@ export type Visit = {
   workType?: string;
   /** موقع المهمة. */
   location?: string;
+  /** إحداثيات الموقع (من GPS أو من رابط خرائط قوقل). */
+  coords?: { lat: number; lng: number };
+  /** رابط خرائط قوقل المختصر إذا انلصق بدون إحداثيات. */
+  mapUrl?: string;
   /** رقم المهمة أو أمر العمل. */
   taskNumber?: string;
   /** وصف إضافي (وفي البيانات القديمة: الموقع أو الوصف). */

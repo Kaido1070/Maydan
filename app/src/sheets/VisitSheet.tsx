@@ -6,6 +6,7 @@ import { addVisit, closeEquipmentVisit, deleteVisit, EQUIPMENT_KINDS, EQUIPMENT_
 import type { Photo } from '../domain/types';
 import { deletePhotoFiles } from '../photos';
 import { PhotoField } from '../ui/PhotoField';
+import { LocationField } from '../ui/LocationField';
 import { PeoplePicker } from '../ui/PeoplePicker';
 import { s as s2 } from '../ui/kit';
 import { slotAt } from '../domain/shifts';
@@ -50,6 +51,8 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   const [before, setBefore] = useState<Photo[]>([]);
   const [after, setAfter] = useState<Photo[]>([]);
   const [closeNote, setCloseNote] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | undefined>(undefined);
+  const [mapUrl, setMapUrl] = useState<string | undefined>(undefined);
   /** القسم المعروض في قائمة الاختيار (غير قسم الزيارة نفسه). */
   const [pickDept, setPickDept] = useState<string | null>(null);
 
@@ -69,9 +72,13 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       setBefore(existing.before ?? []);
       setAfter(existing.after ?? []);
       setCloseNote(existing.closeNote ?? '');
+      setCoords(existing.coords);
+      setMapUrl(existing.mapUrl);
     } else {
       setBefore([]);
       setAfter([]);
+      setCoords(undefined);
+      setMapUrl(undefined);
       setCloseNote('');
       const date = target.date ?? now.date;
       const time = target.planItem?.time ?? now.time;
@@ -90,7 +97,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
   if (!target || (!department && !place && !equipment)) return null;
   const free = !!place || equipment;
 
-  const input = { departmentId: department?.id ?? '', placeId: place?.id, target: equipment ? ('equipment' as const) : undefined, before: gear ? before : undefined, date, time, workType, location, taskNumber, site, technicianIds: people, planItemId: existing?.planItemId ?? target.planItem?.id };
+  const input = { departmentId: department?.id ?? '', placeId: place?.id, target: equipment ? ('equipment' as const) : undefined, before: gear ? before : undefined, coords, mapUrl, date, time, workType, location, taskNumber, site, technicianIds: people, planItemId: existing?.planItemId ?? target.planItem?.id };
 
   // صور انضافت في هالنافذة وما انحفظت: تنحذف من الجهاز إذا تسكرت بدون حفظ.
   const added = (list: Photo[], saved?: Photo[]) => list.filter((photo) => !(saved ?? []).some((item) => item.id === photo.id));
@@ -166,7 +173,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
         <>
           <PhotoField testID="gear-before" title="صورة قبل" photos={before} onChange={setBefore} onError={setError} />
           <Field label="وصف الملاحظة" value={site} onChangeText={setSite} placeholder="وش لاحظت على المعدة؟" maxLength={300} multiline style={{ minHeight: 80, textAlignVertical: 'top', paddingTop: 10 }} testID="visit-notes" />
-          <Field label="الموقع" value={location} onChangeText={setLocation} placeholder="مثال: حي الروضة، شارع الأمير سلطان" maxLength={100} testID="visit-site" />
+          <LocationField label="الموقع" placeholder="مثال: حي الروضة، شارع الأمير سلطان" value={location} onChange={setLocation} coords={coords} onCoords={setCoords} mapUrl={mapUrl} onMapUrl={setMapUrl} />
           {!place ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -4, marginBottom: 12 }}>
               {EQUIPMENT_KINDS.map((option) => (
@@ -215,7 +222,7 @@ export function VisitSheet({ target, onClose, onSaved }: { target: VisitTarget; 
       </View>
         </>
       )}
-      <Field label={equipment ? 'المعدة وموقعها' : 'الموقع'} value={location} onChangeText={setLocation} placeholder={equipment ? 'مثال: محطة توزيع 12، حي الروضة' : 'مثال: حي الروضة، شارع الأمير سلطان'} maxLength={100} testID="visit-site" />
+      <LocationField label={equipment ? 'المعدة وموقعها' : 'الموقع'} placeholder={equipment ? 'مثال: محطة توزيع 12، حي الروضة' : 'مثال: حي الروضة، شارع الأمير سلطان'} value={location} onChange={setLocation} coords={coords} onCoords={setCoords} mapUrl={mapUrl} onMapUrl={setMapUrl} />
       {equipment ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -4, marginBottom: 12 }}>
           {EQUIPMENT_KINDS.map((option) => (

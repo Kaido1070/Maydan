@@ -47,6 +47,15 @@
           "cameraPermission": "ميدان يحتاج الكاميرا لتصوير معدات التوزيع قبل وبعد.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ميدان يستخدم موقعك لتحديد موقع الزيارة لما تضغط «موقعي الحالي».",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false
+        }
       ]
     ],
     "scheme": "maydan",
