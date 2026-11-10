@@ -29,7 +29,7 @@ export function PersonSheet({ technicianId, onClose }: { technicianId: string | 
   };
   const recordMeeting = () => {
     onClose();
-    ui.go('meetings', { departmentId: tech.departmentId, meetingId: progress.missingMeetings[0]?.id });
+    ui.openMeeting({ meetingIds: progress.missingMeetings[0] ? [progress.missingMeetings[0].id] : undefined, departmentId: tech.departmentId, technicianIds: [tech.id] });
   };
 
   return (

@@ -16,6 +16,7 @@ import { ChangelogSheet, WhatsNewSheet } from './src/sheets/ChangelogSheet';
 import { PersonSheet } from './src/sheets/PersonSheet';
 import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftSheets';
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
+import { MeetingSheet, MeetingTarget } from './src/sheets/MeetingSheet';
 import { StoreProvider, useStore } from './src/store';
 import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
 import { alpha, BLUR_LEVELS, SPACE, themed } from './src/ui/theme';
@@ -77,6 +78,7 @@ function Shell() {
   const [rosterDate, setRosterDate] = useState<string | null>(null);
   const [focusMeetingId, setFocusMeetingId] = useState<string | null>(null);
   const [visit, setVisit] = useState<VisitTarget>(null);
+  const [meeting, setMeeting] = useState<MeetingTarget>(null);
   const [technician, setTechnician] = useState<{ id: string; date?: string } | null>(null);
   const [slot, setSlot] = useState<SlotTarget>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -123,6 +125,7 @@ function Shell() {
         toastTimer.current = setTimeout(() => setToast(null), 4000);
       },
       openVisit: setVisit,
+      openMeeting: setMeeting,
       openTechnician: (id, date) => setTechnician({ id, date }),
       openSlot: setSlot,
       openChangelog: () => setChangelog(true),
@@ -244,6 +247,14 @@ function Shell() {
           onClose={() => setVisit(null)}
           onSaved={(message) => {
             setVisit(null);
+            ui.notify(message);
+          }}
+        />
+        <MeetingSheet
+          target={meeting}
+          onClose={() => setMeeting(null)}
+          onSaved={(message) => {
+            setMeeting(null);
             ui.notify(message);
           }}
         />

@@ -13,95 +13,18 @@ import { Touch } from '../ui/touch';
 
 export function MeetingsScreen() {
   const { ws, now } = useStore();
-  const apply = useApply();
   const ui = useUi();
+  const [view, setView] = useState<'attend' | 'remaining' | 'topics'>('attend');
+  const [limit, setLimit] = useState(8);
   const year = Number(now.date.slice(0, 4));
   const meetings = yearMeetings(ws, year);
-  const [selected, setSelected] = useState<string[]>(() => (ui.focusMeetingId ? [ui.focusMeetingId] : meetings.slice(-1).map((m) => m.id)));
-  const [title, setTitle] = useState('');
-  const [titleError, setTitleError] = useState<string | null>(null);
-  const [scope, setScope] = useState<'shift' | 'all'>('shift');
-  const [draft, setDraft] = useState<Record<string, string[]>>({});
-
-  const [view, setView] = useState<'attend' | 'remaining' | 'topics'>('attend');
-  // بدون اختيار: نفتح على أول قسم بدل صفحة فاضية.
-  const departmentId = ui.departmentId ?? ws.departments[0]?.id ?? null;
-  const department = ws.departments.find((item) => item.id === departmentId);
-  // تاريخ ووقت الاجتماع: الافتراضي الآن، ويقبل أي تاريخ لين اليوم.
-  const [date, setDate] = useState(now.date);
-  const [time, setTime] = useState(now.time);
-  const validTime = isTime(time);
-  const slot = department ? (date === now.date && (!validTime || time === now.time) ? currentSlot(ws, department, now) : slotAt(ws, department, date, validTime ? time : now.time)) : null;
-
-  useEffect(() => setDraft({}), [departmentId, date]);
-  // لما يتغير التاريخ أو القسم: نعرض وقت الاجتماع المحفوظ إن وجد.
-  useEffect(() => {
-    if (!departmentId) return;
-    const saved = ws.attendance.find((item) => item.departmentId === departmentId && item.date === date && selected.includes(item.meetingId) && item.time);
-    if (saved?.time) setTime(saved.time);
-    else if (date === now.date) setTime(now.time);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [departmentId, date]);
-
-  const chosen = meetings.filter((meeting) => selected.includes(meeting.id));
-  const crew = useMemo(() => {
-    if (!department) return [];
-    const recorded = new Set(chosen.flatMap((meeting) => attendanceFor(ws, meeting.id, department.id, date)?.technicianIds ?? []));
-    const shiftIds = new Set((slot?.crew ?? []).map((tech) => tech.id));
-    return activeTechnicians(ws).filter(
-      (tech) =>
-        shiftIds.has(tech.id) || recorded.has(tech.id) || (scope === 'all' && tech.departmentId === department.id),
-    );
-  }, [ws, department, slot, scope, chosen, date]);
-
-  const saved = (meetingId: string) => (department ? attendanceFor(ws, meetingId, department.id, date)?.technicianIds ?? [] : []);
-  const value = (meetingId: string) => draft[meetingId] ?? saved(meetingId);
-  const setCell = (meetingId: string, techId: string, checked: boolean) =>
-    setDraft((prev) => {
-      const list = prev[meetingId] ?? saved(meetingId);
-      return { ...prev, [meetingId]: checked ? [...list, techId] : list.filter((id) => id !== techId) };
-    });
-  const timeChanged = !!department && chosen.some((meeting) => {
-    const record = attendanceFor(ws, meeting.id, department.id, date);
-    return !!record && (record.time ?? '') !== time;
-  });
-  const dirty = Object.keys(draft).some((id) => selected.includes(id)) || timeChanged;
-
-  const addTitle = () => {
-    let created = '';
-    const error = apply((current) => {
-      const result = addMeeting(current, title, year);
-      created = result.meeting.id;
-      return result.ws;
-    });
-    if (error) return setTitleError(error);
-    setTitle('');
-    setTitleError(null);
-    setSelected((list) => [...list, created]);
-    ui.notify('تمت إضافة الاجتماع وتحديده');
-  };
-
-  const save = () => {
-    if (!department) return;
-    const entries = Object.fromEntries(chosen.map((meeting) => [meeting.id, value(meeting.id)]));
-    let summary = { created: 0, updated: 0, removed: 0 };
-    const error = apply((current) => {
-      const result = saveAttendanceBatch(current, { departmentId: department.id, date, time, entries });
-      summary = result;
-      return result.ws;
-    });
-    if (error) return ui.notify(error);
-    setDraft({});
-    ui.notify(
-      summary.created
-        ? 'تم حفظ حضور ' + chosen.length + ' اجتماع · \u2066+' + summary.created * ws.settings.xpMeeting + ' XP\u2069'
-        : 'تم تحديث حضور الاجتماعات',
-    );
-  };
-
-  const history = department
-    ? ws.attendance.filter((item) => item.departmentId === department.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12)
-    : [];
+  const weekStart = addDays(now.date, -new Date(now.date + 'T12:00:00Z').getUTCDay());
+  const mine = ws.attendance.filter((item) => !item.seed);
+  const week = mine.filter((item) => item.date >= weekStart && item.date <= now.date);
+  const today = mine.filter((item) => item.date === now.date);
+  const people = (list: typeof mine) => new Set(list.flatMap((item) => item.technicianIds)).size;
+  const history = [...ws.attendance].sort((a, b) => (b.date + (b.time ?? '')).localeCompare(a.date + (a.time ?? '')) || b.updatedAt.localeCompare(a.updatedAt));
+  const deptName = (id: string) => ws.departments.find((item) => item.id === id)?.name ?? '—';
 
   return (
     <View>
@@ -118,199 +41,53 @@ export function MeetingsScreen() {
         />
       </View>
 
-      {view === 'topics' ? (
-        <TalkCard
-          onAdopt={(id) => {
-            setSelected((list) => (list.includes(id) ? list : [...list, id]));
-            setView('attend');
-          }}
-        />
-      ) : null}
+      {view === 'topics' ? <TalkCard onAdopt={(id) => ui.openMeeting({ meetingIds: [id], departmentId: ui.departmentId })} /> : null}
       {view === 'remaining' ? <MeetingFollowUp /> : null}
 
       {view === 'attend' ? (
         <>
-      <Card>
-        <Spread style={{ marginBottom: 8 }}>
-          <T style={{ fontWeight: '800' }}>{'١ · اختر الاجتماع'}</T>
-          <Sub>{chosen.length + ' مختار · سنة ' + year}</Sub>
-        </Spread>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {meetings.length ? (
-            meetings.map((meeting) => {
-              const on = selected.includes(meeting.id);
-              return (
-                <Touch
-                  key={meeting.id}
-                  testID={'pick-meeting-' + meeting.id}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
-                  onPress={() => setSelected((list) => (on ? list.filter((id) => id !== meeting.id) : [...list, meeting.id]))}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 10,
-                    minHeight: 40,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: on ? C.softLine : C.line,
-                    backgroundColor: on ? C.soft : C.white,
-                  }}
-                >
-                  <Icon name={on ? 'check-square' : 'square'} size={16} color={on ? C.link : C.muted} />
-                  <T style={{ fontSize: 13, color: on ? C.link : C.muted, fontWeight: on ? '700' : '400' }}>{meeting.title}</T>
-                </Touch>
-              );
-            })
-          ) : (
-            <Sub>ما فيه عناوين لهذه السنة. اكتب أول عنوان تحت.</Sub>
-          )}
-        </View>
-        <Sub style={{ marginTop: 12, marginBottom: 6 }}>عنوان جديد</Sub>
-        <Row>
-          <TextInput
-            testID="meeting-title-input"
-            value={title}
-            onChangeText={(text) => {
-              setTitle(text);
-              setTitleError(null);
-            }}
-            onSubmitEditing={addTitle}
-            placeholder="مثال: مراجعة خطة الطوارئ"
-            placeholderTextColor={C.placeholder}
-            maxLength={80}
-            returnKeyType="done"
-            style={[s.input, { flex: 1, minWidth: 0 }]}
-          />
-          <Button testID="meeting-title-add" icon="plus" label="إضافة" onPress={addTitle} disabled={!title.trim()} />
-        </Row>
-        {titleError ? <T style={{ color: C.red, fontSize: 12, marginTop: 4 }}>{titleError}</T> : null}
-
-      </Card>
-
-          <T style={{ fontWeight: '800', marginBottom: 8 }}>{'٢ · اختر القسم وعلّم الحضور'}</T>
-      <DepartmentPicker value={departmentId} onChange={ui.setDepartmentId} icon="users" />
-
-      {department ? (
-        <Card>
-          <T style={{ fontWeight: '800', fontSize: 16 }}>{department.name + ' · ' + shiftLabel(slot)}</T>
-          <Spread style={{ marginTop: 10 }}>
-            <T style={{ fontWeight: '700', fontSize: 13 }}>تاريخ الاجتماع</T>
-            <Stepper
-              label={date === now.date ? 'اليوم' : formatDate(date)}
-              onPrev={() => setDate(addDays(date, -1))}
-              onNext={() => setDate(addDays(date, 1))}
-              nextDisabled={date >= now.date}
+          <View style={{ backgroundColor: KIND.meeting.bg, borderRadius: 20, padding: 16, marginBottom: 12 }}>
+            <T style={{ fontWeight: '700', fontSize: 18, color: KIND.meeting.fg }}>
+              {today.length ? 'اليوم سجلت حضور ' + people(today) + ' 👏' : 'سجّل اجتماع اليوم'}
+            </T>
+            <Sub style={{ marginTop: 2 }}>
+              {week.length ? 'هالأسبوع: ' + new Set(week.map((item) => item.meetingId + item.date)).size + ' اجتماعات · ' + people(week) + ' حاضر' : 'تفتح لك صفحة تختار فيها الاجتماع والحاضرين بالبحث.'}
+            </Sub>
+            <Button
+              testID="add-meeting"
+              style={{ marginTop: 12, backgroundColor: KIND.meeting.solid }}
+              icon="plus"
+              label="تسجيل اجتماع"
+              onPress={() => ui.openMeeting({ meetingIds: ui.focusMeetingId ? [ui.focusMeetingId] : undefined, departmentId: ui.departmentId })}
             />
-          </Spread>
-          <Sub style={{ marginTop: 2 }}>{formatDate(date, { weekday: true, year: true })}</Sub>
-          <View style={{ marginTop: 8 }}>
-            <Field testID="meeting-time" label="وقت الاجتماع (24 ساعة)" value={time} onChangeText={setTime} placeholder="09:30" keyboardType="numbers-and-punctuation" maxLength={5} />
-          </View>
-          {!validTime ? <T style={{ color: C.red, fontSize: 12, marginTop: -6, marginBottom: 6 }}>اكتب الوقت بصيغة 24 ساعة مثل 09:30</T> : null}
-          <View style={{ marginVertical: 10 }}>
-            <Segmented
-              options={[
-                { value: 'shift', label: 'الشفت الحالي' },
-                { value: 'all', label: 'كل فنيي القسم' },
-              ]}
-              value={scope}
-              onChange={setScope}
-            />
+            {!meetings.length ? <Sub style={{ marginTop: 8 }}>ما فيه عناوين اجتماعات للحين. تقدر تضيف العنوان من داخل صفحة التسجيل.</Sub> : null}
           </View>
 
-          {!chosen.length ? (
-            <Sub>حدد اجتماعًا من القائمة لعرض الحضور وتسجيله.</Sub>
-          ) : !crew.length ? (
-            <Sub>ما فيه فنيون على رأس العمل الآن. اختر «كل فنيي القسم».</Sub>
-          ) : (
-            <>
-              <Row gap={4} style={{ flexWrap: 'wrap', marginBottom: 6 }}>
-                {chosen.map((meeting) => (
-                  <Chip key={meeting.id} tone={value(meeting.id).length ? 'green' : 'neutral'} label={meeting.title + ' ' + ratio(value(meeting.id).filter((id) => crew.some((t) => t.id === id)).length, crew.length)} />
-                ))}
-              </Row>
-              <ScrollView horizontal={chosen.length > 2} contentContainerStyle={{ flexGrow: 1 }}>
-                <View style={{ flex: 1, minWidth: chosen.length > 2 ? 140 + chosen.length * 78 : undefined }}>
-                  <Row style={{ borderBottomWidth: 1, borderBottomColor: C.line, paddingBottom: 6 }} gap={0}>
-                    <Sub style={{ flex: 1, fontWeight: '700' }}>الفني</Sub>
-                    {chosen.map((meeting) => (
-                      <Touch
-                        key={meeting.id}
-                        accessibilityRole="button"
-                        accessibilityLabel={'تحديد الكل في ' + meeting.title}
-                        onPress={() => {
-                          const all = crew.every((tech) => value(meeting.id).includes(tech.id));
-                          setDraft((prev) => ({ ...prev, [meeting.id]: all ? [] : [...new Set([...value(meeting.id), ...crew.map((t) => t.id)])] }));
-                        }}
-                        style={{ width: 78, alignItems: 'center' }}
-                      >
-                        <Sub style={{ fontWeight: '700', textAlign: 'center', fontSize: 11 }} numberOfLines={2}>
-                          {meeting.title}
-                        </Sub>
-                        <T style={{ color: C.link, fontSize: 10 }}>الكل</T>
-                      </Touch>
-                    ))}
-                  </Row>
-                  {crew.map((tech) => (
-                    <Row key={tech.id} gap={0} style={{ borderBottomWidth: 1, borderBottomColor: C.line, paddingVertical: 8 }}>
-                      <View style={{ flex: 1 }}>
-                        <T style={{ fontSize: 13, fontWeight: '600' }}>{tech.name}</T>
-                        <Sub style={{ fontSize: 10 }}>{techTag(tech) + (tech.workplace === 'office' ? ' · مكتبي' : '') + ' · ' + shiftName(ws, tech)}</Sub>
-                      </View>
-                      {chosen.map((meeting) => (
-                        <View key={meeting.id} style={{ width: 78, alignItems: 'center' }}>
-                          <Checkbox
-                            testID={'att-' + meeting.id + '-' + tech.id}
-                            label={tech.name + ' · ' + meeting.title}
-                            checked={value(meeting.id).includes(tech.id)}
-                            onChange={(checked) => setCell(meeting.id, tech.id, checked)}
-                          />
-                        </View>
-                      ))}
-                    </Row>
-                  ))}
-                </View>
-              </ScrollView>
-              <Button
-                testID="attendance-save"
-                style={{ marginTop: 12 }}
-                icon="save"
-                label={'حفظ الحضور · ' + chosen.length + (chosen.length === 1 ? ' اجتماع' : ' اجتماعات')}
-                onPress={save}
-                disabled={!dirty || !validTime}
-              />
-              {dirty ? <Sub style={{ textAlign: 'center', marginTop: 4 }}>فيه تغييرات غير محفوظة</Sub> : null}
-            </>
-          )}
-        </Card>
-      ) : (
-        <Card>
-          <Empty text="اختر قسمًا لعرض حضور فنيي الشفت الحالي." />
-        </Card>
-      )}
-
-      {department ? (
-        <>
-          <SectionTitle title={'سجل حضور ' + department.name} sub="آخر سجلات الحضور المحفوظة" />
+          <SectionTitle title="آخر الاجتماعات المسجلة" sub="اضغط على السجل عشان تعدّل الحاضرين." />
           <Card style={{ paddingVertical: 4 }}>
             {history.length ? (
-              history.map((item, index) => (
-                <Spread key={item.id} style={{ paddingVertical: 9, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
-                  <View style={{ flex: 1 }}>
+              history.slice(0, limit).map((item, index) => (
+                <Touch
+                  key={item.id}
+                  testID={'attendance-' + item.id}
+                  accessibilityRole="button"
+                  scaleTo={0.985}
+                  onPress={() => ui.openMeeting({ recordId: item.id })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <T style={{ fontWeight: '700' }}>{ws.meetings.find((m) => m.id === item.meetingId)?.title ?? '—'}</T>
-                    <Sub>{formatDate(item.date, { weekday: true, year: true }) + (item.time ? ' · ' + item.time : '')}</Sub>
+                    <Sub>{deptName(item.departmentId) + ' · ' + formatDate(item.date, { weekday: true }) + (item.time ? ' · ' + item.time : '')}</Sub>
                   </View>
                   <Chip tone="green" label={item.technicianIds.length + ' حاضر'} />
-                </Spread>
+                  <Icon name="chevron-left" size={16} color={C.muted} />
+                </Touch>
               ))
             ) : (
-              <Empty text="ما فيه حضور مسجل لهذا القسم." />
+              <Empty text="الاجتماعات اللي تسجلها تطلع هنا." />
             )}
+            {history.length > limit ? <Button small variant="ghost" label={'عرض المزيد · ' + (history.length - limit)} onPress={() => setLimit(limit + 15)} /> : null}
           </Card>
-        </>
-      ) : null}
         </>
       ) : null}
     </View>

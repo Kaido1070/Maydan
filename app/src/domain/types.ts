@@ -54,6 +54,10 @@ export type Visit = {
   workType?: string;
   /** موقع المهمة. */
   location?: string;
+  /** إحداثيات الموقع (من GPS أو من رابط خرائط قوقل). */
+  coords?: { lat: number; lng: number };
+  /** رابط خرائط قوقل المختصر إذا انلصق بدون إحداثيات. */
+  mapUrl?: string;
   /** رقم المهمة أو أمر العمل. */
   taskNumber?: string;
   /** وصف إضافي (وفي البيانات القديمة: الموقع أو الوصف). */
@@ -64,6 +68,12 @@ export type Visit = {
   placeId?: string;
   /** زيارة على معدات التوزيع (بدون فنيين ولا مكان مسجل). */
   target?: 'equipment';
+  /** زيارة المعدة: صور قبل وقت التسجيل، وصور بعد وقت الإقفال. */
+  before?: Photo[];
+  after?: Photo[];
+  /** تاريخ إقفال ملاحظة المعدة. بدونه تكون مفتوحة. */
+  closedAt?: string;
+  closeNote?: string;
   /** سجل من بيانات التجربة الأولية (لا يُحتسب في نقاط XP). */
   seed?: boolean;
   createdAt: string;

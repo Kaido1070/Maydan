@@ -80,18 +80,25 @@ const OUT = process.env.SHOTS || null;
   body = await page.locator('body').innerText();
   assert(body.includes('موقع الاختبار الثاني - معدل') && body.includes('موقع الاختبار الأول'), 'التعديل لم يمس الزيارة الأولى');
 
-  // 2) حضور أكثر من اجتماع دفعة واحدة
+  // 2) تسجيل اجتماع من صفحته: اجتماعان دفعة واحدة، وحاضرون بالقسم وبالبحث بالرقم الوظيفي
   await id('tab-meetings').click();
+  await id('add-meeting').click();
+  assert((await page.locator('body').innerText()).includes('أنت تسجّل اجتماع'), 'صفحة تسجيل الاجتماع واضحة');
   await id('meeting-title-input').fill('مراجعة خطة الطوارئ');
   await id('meeting-title-add').click();
-  await id('dept-b').click();
-  const newMeeting = (await page.locator('[data-testid^="pick-meeting-m-"]').getAttribute('data-testid')).replace('pick-meeting-', '');
-  for (const [meeting, tech] of [['demo-m2', 'b1'], [newMeeting, 'b1'], [newMeeting, 'b2']]) await id(`att-${meeting}-${tech}`).click();
+  assert(await id('attendance-save').isDisabled(), 'الحفظ يحتاج حاضرين');
+  await id('att-dept-b').click();
+  await id('att-b1').click();
+  await id('people-search').fill('١٢٠٢');
+  await id('att-b2').click();
+  await id('people-search').fill('');
+  assert((await id('people-chosen').innerText()).includes('2 حاضر'), 'المختارون ظاهرون فوق');
   await shot('meetings');
   await id('attendance-save').click();
+  await page.waitForTimeout(200);
   body = await page.locator('body').innerText();
-  assert(body.includes('تم حفظ حضور 2 اجتماع'), 'حفظ دفعة واحدة لاجتماعين');
-  assert(body.includes('مراجعة خطة الطوارئ\n2 حاضر') || /مراجعة خطة الطوارئ[\s\S]{0,40}2 حاضر/.test(body), 'سجل الحضور يظهر');
+  assert(body.includes('تم تسجيل حضور 2 في 2 اجتماعات'), 'حفظ دفعة واحدة لاجتماعين');
+  assert(/مراجعة خطة الطوارئ[\s\S]{0,60}2 حاضر/.test(body), 'سجل الحضور يظهر');
 
   // متابعة اجتماع: كم باقي ما حضره
   await page.getByText('من باقي؟', { exact: true }).click();
@@ -99,15 +106,21 @@ const OUT = process.env.SHOTS || null;
   assert(/\d+/.test(remainingText) && remainingText.includes('حضروا'), 'عدد الباقين على الاجتماع ظاهر');
   await page.getByText('تسجيل الحضور', { exact: true }).click();
 
-  // حضور اجتماع بتاريخ أمس ووقت محدد
-  await page.getByRole('button', { name: 'السابق' }).first().click();
+  // اجتماع بتاريخ أمس ووقت محدد، مع موظف مكتبي من قسم ثاني بالبحث بالاسم
+  await id('add-meeting').click();
+  await page.getByRole('button', { name: 'السابق' }).last().click();
   await id('meeting-time').fill('13:45');
-  // يوم 8 نوفمبر الصباحي = طوارئ ب، فالقائمة تتبع شفت ذاك اليوم
-  assert(!(await id('att-demo-m2-b2').count()), 'فنيو طوارئ أ ما يظهرون في شفت أمس');
-  await page.locator('[data-testid^="att-demo-m2-b"]').first().click();
+  await id('att-dept-b').click();
+  await page.locator('[data-testid^="att-b"]').first().click();
   await id('attendance-save').click();
+  await page.waitForTimeout(200);
   body = await page.locator('body').innerText();
-  assert(/الأحد 8 نوفمبر 2026 · 13:45/.test(body), 'سجل الحضور فيه التاريخ والوقت المحددين');
+  assert(/الأحد 8 نوفمبر · 13:45/.test(body), 'سجل الحضور فيه التاريخ والوقت المحددين');
+
+  // تعديل سجل محفوظ: إزالة حاضر
+  await page.locator('[data-testid^="attendance-a-"]').first().click();
+  assert((await page.locator('body').innerText()).includes('تعدّل سجل حضور محفوظ'), 'صفحة التعديل');
+  await id('sheet-close').click();
 
   // 3) نقل فني بين الشفتات
   await id('tab-day').click();

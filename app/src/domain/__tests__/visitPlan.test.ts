@@ -1,6 +1,6 @@
 import { addPlace, deletePlace, equipmentVisits, quarterOf, renamePlace, warehouseQuarter } from '../places';
 import { dayProgress } from '../stats';
-import { addMeeting, addVisit, saveAttendanceBatch } from '../records';
+import { addMeeting, addVisit, closeEquipmentVisit, reopenEquipmentVisit, saveAttendanceBatch } from '../records';
 import { demoWorkspace, emptyWorkspace } from '../seed';
 import { DayPlan, PlannedVisit, visitPlan } from '../visitPlan';
 
@@ -110,6 +110,17 @@ describe('المستودعات ونقاط الانطلاق', () => {
     ws = addVisit(ws, { ...base, placeId: item.id, workType: 'زيارة معدات التوزيع', location: item.name }, MONDAY.date).ws;
     expect(equipmentVisits(ws)).toHaveLength(2);
     expect(warehouseQuarter(ws, MONDAY.date)).toMatchObject({ visited: 0, total: 0 });
+    // ملاحظة المعدة: صورة قبل وقت التسجيل، وتنقفل بصورة بعد، وتنفتح من جديد
+    const photo = (id: string) => ({ id, uri: 'maydan-photos/' + id + '.jpg', takenAt: '2026-11-09T09:00:00Z' });
+    const noted = addVisit(ws, { ...base, target: 'equipment', location: 'لوحة 3', site: 'غطاء مكسور', before: [photo('b1')] }, MONDAY.date);
+    ws = noted.ws;
+    expect(noted.visit).toMatchObject({ before: [photo('b1')], site: 'غطاء مكسور' });
+    expect(noted.visit.closedAt).toBeUndefined();
+    expect(() => closeEquipmentVisit(ws, noted.visit.id, { after: [], note: '', date: '2026-11-11' })).toThrow('صورة بعد');
+    ws = closeEquipmentVisit(ws, noted.visit.id, { after: [photo('a1')], note: 'انركب غطاء', date: '2026-11-11' });
+    expect(ws.visits.find((v) => v.id === noted.visit.id)).toMatchObject({ after: [photo('a1')], closedAt: '2026-11-11', closeNote: 'انركب غطاء' });
+    ws = reopenEquipmentVisit(ws, noted.visit.id);
+    expect(ws.visits.find((v) => v.id === noted.visit.id)!.closedAt).toBeUndefined();
   });
 });
 

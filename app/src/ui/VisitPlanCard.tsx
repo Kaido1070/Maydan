@@ -22,7 +22,7 @@ function CrewRow({ visit, index, showPeriod, onAct }: { visit: PlannedVisit; ind
   const onlyMeeting = !visit.technicians.length;
   const title = visit.department.name + (visit.shiftName !== visit.department.name ? ' · ' + visit.shiftName : '');
   const startVisit = () => (onAct?.(), ui.openVisit({ departmentId: visit.department.id, technicianIds: visit.technicians.map((tech) => tech.id) }));
-  const startMeeting = () => visit.meeting && (onAct?.(), ui.go('meetings', { departmentId: visit.department.id, meetingId: visit.meeting.meeting.id }));
+  const startMeeting = () => visit.meeting && (onAct?.(), ui.openMeeting({ meetingIds: [visit.meeting.meeting.id], departmentId: visit.department.id, technicianIds: visit.meeting.people.map((tech) => tech.id) }));
   return (
     <View style={{ flexDirection: 'row', gap: 10, paddingVertical: 10, borderTopWidth: index ? 1 : 0, borderTopColor: C.line }}>
       <Badge index={index} tone={onlyMeeting ? 'meeting' : 'visit'} />

@@ -116,17 +116,51 @@ async function overflow(page) {
     await id('visit-save').click();
     await page.waitForTimeout(200);
     await id('tab-visits').click();
-    await page.getByText('المستودعات والمعدات', { exact: true }).click();
+    await page.getByText('المستودعات', { exact: true }).click();
     assert((await page.locator('body').innerText()).includes('انزار هالربع'), 'المستودع صار مزار هالربع');
     assert((await id('warehouse-quarter').innerText()).replace(/[^0-9/ ]/g, '').includes('1 / 2'), 'هدف الربع: مستودع من مستودعين');
 
     // زيارة معدات التوزيع: بدون فنيين
+    await page.getByText('المعدات', { exact: true }).click();
     await id('add-equipment-visit').click();
     await id('visit-site').fill('محطة توزيع 12');
+    // خانة الإحداثي: تنكتب يدويًا، ويطلع الرابط المباشر لخرائط قوقل
+    await id('visit-coords').fill('17.7264');
+    assert((await page.locator('body').innerText()).includes('اكتب الإحداثي بهالشكل'), 'تنبيه الإحداثي الناقص');
+    await id('visit-coords').fill('17.7264,42.2774');
+    assert((await id('maps-link').innerText()).trim() === 'https://maps.google.com/?q=17.7264,42.2774', 'الرابط المباشر لخرائط قوقل');
+    // لصق رابط من قوقل ماب في خانة الإحداثي يتحول للإحداثي نفسه
+    await id('visit-coords').fill('https://www.google.com/maps/@24.7136,46.6753,17z');
+    assert((await id('visit-coords').inputValue()) === '24.7136,46.6753', 'الرابط تحول لإحداثي');
+    await id('visit-coords').fill('17.7264,42.2774');
+    assert((await id('visit-site').inputValue()) === 'محطة توزيع 12', 'وصف الموقع ما تغيّر');
+    await id('visit-notes').fill('باب المحطة مكسور');
+    await id('visit-save').click();
+    assert((await page.locator('body').innerText()).includes('أرفق صورة قبل'), 'صورة قبل مطلوبة');
+    const png = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 120, height: 90 } });
+    const attach = async (field) => {
+      const [chooser] = await Promise.all([page.waitForEvent('filechooser'), id(field + '-library').click()]);
+      await chooser.setFiles({ name: field + '.png', mimeType: 'image/png', buffer: png });
+      await page.waitForTimeout(400);
+    };
+    await attach('gear-before');
     await id('visit-save').click();
     await page.waitForTimeout(200);
-    assert((await page.locator('body').innerText()).includes('محطة توزيع 12'), 'زيارة المعدة انسجلت');
-    await page.getByText('المستودعات والمعدات', { exact: true }).click();
+    let gear = await id('gear-notes').innerText();
+    assert(gear.includes('محطة توزيع 12') && gear.includes('باب المحطة مكسور') && gear.includes('المفتوحة · 1'), 'ملاحظة المعدة مفتوحة');
+    // الإحداثي والرابط محفوظين مع الزيارة
+    await page.locator('[data-testid^="gear-note-"]').first().click();
+    assert((await id('visit-coords').inputValue()) === '17.7264,42.2774' && (await id('maps-link').innerText()).includes('q=17.7264,42.2774'), 'الإحداثي والرابط انحفظوا');
+    await id('sheet-close').click();
+    // الإقفال بصورة بعد
+    await page.locator('[data-testid^="gear-note-"]').first().click();
+    assert(await id('gear-close-save').isDisabled(), 'الإقفال يحتاج صورة بعد');
+    await attach('gear-after');
+    await id('gear-close-save').click();
+    await page.waitForTimeout(200);
+    gear = await id('gear-notes').innerText();
+    assert(gear.includes('المفتوحة · 0') && gear.includes('المقفلة · 1'), 'ملاحظة المعدة انقفلت');
+    await page.getByText('المستودعات', { exact: true }).click();
     assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
 
     // تسجيل مستودع جديد من صفحة الأماكن، وتعديله، وتسجيل زيارته
@@ -150,6 +184,8 @@ async function overflow(page) {
     await page.locator('[data-testid="plan-meeting"]').first().click();
     await page.waitForTimeout(200);
     assert(await id('attendance-save').count() || (await page.locator('body').innerText()).includes('حضور'), 'فتح صفحة الحضور للاجتماع المقترح');
+    assert((await id('people-chosen').innerText()).includes('حاضر'), 'اللي ما حضروا محددين مسبقًا');
+    await id('sheet-close').click();
 
     // موضوع الاجتماع: اعتماده يضيفه كاجتماع ويحدده
     await id('tab-meetings').click();
@@ -158,7 +194,8 @@ async function overflow(page) {
     await id('talk-adopt').click();
     await page.waitForTimeout(200);
     assert((await page.locator('body').innerText()).includes('تم اختيار «' + topic + '»'), 'الموضوع انعتمد كاجتماع');
-    await page.getByText('مواضيع مقترحة', { exact: true }).click();
+    assert((await page.locator('body').innerText()).includes('أنت تسجّل اجتماع'), 'الاعتماد يفتح صفحة التسجيل');
+    await id('sheet-close').click();
     await id('talk-next').click();
     assert((await id('talk-title').innerText()) !== topic, 'اقتراح ثاني يغيّر الموضوع');
     await context.close();
@@ -178,8 +215,9 @@ async function overflow(page) {
     const screens = [
       ['اليوم', async () => id('tab-day').click()],
       ['الزيارات', async () => (await id('tab-visits').click(), await id('dept-b').click())],
-      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات والمعدات', { exact: true }).click())],
-      ['الاجتماعات', async () => (await id('tab-meetings').click(), await id('dept-b').click())],
+      ['المعدات', async () => (await id('tab-visits').click(), await page.getByText('المعدات', { exact: true }).click())],
+      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات', { exact: true }).click())],
+      ['الاجتماعات', async () => id('tab-meetings').click()],
       ['المتابعة', async () => id('tab-follow').click()],
       ['التقارير', async () => id('tab-reports').click()],
       ['الاجتماعات: من باقي', async () => (await id('tab-meetings').click(), await page.getByText('من باقي؟', { exact: true }).click())],
@@ -199,6 +237,7 @@ async function overflow(page) {
     }
     const sheets = [
       ['نافذة الزيارة', async () => (await id('tab-visits').click(), await id('add-visit').click())],
+      ['صفحة تسجيل الاجتماع', async () => (await id('tab-meetings').click(), await id('add-meeting').click())],
       ['نافذة الملاحظة', async () => (await id('tab-follow').click(), await id('add-observation').click())],
       ['تفاصيل الفني', async () => (await id('tab-day').click(), await page.locator('[data-testid^="reminders-"]').first().click(), await page.locator('[data-testid^="daily-"]').first().click())],
       ['خارج الدوام', async () => (await id('tab-follow').click(), await page.getByText('خارج الدوام', { exact: true }).first().click(), await id('add-overtime').click())],

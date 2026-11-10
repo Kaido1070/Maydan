@@ -2,7 +2,7 @@
   "expo": {
     "name": "ميدان",
     "slug": "maydan",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -46,6 +46,15 @@
           "photosPermission": "ميدان يحتاج الوصول للصور لإرفاق صور قبل وبعد لمعدات التوزيع.",
           "cameraPermission": "ميدان يحتاج الكاميرا لتصوير معدات التوزيع قبل وبعد.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ميدان يستخدم موقعك لتحديد موقع الزيارة لما تضغط «موقعي الحالي».",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false
         }
       ]
     ],

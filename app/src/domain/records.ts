@@ -1,5 +1,6 @@
 import { isDateKey, isTime } from './dates';
-import type { Meeting, MeetingAttendance, Visit, Workspace } from './types';
+import { formatCoords } from './geo';
+import type { Meeting, MeetingAttendance, Photo, Visit, Workspace } from './types';
 
 let counter = 0;
 export function newId(prefix: string): string {
@@ -21,6 +22,10 @@ export type VisitInput = {
   placeId?: string;
   /** زيارة معدات التوزيع: ما تحتاج فنيين ولا قسم. */
   target?: 'equipment';
+  /** صور قبل (زيارة المعدة). */
+  before?: Photo[];
+  coords?: { lat: number; lng: number };
+  mapUrl?: string;
 };
 
 const clean = (value?: string) => value?.trim().replace(/\s+/g, ' ') || undefined;
@@ -39,9 +44,9 @@ function visitFields(input: VisitInput) {
 export const visitTitle = (visit: Pick<Visit, 'workType' | 'location' | 'site'>) => visit.workType || visit.location || visit.site || 'زيارة';
 
 /** تفاصيل الزيارة تحت العنوان: الموقع ورقم المهمة والوصف (بدون تكرار العنوان). */
-export function visitDetails(visit: Pick<Visit, 'workType' | 'location' | 'site' | 'taskNumber'>): string {
+export function visitDetails(visit: Pick<Visit, 'workType' | 'location' | 'site' | 'taskNumber'> & { coords?: { lat: number; lng: number } }): string {
   const title = visitTitle(visit);
-  return [visit.location !== title ? visit.location : '', visit.taskNumber ? 'رقم ' + visit.taskNumber : '', visit.site && visit.site !== title ? visit.site : '']
+  return [visit.location !== title ? visit.location : '', visit.taskNumber ? 'رقم ' + visit.taskNumber : '', visit.site && visit.site !== title ? visit.site : '', visit.coords ? '\u2066' + formatCoords(visit.coords) + '\u2069' : '']
     .filter(Boolean)
     .join(' · ');
 }
@@ -86,6 +91,9 @@ export function addVisit(ws: Workspace, input: VisitInput, today: string, stamp 
     ...(input.planItemId ? { planItemId: input.planItemId } : {}),
     ...(input.placeId ? { placeId: input.placeId } : {}),
     ...(input.target ? { target: input.target } : {}),
+    ...(input.before?.length ? { before: input.before } : {}),
+    ...(input.coords ? { coords: input.coords } : {}),
+    ...(input.mapUrl ? { mapUrl: input.mapUrl } : {}),
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -178,4 +186,74 @@ export function saveAttendanceBatch(
     }
   }
   return { ws: { ...ws, attendance }, created, updated, removed };
+}
+
+/** إقفال ملاحظة المعدة بصور بعد. */
+export function closeEquipmentVisit(ws: Workspace, id: string, input: { after: Photo[]; note: string; date: string }, stamp = new Date().toISOString()): Workspace {
+  if (!input.after.length) throw new Error('أضف صورة بعد عشان تقفلها');
+  if (!isDateKey(input.date)) throw new Error('التاريخ غير صحيح');
+  return {
+    ...ws,
+    visits: ws.visits.map((visit) =>
+      visit.id === id ? { ...visit, after: input.after, closedAt: input.date, closeNote: input.note.trim() || undefined, updatedAt: stamp } : visit,
+    ),
+  };
+}
+
+/** إعادة فتح ملاحظة المعدة (الصور تبقى). */
+export const reopenEquipmentVisit = (ws: Workspace, id: string, stamp = new Date().toISOString()): Workspace => ({
+  ...ws,
+  visits: ws.visits.map((visit) => (visit.id === id ? { ...visit, closedAt: undefined, updatedAt: stamp } : visit)),
+});
+
+/**
+ * تسجيل اجتماع: نفس الحاضرين لكل الاجتماعات المختارة، من أي قسم.
+ * كل قسم له سجله (اجتماع × قسم × تاريخ)، والحاضرون ينضافون على المسجلين من قبل.
+ */
+export function recordAttendance(
+  ws: Workspace,
+  input: { meetingIds: string[]; date: string; time?: string; technicianIds: string[] },
+  today: string,
+  stamp = new Date().toISOString(),
+): { ws: Workspace; created: number; people: number } {
+  const meetingIds = [...new Set(input.meetingIds)];
+  const people = [...new Set(input.technicianIds)];
+  if (!meetingIds.length) throw new Error('اختر الاجتماع');
+  if (meetingIds.some((id) => !ws.meetings.some((item) => item.id === id))) throw new Error('اجتماع غير معروف');
+  if (!people.length) throw new Error('حدد حاضرًا واحدًا على الأقل');
+  if (!isDateKey(input.date)) throw new Error('التاريخ غير صحيح');
+  if (input.date > today) throw new Error('ما يمكن تسجيل اجتماع بتاريخ قادم');
+  if (input.time && !isTime(input.time)) throw new Error('اكتب الوقت بصيغة 24 ساعة مثل 09:30');
+  const byDepartment = new Map<string, string[]>();
+  for (const id of people) {
+    const tech = ws.technicians.find((item) => item.id === id);
+    if (!tech) continue;
+    byDepartment.set(tech.departmentId, [...(byDepartment.get(tech.departmentId) ?? []), id]);
+  }
+  const attendance = [...ws.attendance];
+  let created = 0;
+  for (const meetingId of meetingIds) {
+    for (const [departmentId, ids] of byDepartment) {
+      const index = attendance.findIndex((item) => item.meetingId === meetingId && item.departmentId === departmentId && item.date === input.date);
+      if (index >= 0) {
+        attendance[index] = { ...attendance[index], technicianIds: [...new Set([...attendance[index].technicianIds, ...ids])], ...(input.time ? { time: input.time } : {}), updatedAt: stamp };
+      } else {
+        attendance.push({ id: newId('a'), meetingId, departmentId, date: input.date, ...(input.time ? { time: input.time } : {}), technicianIds: ids, updatedAt: stamp });
+        created++;
+      }
+    }
+  }
+  return { ws: { ...ws, attendance }, created, people: people.length };
+}
+
+/** تعديل سجل حضور محفوظ: الحاضرون والوقت. القائمة الفارغة تحذف السجل. */
+export function updateAttendanceRecord(ws: Workspace, id: string, input: { technicianIds: string[]; time?: string }, stamp = new Date().toISOString()): Workspace {
+  const people = [...new Set(input.technicianIds)];
+  if (input.time && !isTime(input.time)) throw new Error('اكتب الوقت بصيغة 24 ساعة مثل 09:30');
+  return {
+    ...ws,
+    attendance: people.length
+      ? ws.attendance.map((item) => (item.id === id ? { ...item, technicianIds: people, ...(input.time ? { time: input.time } : {}), updatedAt: stamp } : item))
+      : ws.attendance.filter((item) => item.id !== id),
+  };
 }
