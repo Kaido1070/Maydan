@@ -94,8 +94,10 @@ const OUT = process.env.SHOTS || null;
   assert(body.includes('مراجعة خطة الطوارئ\n2 حاضر') || /مراجعة خطة الطوارئ[\s\S]{0,40}2 حاضر/.test(body), 'سجل الحضور يظهر');
 
   // متابعة اجتماع: كم باقي ما حضره
+  await page.getByText('من باقي؟', { exact: true }).click();
   const remainingText = await id('meeting-remaining').innerText();
   assert(/\d+/.test(remainingText) && remainingText.includes('حضروا'), 'عدد الباقين على الاجتماع ظاهر');
+  await page.getByText('تسجيل الحضور', { exact: true }).click();
 
   // حضور اجتماع بتاريخ أمس ووقت محدد
   await page.getByRole('button', { name: 'السابق' }).first().click();
@@ -129,8 +131,11 @@ const OUT = process.env.SHOTS || null;
   // 4) أرقام التقرير
   await id('tab-reports').click();
   assert.strictEqual(await kpi('kpi-visits'), visitsBefore + 3, 'الزيارة الجماعية تُحسب مرة: +3 زيارات');
-  for (const chart of ['chart-period', 'chart-visit-status', 'chart-dept-visits']) assert(await id(chart).isVisible(), 'الرسم البياني ظاهر: ' + chart);
+  assert(await id('chart-period').isVisible(), 'الرسم البياني ظاهر: chart-period');
+  await page.getByText('التغطية', { exact: true }).click();
+  for (const chart of ['chart-visit-status', 'chart-dept-visits']) assert(await id(chart).isVisible(), 'الرسم البياني ظاهر: ' + chart);
   assert((await id('chart-visit-status').innerText()).includes('بدون زيارة'), 'الرسم فيه تسميات الحالة');
+  await page.getByText('الإنجاز', { exact: true }).click();
   assert.strictEqual(await kpi('kpi-meetings'), meetingsBefore + 3, '+3 تسجيلات اجتماع (اجتماعان اليوم وواحد أمس)');
   await id('employee-search').fill('١٢٠١');
   await id('employee-search-go').click();
@@ -149,14 +154,15 @@ const OUT = process.env.SHOTS || null;
   await id('tab-day').click();
   assert(/\d+ \/ \d+/.test(await id('hero-progress').innerText()), 'تقدم مهام اليوم ظاهر');
   assert((await id('hero-streak').innerText()).includes('🔥'), 'سلسلة الإنجاز ظاهرة');
-  assert(await id('next-task').isVisible(), 'المهمة التالية ظاهرة');
+  assert(await id('visit-plan').isVisible(), 'خطة اليوم ظاهرة');
   assert((await id('hero-week').innerText()).includes('هدف الأسبوع') || (await id('hero-week').innerText()).includes('🏅'), 'هدف الأسبوع ظاهر');
 
   // مهام اليوم: تذكير زيارة → تفاصيل الفني → تسجيل زيارة له → تصير منجزة
   await id('tab-day').click();
+  assert((await id('reminders-visit').innerText()).includes('ما نزلت عليهم زيارة'), 'تذكير الزيارات ظاهر');
+  await id('reminders-visit').click();
   const dailyTask = page.locator('[data-testid^="daily-visit-"]').first();
   const techId = (await dailyTask.getAttribute('data-testid')).replace('daily-visit-', '');
-  assert((await id('next-task').innerText()).includes('ما نزلت عليه زيارة'), 'سبب المهمة ظاهر في المهمة التالية');
   await dailyTask.click();
   await page.waitForSelector('text=الزيارات · آخر 6 أشهر');
   await id('person-visit').click();

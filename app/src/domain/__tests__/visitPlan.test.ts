@@ -1,4 +1,5 @@
-import { addPlace, deletePlace, renamePlace } from '../places';
+import { addPlace, deletePlace, equipmentVisits, quarterOf, renamePlace, warehouseQuarter } from '../places';
+import { dayProgress } from '../stats';
 import { addMeeting, addVisit, saveAttendanceBatch } from '../records';
 import { demoWorkspace, emptyWorkspace } from '../seed';
 import { DayPlan, PlannedVisit, visitPlan } from '../visitPlan';
@@ -71,18 +72,44 @@ describe('اجتماع مقترح مع الزيارة', () => {
 });
 
 describe('المستودعات ونقاط الانطلاق', () => {
-  test('المكان اللي ما انزار هالشهر ينقترح يوم ويوم، والمزار يختفي، وزيارته بدون فنيين', () => {
-    let ws = addPlace(emptyWorkspace('2026-11-09'), { kind: 'warehouse', name: 'مستودع الشمال' });
+  test('المطلوب مستودعين كل ربع: ينقترحون لين يتحقق الهدف، ونقاط الانطلاق ما تنقترح', () => {
+    let ws = emptyWorkspace('2026-11-09');
+    for (const name of ['مستودع الشمال', 'مستودع الجنوب', 'مستودع الشرق']) ws = addPlace(ws, { kind: 'warehouse', name });
     ws = addPlace(ws, { kind: 'staging', name: 'نقطة انطلاق الطوارئ' });
     expect(() => addPlace(ws, { kind: 'warehouse', name: 'مستودع الشمال' })).toThrow('موجود');
-    let plan = visitPlan(ws, MONDAY);
-    expect(plan.slice(0, 2).map((d) => d.visits.find((v) => v.kind === 'place'))).toHaveLength(2);
-    const places = plan.flatMap((d) => d.visits.filter((v) => v.kind === 'place'));
-    expect(places).toHaveLength(2);
-    const north = ws.places![0];
-    ws = addVisit(ws, { departmentId: '', placeId: north.id, date: MONDAY.date, time: '09:00', workType: 'زيارة مستودع', location: north.name, site: '', technicianIds: [] }, MONDAY.date).ws;
-    plan = visitPlan(ws, MONDAY);
-    expect(plan.flatMap((d) => d.visits).filter((v) => v.kind === 'place').map((v) => v.kind === 'place' && v.place.name)).toEqual(['نقطة انطلاق الطوارئ']);
+    const suggested = () => visitPlan(ws, MONDAY).flatMap((d) => d.visits).flatMap((v) => (v.kind === 'place' ? [v.place.name] : []));
+    expect(suggested()).toHaveLength(2);
+    expect(suggested()).not.toContain('نقطة انطلاق الطوارئ');
+    expect(warehouseQuarter(ws, MONDAY.date)).toMatchObject({ goal: 2, visited: 0, remaining: 2, label: 'الربع الرابع', total: 3 });
+    const visit = (index: number, date: string) =>
+      (ws = addVisit(ws, { departmentId: '', placeId: ws.places![index].id, date, time: '09:00', workType: 'زيارة مستودع', location: ws.places![index].name, site: '', technicianIds: [] }, MONDAY.date).ws);
+    visit(0, MONDAY.date);
+    visit(0, MONDAY.date); // نفس المستودع مرتين = مستودع واحد
+    expect(warehouseQuarter(ws, MONDAY.date)).toMatchObject({ visited: 1, remaining: 1 });
+    expect(suggested()).toHaveLength(1);
+    expect(suggested()).not.toContain('مستودع الشمال');
+    visit(1, '2026-10-05'); // بداية نفس الربع
+    expect(warehouseQuarter(ws, MONDAY.date)).toMatchObject({ visited: 2, remaining: 0 });
+    expect(suggested()).toEqual([]);
+    // الربع الجاي يبدأ من صفر
+    expect(warehouseQuarter(ws, '2027-01-04')).toMatchObject({ visited: 0, remaining: 2, label: 'الربع الأول' });
+    expect(quarterOf('2026-11-09')).toMatchObject({ start: '2026-10-01', end: '2027-01-01' });
+  });
+
+  test('زيارة معدات التوزيع: بدون فنيين ولا قسم، وتنحسب في زيارات اليوم', () => {
+    let ws = emptyWorkspace('2026-11-09');
+    const base = { departmentId: '', date: MONDAY.date, time: '10:00', site: '', technicianIds: [] as string[] };
+    expect(() => addVisit(ws, { ...base, location: 'محول 5' }, MONDAY.date)).toThrow('اختر القسم');
+    expect(() => addVisit(ws, { ...base, target: 'equipment', workType: 'زيارة معدات التوزيع' }, MONDAY.date)).toThrow('اكتب اسم المعدة');
+    ws = addVisit(ws, { ...base, target: 'equipment', workType: 'زيارة معدات التوزيع', location: 'محطة توزيع 12' }, MONDAY.date).ws;
+    expect(equipmentVisits(ws).map((v) => v.location)).toEqual(['محطة توزيع 12']);
+    expect(dayProgress(ws, MONDAY.date).visits).toBe(1);
+    // معدة مسجلة كنوع ثالث: تنزار مثل المستودع وتطلع مع زيارات المعدات، وما تدخل في هدف المستودعات
+    ws = addPlace(ws, { kind: 'equipment', name: 'محول 7' });
+    const item = ws.places!.find((place) => place.kind === 'equipment')!;
+    ws = addVisit(ws, { ...base, placeId: item.id, workType: 'زيارة معدات التوزيع', location: item.name }, MONDAY.date).ws;
+    expect(equipmentVisits(ws)).toHaveLength(2);
+    expect(warehouseQuarter(ws, MONDAY.date)).toMatchObject({ visited: 0, total: 0 });
   });
 });
 

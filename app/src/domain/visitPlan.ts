@@ -1,7 +1,7 @@
 import { addDays, minutesOf, weekdayOf } from './dates';
 import { activeTechnicians, getSlot, isOvernight } from './shifts';
 import { attendedMeetings, technicianVisits, yearMeetings } from './stats';
-import { placeStatus } from './places';
+import { placeStatus, warehouseQuarter } from './places';
 import type { Department, Meeting, Now, PeriodDef, Place, Technician, Workspace } from './types';
 import { isWorkDay, scheduleOf } from './worktime';
 
@@ -66,7 +66,10 @@ export function visitPlan(ws: Workspace, now: Now): DayPlan[] {
     if (!attended.has(tech.id)) attended.set(tech.id, attendedMeetings(ws, tech.id, year));
     return attended.get(tech.id)!;
   };
-  const placesDue = placeStatus(ws, now.date).filter((status) => !status.visitedThisMonth);
+  // المستودعات: المطلوب عدد محدد كل ربع سنة. نقترح اللي ما انزار هالربع لين يتحقق الهدف.
+  const placesDue = placeStatus(ws, now.date)
+    .filter((status) => status.place.kind === 'warehouse' && !status.visitedThisQuarter)
+    .slice(0, warehouseQuarter(ws, now.date).remaining);
 
   const days: DayPlan[] = [];
   const lastDay = addDays(now.date, 6 - weekdayOf(now.date)); // السبت
@@ -113,7 +116,7 @@ export function visitPlan(ws: Workspace, now: Now): DayPlan[] {
       if (visit.meeting) for (const tech of visit.meeting.people) plannedMeeting.add(tech.id + '|' + visit.meeting.meeting.id);
     }
     const items: PlanItem[] = [...chosen];
-    // مستودع أو نقطة انطلاق ما انزار هالشهر: واحد في اليوم
+    // مستودع باقي على هدف الربع: واحد في اليوم
     const place = placesDue.shift();
     if (place) items.push({ kind: 'place', date, place: place.place, lastVisitDate: place.lastVisit?.date });
     if (items.length) days.push({ date, visits: items });

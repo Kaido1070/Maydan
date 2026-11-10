@@ -3,6 +3,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { riyadhNow } from './domain/dates';
 import { defaultDepartments, demoWorkspace, emptyWorkspace } from './domain/seed';
 import type { AppState, Mode, Now, Workspace } from './domain/types';
+import { useColorScheme } from 'react-native';
+import { applyTheme, DEFAULT_PREFS, type Prefs, type ThemeMode } from './ui/theme';
 
 const STORAGE_KEY = 'maydan-app-state-v1';
 /** نسخة من البيانات كما كانت قبل آخر ترقية/فتح، للرجوع لها لو صار شي. */
@@ -20,6 +22,10 @@ type Store = {
   resetLive: () => void;
   replaceLive: (ws: Workspace) => void;
   exportBackup: () => string;
+  /** تفضيلات المظهر والوضع الفعلي (فاتح أو داكن). */
+  prefs: Prefs;
+  theme: ThemeMode;
+  setPrefs: (patch: Partial<Prefs>) => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -101,6 +107,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(timer);
   }, []);
 
+  // الألوان تتبدل قبل رسم الشاشات، وكل من يقرأ من المخزن ينرسم من جديد.
+  const system = useColorScheme();
+  const prefs: Prefs = { ...DEFAULT_PREFS, ...state.prefs };
+  const theme: ThemeMode = prefs.theme === 'system' ? (system === 'dark' ? 'dark' : 'light') : prefs.theme;
+  applyTheme(theme);
+
   const update = useCallback((change: (ws: Workspace) => Workspace) => {
     // نحسب التعديل خارج setState حتى تصل الأخطاء للواجهة.
     setState((prev) => {
@@ -121,8 +133,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       resetLive: () => setState((prev) => ({ ...prev, live: emptyWorkspace(riyadhNow().date) })),
       replaceLive: (ws) => setState((prev) => ({ ...prev, live: ws })),
       exportBackup: () => JSON.stringify(state.live, null, 2),
+      prefs,
+      theme,
+      setPrefs: (patch) => setState((prev) => ({ ...prev, prefs: { ...DEFAULT_PREFS, ...prev.prefs, ...patch } })),
     }),
-    [ready, state, now, update],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ready, state, now, update, theme],
   );
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;

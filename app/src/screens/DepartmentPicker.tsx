@@ -33,9 +33,9 @@ export function DepartmentPicker({ value, onChange, icon }: { value: string | nu
               backgroundColor: active ? C.purple : C.white,
             }}
           >
-            <Icon name={icon} size={15} color={active ? C.white : C.purple} />
-            <T style={{ fontWeight: '700', color: active ? C.white : C.ink }}>{department.name}</T>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: slot ? '#2fbf71' : '#c9c4d6' }} />
+            <Icon name={icon} size={15} color={active ? C.onAccent : C.link} />
+            <T style={{ fontWeight: '700', color: active ? C.onAccent : C.ink }}>{department.name}</T>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: slot ? '#2fbf71' : C.softLine }} />
           </Touch>
         );
       })}

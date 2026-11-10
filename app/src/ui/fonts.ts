@@ -24,7 +24,7 @@ export function fontFor(weight: unknown): string {
 }
 
 /** أصغر حجم خط مسموح، حتى يبقى النص مقروءًا. */
-export const MIN_FONT_SIZE = 11;
+export const MIN_FONT_SIZE = 12;
 
 export function useAppFonts() {
   const [loaded, error] = useFonts({

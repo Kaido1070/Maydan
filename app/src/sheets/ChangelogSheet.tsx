@@ -6,7 +6,7 @@ import { Button, C, Chip, Icon, Row, Sheet, Spread, Sub, T } from '../ui/kit';
 
 function ReleaseCard({ release, current }: { release: Release; current: boolean }) {
   return (
-    <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: current ? '#cdbbf6' : C.line, padding: 12, marginBottom: 10 }}>
+    <View style={{ backgroundColor: C.white, borderRadius: 14, borderWidth: 1, borderColor: current ? C.softLine : C.line, padding: 12, marginBottom: 10 }}>
       <Spread>
         <Row gap={6}>
           <T style={{ fontWeight: '800', fontSize: 16 }}>{'⁦' + release.version + '⁩'}</T>

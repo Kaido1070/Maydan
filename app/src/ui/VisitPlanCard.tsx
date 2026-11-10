@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { formatDate } from '../domain/dates';
-import { PLACE_NOUN } from '../domain/places';
+import { PLACE_ICON, PLACE_NOUN } from '../domain/places';
 import { periodRange } from '../domain/shifts';
 import { DayPlan, PlanItem, PlannedPlace, PlannedVisit, visitPlan } from '../domain/visitPlan';
 import { useStore } from '../store';
@@ -9,7 +9,7 @@ import { Button, C, Chip, Icon, KIND, Row, Sheet, Spread, Sub, T } from './kit';
 import { useUi } from './ui';
 
 function Badge({ index, tone }: { index: number; tone: 'visit' | 'meeting' | 'place' }) {
-  const colors = tone === 'place' ? { bg: '#eef6ee', fg: C.green } : { bg: KIND[tone].bg, fg: KIND[tone].fg };
+  const colors = tone === 'place' ? { bg: C.greenBg, fg: C.green } : { bg: KIND[tone].bg, fg: KIND[tone].fg };
   return (
     <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
       <T style={{ color: colors.fg, fontWeight: '700' }}>{index + 1}</T>
@@ -39,13 +39,13 @@ function CrewRow({ visit, index, showPeriod, onAct }: { visit: PlannedVisit; ind
           </>
         ) : null}
         {visit.meeting ? (
-          <View style={{ backgroundColor: KIND.meeting.bg, borderRadius: 10, padding: 8, marginTop: 4, gap: 4 }}>
-            <Row gap={6}>
-              <Icon name="users" size={14} color={KIND.meeting.fg} />
-              <T style={{ flex: 1, fontSize: 14, color: KIND.meeting.fg, fontWeight: '600' }}>{'اجتماع مقترح: ' + visit.meeting.meeting.title}</T>
-            </Row>
-            <Sub numberOfLines={2}>{'ما حضروه: ' + visit.meeting.people.map((tech) => tech.name).join('، ')}</Sub>
-            <Button testID="plan-meeting" small variant="secondary" icon="check-square" label={'سجّل حضورهم · ' + visit.meeting.people.length} onPress={startMeeting} style={{ alignSelf: 'flex-start' }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: KIND.meeting.bg, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 8, marginTop: 4 }}>
+            <Icon name="users" size={14} color={KIND.meeting.fg} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <T numberOfLines={1} style={{ fontSize: 14, color: KIND.meeting.fg, fontWeight: '600' }}>{visit.meeting.meeting.title}</T>
+              <Sub style={{ fontSize: 11 }}>{'اجتماع مقترح · ' + visit.meeting.people.length + ' ما حضروه'}</Sub>
+            </View>
+            <Button testID="plan-meeting" small variant="secondary" label="الحضور" onPress={startMeeting} />
           </View>
         ) : null}
       </View>
@@ -63,9 +63,9 @@ function PlaceRow({ item, index, onAct }: { item: PlannedPlace; index: number; o
       <Badge index={index} tone="place" />
       <View style={{ flex: 1, gap: 2 }}>
         <T style={{ fontWeight: '700' }}>{item.place.name}</T>
-        <Sub>{PLACE_NOUN[item.place.kind] + ' · ' + (item.lastVisitDate ? 'آخر زيارة ' + formatDate(item.lastVisitDate) : 'ما انزار أبدًا') + ' · ما انزار هالشهر'}</Sub>
+        <Sub>{PLACE_NOUN[item.place.kind] + ' · ' + (item.lastVisitDate ? 'آخر زيارة ' + formatDate(item.lastVisitDate) : 'ما انزار أبدًا') + ' · باقي على هدف الربع'}</Sub>
       </View>
-      <Button testID="plan-place" small label="ابدأ" icon={item.place.kind === 'warehouse' ? 'package' : 'navigation'} style={{ backgroundColor: C.green }} onPress={() => (onAct?.(), ui.openVisit({ departmentId: item.place.departmentId ?? '', placeId: item.place.id }))} />
+      <Button testID="plan-place" small label="ابدأ" icon={PLACE_ICON[item.place.kind]} style={{ backgroundColor: C.green }} onPress={() => (onAct?.(), ui.openVisit({ departmentId: item.place.departmentId ?? '', placeId: item.place.id }))} />
     </View>
   );
 }
@@ -88,7 +88,7 @@ export function VisitPlanCard() {
       <Spread>
         <View style={{ flex: 1 }}>
           <T style={{ fontWeight: '700', fontSize: 16 }}>{first && first.date !== now.date ? 'خطة ' + formatDate(first.date, { weekday: true }) : 'خطة اليوم'}</T>
-          <Sub>زيارات واجتماعات حسب من يداوم وقت دوامك وما خلّص</Sub>
+          <Sub>مقترحة حسب من يداوم وقت دوامك</Sub>
         </View>
         {plan.length ? <Button testID="open-week-plan" small variant="secondary" label="الأسبوع" icon="calendar" onPress={() => setWeek(true)} /> : null}
       </Spread>

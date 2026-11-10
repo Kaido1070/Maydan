@@ -28,7 +28,7 @@ export function TechDetails({ ws, tech, asOf }: { ws: Workspace; tech: Technicia
   const progress = techProgress(ws, tech, asOf);
   const meetings = yearMeetings(ws, Number(asOf.slice(0, 4)));
   return (
-    <View style={{ backgroundColor: '#f8f6fc', borderRadius: 12, padding: 10, marginTop: 8, gap: 6 }}>
+    <View style={{ backgroundColor: C.subtle, borderRadius: 12, padding: 10, marginTop: 8, gap: 6 }}>
       <Sub>
         {progress.visits.length
           ? 'زيارات آخر ' + ws.settings.visitWindowMonths + ' أشهر: ' + progress.visits.map((visit) => formatDate(visit.date) + ' (' + visitTitle(visit) + ')').join(' · ')

@@ -10,9 +10,15 @@ export const CHART = {
   good: '#0ca30c',
   warning: '#fab219',
   critical: '#d03b3b',
-  grid: '#e1e0d9',
-  axis: '#c3c2b7',
-  muted: '#898781',
+  get grid() {
+    return C.line;
+  },
+  get axis() {
+    return C.line;
+  },
+  get muted() {
+    return C.muted;
+  },
 };
 
 export type Series = { name: string; color: string };
@@ -51,7 +57,7 @@ export function ColumnChart({ buckets, series, height = 170 }: { buckets: { labe
     <View>
       <Legend series={series} />
       {current ? (
-        <View style={{ backgroundColor: '#f7f5fb', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 8 }}>
+        <View style={{ backgroundColor: C.subtle, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 8 }}>
           <Spread>
             <T style={{ fontWeight: '700', fontSize: 13 }}>{current.label}</T>
             <Row gap={12}>
@@ -129,7 +135,7 @@ export function StackedBar({ title, segments, testID }: { title: string; segment
         <T style={{ fontWeight: '700' }}>{title}</T>
         <Sub>{total + ' فني'}</Sub>
       </Spread>
-      <View style={{ flexDirection: 'row', height: 18, borderRadius: 6, overflow: 'hidden', backgroundColor: '#eeeaf6', gap: total ? 2 : 0 }}>
+      <View style={{ flexDirection: 'row', height: 18, borderRadius: 6, overflow: 'hidden', backgroundColor: C.track, gap: total ? 2 : 0 }}>
         {segments
           .filter((segment) => segment.value > 0)
           .map((segment) => (
@@ -166,7 +172,7 @@ export function ProgressRows({ rows, color, testID }: { rows: { label: string; d
                 <Sub style={{ fontSize: 12 }}>{'  ⁦' + row.done + ' / ' + row.total + '⁩'}</Sub>
               </T>
             </Spread>
-            <View style={{ height: 10, borderRadius: 5, backgroundColor: '#eeeaf6', overflow: 'hidden', marginTop: 4 }}>
+            <View style={{ height: 10, borderRadius: 5, backgroundColor: C.track, overflow: 'hidden', marginTop: 4 }}>
               <View style={{ width: `${pct}%`, height: '100%', borderRadius: 5, backgroundColor: color }} />
             </View>
           </View>

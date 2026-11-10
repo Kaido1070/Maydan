@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Platform, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FollowScreen, OvertimeSheet } from './src/screens/FollowScreen';
@@ -17,15 +18,16 @@ import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftS
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { StoreProvider, useStore } from './src/store';
 import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
+import { alpha, BLUR_LEVELS, SPACE, themed } from './src/ui/theme';
 import { useAppFonts } from './src/ui/fonts';
-import { Tab, Ui, UiContext } from './src/ui/ui';
+import { SettingsSection, Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
 import { dailyTasks } from './src/domain/daily';
 import { weekProgress, xpSummary } from './src/domain/stats';
 import { haptic, Touch } from './src/ui/touch';
 
-/** iOS 26 وأحدث: شريط التبويبات زجاج سائل عائم فوق المحتوى. */
-const GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+/** iOS 26 وأحدث: زجاج النظام السائل. قبله: ضبابية النظام. */
+const LIQUID = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 /** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
 export const SEEN_VERSION_KEY = 'maydan-seen-version';
@@ -50,9 +52,28 @@ const TITLES: Record<Tab, string> = {
 
 function Shell() {
   const insets = useSafeAreaInsets();
-  const { mode, ready, ws, now } = useStore();
+  // الشريط السفلي العائم يختفي لما تنزل ويرجع لما تطلع (مثل شريط النظام في iOS 26).
+  const barShift = useRef(new Animated.Value(0)).current;
+  const barState = useRef({ y: 0, hidden: false });
+  const setBarHidden = (hidden: boolean) => {
+    if (barState.current.hidden === hidden) return;
+    barState.current.hidden = hidden;
+    Animated.timing(barShift, { toValue: hidden ? 1 : 0, duration: 220, useNativeDriver: Platform.OS !== 'web' }).start();
+  };
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const y = contentOffset.y;
+    const delta = y - barState.current.y;
+    const atEnd = y + layoutMeasurement.height >= contentSize.height - 24;
+    if (y < 40 || atEnd) setBarHidden(false);
+    else if (delta > 6) setBarHidden(true);
+    else if (delta < -6) setBarHidden(false);
+    barState.current.y = y;
+  };
+  const { mode, ready, ws, now, prefs, theme } = useStore();
   const [tab, setTab] = useState<Tab>('day');
   const [departmentId, setDepartmentId] = useState<string | null>(null);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>(null);
   const [rosterDate, setRosterDate] = useState<string | null>(null);
   const [focusMeetingId, setFocusMeetingId] = useState<string | null>(null);
   const [visit, setVisit] = useState<VisitTarget>(null);
@@ -83,7 +104,9 @@ function Shell() {
         if (options?.departmentId) setDepartmentId(options.departmentId);
         if (options?.date) setRosterDate(options.date);
         setFocusMeetingId(options?.meetingId ?? null);
+        setSettingsSection(next === 'settings' ? options?.section ?? null : null);
         setTab(next);
+        setBarHidden(false);
         scroll.current?.scrollTo({ y: 0, animated: false });
       },
       notify: (message) => {
@@ -106,12 +129,13 @@ function Shell() {
       openPerson: setPerson,
       openOvertime: (id) => setOvertime({ id }),
       focusMeetingId,
+      settingsSection,
       departmentId,
       setDepartmentId,
       rosterDate,
       setRosterDate,
     }),
-    [tab, departmentId, rosterDate, focusMeetingId],
+    [tab, departmentId, rosterDate, focusMeetingId, settingsSection],
   );
 
   // احتفالات الإنجاز: مستوى جديد، هدف الأسبوع، وكل مهام اليوم.
@@ -137,7 +161,7 @@ function Shell() {
   return (
     <UiContext.Provider value={ui}>
       <View style={[styles.root, { paddingTop: insets.top }]}>
-        <StatusBar style="light" />
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
         <View style={styles.header}>
           <Touch
             testID="brand-home"
@@ -147,7 +171,7 @@ function Shell() {
             style={({ pressed }) => [styles.brand, pressed && { opacity: 0.7 }]}
           >
             <View style={styles.brandMark}>
-              <Icon name="shield" size={22} color="#fff" />
+              <Icon name="shield" size={22} color={C.onAccent} />
               <View style={styles.brandCheck}>
                 <Icon name="check" size={10} color="#eb6834" />
               </View>
@@ -165,20 +189,20 @@ function Shell() {
               style={[styles.modeBadge, mode === 'demo' ? styles.demo : styles.live]}
               testID="mode-badge"
             >
-              <View style={[styles.dot, { backgroundColor: mode === 'demo' ? '#ffd27a' : '#7ce0b0' }]} />
-              <Text style={styles.modeText}>{mode === 'demo' ? 'وضع التجربة' : 'بيانات العمل'}</Text>
+              <View style={[styles.dot, { backgroundColor: mode === 'demo' ? C.amber : C.green }]} />
+              <Text style={[styles.modeText, { color: mode === 'demo' ? C.amber : C.green }]}>{mode === 'demo' ? 'وضع التجربة' : 'بيانات العمل'}</Text>
             </Touch>
             <Touch accessibilityRole="button" accessibilityLabel="الإعدادات" onPress={() => ui.go('settings')} style={styles.gear} testID="open-settings">
-              <Icon name="settings" size={18} color="#ddd8ec" />
+              <Icon name="settings" size={19} color={C.muted} />
             </Touch>
           </View>
         </View>
 
-        <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 14, paddingBottom: GLASS ? 30 + 72 + Math.max(insets.bottom, 8) : 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <ScrollView ref={scroll} style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: SPACE.screen, paddingTop: 6, paddingBottom: prefs.glass ? 30 + 72 + Math.max(insets.bottom, 8) : 30 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" onScroll={prefs.glass ? onScroll : undefined} scrollEventThrottle={16}>
           {ready ? <Screen /> : null}
         </ScrollView>
 
-        <TabBar glassBottom={Math.max(insets.bottom, 8)}>
+        <TabBar glassBottom={Math.max(insets.bottom, 8)} shift={barShift}>
           {TABS.map((item) => {
             const active = item.id === tab;
             return (
@@ -194,9 +218,9 @@ function Shell() {
                 style={styles.tab}
               >
                 <View style={[styles.tabIcon, active && { backgroundColor: C.soft }]}>
-                  <Icon name={item.icon} size={20} color={active ? C.purple : '#8a849c'} />
+                  <Icon name={item.icon} size={20} color={active ? C.link : C.muted} />
                 </View>
-                <Text style={[styles.tabText, active && { color: C.purple, fontWeight: '800' }]}>{item.label}</Text>
+                <Text style={[styles.tabText, active && { color: C.link, fontWeight: '800' }]}>{item.label}</Text>
               </Touch>
             );
           })}
@@ -253,20 +277,41 @@ function Shell() {
   );
 }
 
-function TabBar({ children, glassBottom }: { children: React.ReactNode; glassBottom: number }) {
-  if (GLASS) {
+/** الشريط السفلي: زجاجي عائم (بدرجة ضبابية من الإعدادات) أو عادي ثابت. */
+function TabBar({ children, glassBottom, shift }: { children: React.ReactNode; glassBottom: number; shift: Animated.Value }) {
+  const { prefs, theme } = useStore();
+  if (!prefs.glass) {
     return (
-      <GlassView glassEffectStyle="regular" isInteractive style={[styles.tabbarGlass, { bottom: glassBottom }]} accessibilityRole="tablist">
+      <View style={[styles.tabbar, { paddingBottom: glassBottom }]} accessibilityRole="tablist">
+        {children}
+      </View>
+    );
+  }
+  const level = BLUR_LEVELS[prefs.blur] ?? BLUR_LEVELS[2];
+  const frame = [styles.tabbarGlass, { borderColor: alpha(theme === 'dark' ? '#ffffff' : '#ffffff', theme === 'dark' ? 0.14 : 0.7) }];
+  const tint = { ...fill, backgroundColor: alpha(C.white, level.tint) };
+  const slide = { transform: [{ translateY: shift.interpolate({ inputRange: [0, 1], outputRange: [0, 110 + glassBottom] }) }], opacity: shift.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) };
+  if (LIQUID) {
+    return (
+      <Animated.View testID="tabbar-wrap" style={[styles.tabbarWrap, { bottom: glassBottom }, slide]}>
+      <GlassView testID="tabbar-glass" glassEffectStyle={prefs.blur < 2 ? 'clear' : 'regular'} colorScheme={theme} isInteractive style={frame} accessibilityRole="tablist">
+        <View pointerEvents="none" style={{ ...fill, backgroundColor: alpha(C.white, level.tint * 0.5) }} />
         {children}
       </GlassView>
+      </Animated.View>
     );
   }
   return (
-    <View style={[styles.tabbar, { paddingBottom: glassBottom }]} accessibilityRole="tablist">
+    <Animated.View testID="tabbar-wrap" style={[styles.tabbarWrap, { bottom: glassBottom }, slide]}>
+    <View testID="tabbar-glass" style={[frame, styles.tabbarShadow]} accessibilityRole="tablist">
+      <BlurView pointerEvents="none" intensity={level.intensity} tint={theme === 'dark' ? 'dark' : 'light'} style={fill} />
+      <View pointerEvents="none" style={tint} />
       {children}
     </View>
+    </Animated.View>
   );
 }
+const fill = { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 30 } as const;
 
 /** رسائل الإنجاز تطلع كاحتفال كبير. */
 const celebrate = (message: string) => /XP|^[🎉⭐🏅🏆]/u.test(message);
@@ -284,25 +329,27 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.night },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
+const styles = themed(() => ({
+  root: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACE.screen, paddingTop: 8, paddingBottom: 10 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#6142d1', alignItems: 'center', justifyContent: 'center' },
+  brandMark: { width: 38, height: 38, borderRadius: 13, backgroundColor: C.purple, alignItems: 'center', justifyContent: 'center' },
   brandCheck: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 1 },
-  brandName: { color: '#fff', fontSize: 19, fontWeight: '800' },
-  brandSub: { color: '#cfc9e0', fontSize: 12 },
+  brandName: { color: C.ink, fontSize: 20, fontWeight: '700' },
+  brandSub: { color: C.muted, fontSize: 12.5 },
   modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
-  demo: { backgroundColor: '#3a2d18', borderColor: '#6b5320' },
-  live: { backgroundColor: '#163528', borderColor: '#24614a' },
-  modeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  demo: { backgroundColor: C.amberBg, borderColor: C.amberLine },
+  live: { backgroundColor: C.greenBg, borderColor: C.greenLine },
+  modeText: { fontSize: 12.5, fontWeight: '600' },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  gear: { width: 36, height: 36, borderRadius: 11, backgroundColor: '#2a2440', alignItems: 'center', justifyContent: 'center' },
-  tabbarGlass: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', borderRadius: 32, paddingVertical: 6, overflow: 'hidden' },
-  tabbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
+  gear: { width: 36, height: 36, borderRadius: 12, backgroundColor: C.track, alignItems: 'center', justifyContent: 'center' },
+  tabbarWrap: { position: 'absolute', left: 16, right: 16 },
+  tabbarGlass: { flexDirection: 'row', borderRadius: 30, paddingVertical: 7, paddingHorizontal: 4, overflow: 'hidden', borderWidth: 1 },
+  tabbarShadow: { shadowColor: '#1a1040', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  tabbar: { flexDirection: 'row', backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
   tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 50 },
   tabIcon: { width: 48, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 12, color: '#5f5975' },
-  celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: '#4a2f9a', borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
+  tabText: { fontSize: 12, color: C.muted },
+  celebrate: { position: 'absolute', alignSelf: 'center', backgroundColor: C.hero, borderRadius: 20, paddingHorizontal: 22, paddingVertical: 14, alignItems: 'center', maxWidth: '88%', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 16, elevation: 6 },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: '#251a42', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, maxWidth: '90%' },
-});
+}) as const);

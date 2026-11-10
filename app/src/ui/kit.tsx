@@ -18,44 +18,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Tone } from '../domain/stats';
 import { FONTS, fontFor, MIN_FONT_SIZE } from './fonts';
 import { Touch } from './touch';
+import { C, KIND, R, SPACE, themed } from './theme';
 
-export const C = {
-  bg: '#f6f5f9',
-  white: '#ffffff',
-  ink: '#201c31',
-  muted: '#68647a',
-  line: '#eae7f0',
-  purple: '#5636c6',
-  purpleDark: '#4525ad',
-  soft: '#eee9ff',
-  night: '#19172c',
-  green: '#17664b',
-  greenBg: '#e5f6ed',
-  amber: '#815300',
-  amberBg: '#fff1d4',
-  red: '#a12c48',
-  redBg: '#fce9ee',
-};
-
-/**
- * لون ثابت لكل نوع عمل في كل التطبيق (المهام والرسوم): الزيارة أزرق، والاجتماع برتقالي.
- * البنفسجي للأزرار والتنقل فقط، والأخضر/الأصفر/الأحمر لحالة الإنجاز فقط.
- */
-export const KIND = {
-  visit: { fg: '#1f66bd', bg: '#e6f0fb', solid: '#2a78d6' },
-  meeting: { fg: '#b4471b', bg: '#fdece4', solid: '#eb6834' },
-};
+export { C, KIND };
 
 export type IconName = React.ComponentProps<typeof Feather>['name'];
 
-export function Icon({ name, size = 18, color = C.purple }: { name: IconName; size?: number; color?: string }) {
+export function Icon({ name, size = 18, color = C.link }: { name: IconName; size?: number; color?: string }) {
   return <Feather name={name} size={size} color={color} />;
 }
 
 /** نص بخط التطبيق: يختار ملف الوزن المناسب، ويضمن حجمًا مقروءًا ومسافة أسطر مريحة. */
 export function AppText({ style, children, ...props }: React.ComponentProps<typeof Text>) {
   const flat = StyleSheet.flatten(style) ?? {};
-  const fontSize = Math.max(MIN_FONT_SIZE, flat.fontSize ?? 15);
+  const fontSize = Math.max(MIN_FONT_SIZE, flat.fontSize ?? 16);
   const resolved: TextStyle = {
     ...flat,
     fontSize,
@@ -96,17 +72,13 @@ export function Spread({ children, style }: { children: React.ReactNode; style?:
   return <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, style]}>{children}</View>;
 }
 
-const toneColors: Record<Tone, [string, string]> = {
-  green: [C.green, C.greenBg],
-  amber: [C.amber, C.amberBg],
-  red: [C.red, C.redBg],
-};
+const toneColors = (tone: Tone): [string, string] => (tone === 'green' ? [C.green, C.greenBg] : tone === 'amber' ? [C.amber, C.amberBg] : [C.red, C.redBg]);
 
 export type ChipTone = Tone | 'neutral' | 'purple' | 'visit' | 'meeting';
 
 export function Chip({ tone, label, icon }: { tone: ChipTone; label: string; icon?: IconName }) {
   const [fg, bg] =
-    tone === 'neutral' ? [C.muted, '#f0edf3'] : tone === 'purple' ? [C.purple, '#f2eefc'] : tone === 'visit' || tone === 'meeting' ? [KIND[tone].fg, KIND[tone].bg] : toneColors[tone];
+    tone === 'neutral' ? [C.muted, C.track] : tone === 'purple' ? [C.link, C.soft] : tone === 'visit' || tone === 'meeting' ? [KIND[tone].fg, KIND[tone].bg] : toneColors(tone);
   return (
     <View style={[s.chip, { backgroundColor: bg }]}>
       {icon ? <Icon name={icon} size={11} color={fg} /> : <View style={[s.dot, { backgroundColor: fg }]} />}
@@ -139,11 +111,11 @@ export function Button({
   testID?: string;
 }) {
   const colors: Record<ButtonVariant, [string, string]> = {
-    primary: [C.white, C.purple],
-    secondary: ['#5133a5', '#f2edff'],
+    primary: [C.onAccent, C.purple],
+    secondary: [C.link, C.soft],
     done: [C.green, C.greenBg],
     danger: [C.red, C.redBg],
-    ghost: [C.purple, 'transparent'],
+    ghost: [C.link, 'transparent'],
   };
   const [fg, bg] = colors[variant];
   return (
@@ -171,14 +143,14 @@ export function Button({
 export function Avatar({ text, size = 34 }: { text: string; size?: number }) {
   return (
     <View style={[s.avatar, { width: size, height: size, borderRadius: size / 3 }]}>
-      <AppText style={{ color: '#5335ae', fontWeight: '700', fontSize: size * 0.36, lineHeight: size * 0.6 }}>{text}</AppText>
+      <AppText style={{ color: C.link, fontWeight: '700', fontSize: size * 0.36, lineHeight: size * 0.6 }}>{text}</AppText>
     </View>
   );
 }
 
 export function IconBox({ name, tone = 'purple', size = 38 }: { name: IconName; tone?: 'purple' | 'green' | 'amber' | 'visit' | 'meeting'; size?: number }) {
   const [fg, bg] =
-    tone === 'green' ? ['#24754e', '#e9f7ef'] : tone === 'amber' ? ['#855200', '#fff1d8'] : tone === 'visit' || tone === 'meeting' ? [KIND[tone].fg, KIND[tone].bg] : [C.purple, C.soft];
+    tone === 'green' ? [C.green, C.greenBg] : tone === 'amber' ? [C.amber, C.amberBg] : tone === 'visit' || tone === 'meeting' ? [KIND[tone].fg, KIND[tone].bg] : [C.link, C.soft];
   return (
     <View style={[s.iconBox, { width: size, height: size, borderRadius: size / 3.2, backgroundColor: bg }]}>
       <Icon name={name} size={size * 0.48} color={fg} />
@@ -186,7 +158,7 @@ export function IconBox({ name, tone = 'purple', size = 38 }: { name: IconName; 
   );
 }
 
-export function Progress({ value, max, color = '#7653e2', track = '#eeeaf6', height = 7 }: { value: number; max: number; color?: string; track?: string; height?: number }) {
+export function Progress({ value, max, color = C.purple, track = C.track, height = 7 }: { value: number; max: number; color?: string; track?: string; height?: number }) {
   const pct = max > 0 ? Math.min(100, (100 * value) / max) : 0;
   return (
     <View
@@ -214,7 +186,7 @@ export function Checkbox({ checked, onChange, label, disabled, testID }: { check
       hitSlop={8}
       style={[s.checkbox, checked && s.checkboxOn, disabled && { opacity: 0.4 }]}
     >
-      {checked ? <Icon name="check" size={15} color={C.white} /> : null}
+      {checked ? <Icon name="check" size={15} color={C.onAccent} /> : null}
     </Touch>
   );
 }
@@ -233,7 +205,7 @@ export function Segmented<V extends string | number>({ options, value, onChange,
             feedback="select"
             style={[s.segment, wrap && s.segmentGrid, wrap && options.length > 4 && { flexBasis: '30%' }, active && s.segmentOn]}
           >
-            <AppText numberOfLines={wrap ? undefined : 1} style={[s.segmentText, !wrap && options.length >= 3 && { fontSize: 13 }, active && { color: C.white }]}>{option.label}</AppText>
+            <AppText numberOfLines={wrap ? undefined : 1} style={[s.segmentText, !wrap && options.length >= 3 && { fontSize: 13 }, active && { color: C.onAccent }]}>{option.label}</AppText>
           </Touch>
         );
       })}
@@ -245,7 +217,7 @@ export function Field({ label, style, ...props }: TextInputProps & { label: stri
   return (
     <View style={{ gap: 4, marginBottom: 10 }}>
       <T style={s.label}>{label}</T>
-      <TextInput placeholderTextColor="#a29db3" {...props} style={[s.input, style]} />
+      <TextInput placeholderTextColor={C.placeholder} {...props} style={[s.input, style]} />
     </View>
   );
 }
@@ -266,7 +238,7 @@ export function Stepper({ label, onPrev, onNext, prevDisabled, nextDisabled }: {
 
 export function SectionTitle({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
-    <Spread style={{ marginTop: 18, marginBottom: 10, alignItems: 'flex-end' }}>
+    <Spread style={{ marginTop: 22, marginBottom: 10, alignItems: 'flex-end' }}>
       <View style={{ flex: 1 }}>
         <T style={s.h2}>{title}</T>
         {sub ? <Sub>{sub}</Sub> : null}
@@ -310,34 +282,34 @@ export function Divider() {
   return <View style={{ height: 1, backgroundColor: C.line }} />;
 }
 
-export const s = StyleSheet.create({
-  text: { color: C.ink, fontSize: 15 },
-  sub: { color: '#5d5873', fontSize: 13, lineHeight: 20 },
-  h2: { fontSize: 19, fontWeight: '800', color: C.ink },
-  h3: { fontSize: 15, fontWeight: '700', color: C.ink },
+export const s = themed(() => ({
+  text: { color: C.ink, fontSize: 16 },
+  sub: { color: C.muted, fontSize: 13.5, lineHeight: 21 },
+  h2: { fontSize: 20, fontWeight: '700', color: C.ink },
+  h3: { fontSize: 16, fontWeight: '700', color: C.ink },
   label: { fontSize: 13, fontWeight: '700', color: C.ink },
-  card: { backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: 18, padding: 14, marginBottom: 10 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
+  card: { backgroundColor: C.white, borderWidth: 1, borderColor: C.line, borderRadius: R.card, padding: SPACE.card, marginBottom: SPACE.gap },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, alignSelf: 'flex-start' },
   chipText: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 11, paddingHorizontal: 14, minHeight: 44 },
-  buttonSmall: { minHeight: 34, paddingHorizontal: 10, borderRadius: 9 },
+  button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: R.control, paddingHorizontal: 16, minHeight: 46 },
+  buttonSmall: { minHeight: 36, paddingHorizontal: 12, borderRadius: R.small },
   buttonText: { fontSize: 15, fontWeight: '700' },
-  avatar: { backgroundColor: '#f1edff', alignItems: 'center', justifyContent: 'center' },
+  avatar: { backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
   iconBox: { alignItems: 'center', justifyContent: 'center' },
-  checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: '#b8afd0', alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
+  checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: C.softLine, alignItems: 'center', justifyContent: 'center', backgroundColor: C.white },
   checkboxOn: { backgroundColor: C.purple, borderColor: C.purple },
-  segmented: { flexDirection: 'row', backgroundColor: '#ece8f5', borderRadius: 11, padding: 3, gap: 3 },
-  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingVertical: 7, paddingHorizontal: 6, minHeight: 36 },
+  segmented: { flexDirection: 'row', backgroundColor: C.track, borderRadius: R.control, padding: 3, gap: 3 },
+  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: R.small, paddingVertical: 7, paddingHorizontal: 6, minHeight: 38 },
   /** وضع الشبكة: خياران في كل سطر بعرض ثابت (ما ينضغط النص على الآيفون). */
   segmentGrid: { flexGrow: 1, flexShrink: 0, flexBasis: '47%' },
   segmentOn: { backgroundColor: C.purple },
-  segmentText: { fontSize: 14, fontWeight: '600', color: '#4a4160' },
-  input: { borderWidth: 1, borderColor: C.line, borderRadius: 10, backgroundColor: C.white, color: C.ink, paddingHorizontal: 10, minHeight: 44, fontSize: 16, fontFamily: FONTS.regular },
-  stepBtn: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 14, fontWeight: '600', color: C.muted },
+  input: { borderWidth: 1, borderColor: C.line, borderRadius: R.control, backgroundColor: C.white, color: C.ink, paddingHorizontal: 13, minHeight: 46, fontSize: 16, fontFamily: FONTS.regular },
+  stepBtn: { width: 36, height: 36, borderRadius: R.small, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   sheet: { flex: 1, backgroundColor: C.bg },
   sheetHead: { padding: 16, paddingBottom: 12, backgroundColor: C.white, borderBottomWidth: 1, borderBottomColor: C.line },
   sheetFooter: { paddingHorizontal: 16, paddingTop: 10, backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, gap: 8 },
   webBackdrop: { backgroundColor: '#1d123c89', justifyContent: 'flex-end' },
-  webSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '92%', flex: 0, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' },
-});
+  webSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '92%', flex: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+}) as const satisfies Record<string, object>);

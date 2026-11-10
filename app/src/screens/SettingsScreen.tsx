@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatDate } from '../domain/dates';
-import { deleteMeeting, renameMeeting } from '../domain/records';
+import { addMeeting, deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName, techTag } from '../domain/shifts';
 import { weeklyGoal } from '../domain/stats';
 import { scheduleOf } from '../domain/worktime';
 import { isTime, WEEKDAYS_AR } from '../domain/dates';
 import { Pressable } from 'react-native';
 import { addDepartment } from '../domain/plan';
-import { addPlace, deletePlace, PLACE_NOUN, placesOf } from '../domain/places';
+import { addPlace, deletePlace, PLACE_HINT, PLACE_NOUN, placesOf } from '../domain/places';
 import type { PlaceKind } from '../domain/types';
 import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
@@ -20,8 +20,9 @@ import { rotationText } from './RosterScreen';
 import { DepartmentSheet, IconLine, TechnicianEditSheet } from '../sheets/SettingsSheets';
 import { confirm } from '../sheets/VisitSheet';
 import { useApply, useStore } from '../store';
-import { Button, C, Card, Chip, Empty, Field, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
+import { Button, C, Card, Checkbox, Chip, Empty, Field, Icon, IconBox, IconName, Row, s, SectionTitle, Segmented, Spread, Stepper, Sub, T } from '../ui/kit';
 import { useUi } from '../ui/ui';
+import { BLUR_LABELS } from '../ui/theme';
 import { CHANGELOG, versionLabel } from '../version';
 import { Touch } from '../ui/touch';
 
@@ -30,6 +31,7 @@ export function SettingsScreen() {
   const { ws, mode, now } = store;
   const apply = useApply();
   const ui = useUi();
+  const section = ui.settingsSection;
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [techSheet, setTechSheet] = useState<string | null>(null);
   const [techDept, setTechDept] = useState<string | null>(ws.departments[0]?.id ?? null);
@@ -71,6 +73,8 @@ export function SettingsScreen() {
 
   return (
     <View>
+      {!section ? (
+        <>
       <Card style={{ marginTop: 14 }}>
         <Spread>
           <View style={{ flex: 1 }}>
@@ -98,23 +102,41 @@ export function SettingsScreen() {
         </Sub>
         {mode === 'demo' ? (
           <Button style={{ marginTop: 10 }} variant="secondary" icon="refresh-cw" label="إعادة بيانات التجربة" onPress={() => confirm('إعادة وضع التجربة لبياناته الأصلية؟', () => (store.resetDemo(), ui.notify('تمت إعادة بيانات التجربة')))} />
-        ) : (
-          <Button
-            style={{ marginTop: 10 }}
-            variant="danger"
-            icon="trash-2"
-            label="مسح بيانات العمل"
-            onPress={() => confirm('مسح كل بيانات العمل (الفنيين والزيارات والحضور)؟ لا يمكن التراجع.', () => (store.resetLive(), ui.notify('تم مسح بيانات العمل')))}
-          />
-        )}
+        ) : null}
       </Card>
 
+
+      <SectionTitle title="بياناتي" sub={mode === 'demo' ? 'بيانات تجريبية. بدّل إلى «بيانات العمل» وأدخل بياناتك.' : 'أدخل بياناتك من هنا، والتطبيق يرتب الباقي.'} />
+      <Card style={{ paddingVertical: 2 }}>
+        <MenuRow first testID="settings-people" icon="users" title="الموظفون والفرق" sub="استيراد من Excel أو إضافة يدوية" count={ws.technicians.filter((t) => t.active !== false).length} onPress={() => ui.go('settings', { section: 'people' })} />
+        <MenuRow testID="settings-places" icon="package" title="المستودعات والمواقع والمعدات" sub="مستودعات، نقاط انطلاق، معدات توزيع" count={placesOf(ws).length} onPress={() => ui.go('settings', { section: 'places' })} />
+        <MenuRow testID="settings-meetings" icon="message-square" title="عناوين الاجتماعات" sub={'اجتماعات سنة ' + year} count={ws.meetings.filter((m) => m.year === year).length} onPress={() => ui.go('settings', { section: 'meetings' })} />
+        <MenuRow testID="settings-departments" icon="layers" title="الأقسام والشفتات" sub="الدورات وأوقات الدوام" count={ws.departments.length} onPress={() => ui.go('settings', { section: 'departments' })} />
+      </Card>
+      <SectionTitle title="الإعدادات" />
+      <Card style={{ paddingVertical: 2 }}>
+        <MenuRow first testID="settings-goals" icon="target" title="الأهداف ودوامي" sub={'\u2066' + ws.settings.dailyVisitGoal + '\u2069 زيارات في اليوم · ' + scheduleOf(ws.settings).days.length + ' أيام دوام'} onPress={() => ui.go('settings', { section: 'goals' })} />
+        <MenuRow testID="settings-appearance" icon="moon" title="المظهر" sub={(store.theme === 'dark' ? 'داكن' : 'فاتح') + ' · الشريط السفلي ' + (store.prefs.glass ? 'زجاجي' : 'عادي')} onPress={() => ui.go('settings', { section: 'appearance' })} />
+        {mode === 'live' ? <MenuRow testID="settings-backup" icon="shield" title="نسخة احتياطية" sub="صدّر بياناتك واحفظها" onPress={() => ui.go('settings', { section: 'backup' })} /> : null}
+      </Card>
+
+        </>
+      ) : (
+        <Touch testID="settings-back" accessibilityRole="button" feedback="select" onPress={() => ui.go('settings')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 4 }}>
+          <Icon name="chevron-right" size={18} color={C.link} />
+          <T style={{ color: C.link, fontWeight: '700' }}>الإعدادات</T>
+        </Touch>
+      )}
+
+      {section === 'goals' ? (
+        <>
       <SectionTitle title="الأهداف والتحفيز" sub="تنطبق على الوضع الحالي" />
       <Card>
         <Field label="اسم المهندس (يظهر في بطاقة الإنجاز والتقارير)" value={ws.settings.engineerName} onChangeText={(v) => setSetting('engineerName', v)} />
         <NumberRow label="هدف الزيارات اليومي" value={ws.settings.dailyVisitGoal} min={1} onChange={(v) => setSetting('dailyVisitGoal', v)} />
         <NumberRow label="هدف الزيارات الأسبوعي" value={weeklyGoal(ws)} min={1} onChange={(v) => setSetting('weeklyVisitGoal', v)} />
         <NumberRow label="هدف زيارات كل فني" value={ws.settings.visitTarget} min={1} onChange={(v) => setSetting('visitTarget', v)} />
+        <NumberRow label="مستودعات كل ربع سنة" value={ws.settings.warehouseQuarterGoal ?? 2} min={1} onChange={(v) => setSetting('warehouseQuarterGoal', v)} />
         <NumberRow label="نافذة الزيارات (أشهر)" value={ws.settings.visitWindowMonths} min={1} onChange={(v) => setSetting('visitWindowMonths', v)} />
         <IconLine icon="zap" text={'كل زيارة +' + ws.settings.xpVisit + ' XP وكل تسجيل حضور اجتماع +' + ws.settings.xpMeeting + ' XP، وكل 100 XP مستوى جديد.'} />
       </Card>
@@ -122,6 +144,43 @@ export function SettingsScreen() {
       <SectionTitle title="دوامي" sub="جزء ميدان وجزء مكتب. يحدد أيام الأهداف والعمل خارج الدوام." />
       <WorkScheduleCard />
 
+        </>
+      ) : null}
+
+      {section === 'appearance' ? (
+        <>
+          <SectionTitle title="المظهر" sub="تنحفظ على الجهاز وتتطبق مباشرة." />
+          <Card>
+            <T style={{ fontWeight: '700', marginBottom: 8 }}>الوضع</T>
+            <Segmented
+              options={[
+                { value: 'light', label: 'عادي' },
+                { value: 'dark', label: 'داكن' },
+                { value: 'system', label: 'حسب الجهاز' },
+              ]}
+              value={store.prefs.theme}
+              onChange={(theme) => store.setPrefs({ theme })}
+            />
+          </Card>
+          <Card>
+            <Spread>
+              <View style={{ flex: 1 }}>
+                <T style={{ fontWeight: '700' }}>الشريط السفلي الزجاجي</T>
+                <Sub>عائم وشفاف فوق المحتوى. إذا طفيته يرجع شريط عادي ثابت.</Sub>
+              </View>
+              <Checkbox testID="pref-glass" label="الشريط السفلي الزجاجي" checked={store.prefs.glass} onChange={(glass) => store.setPrefs({ glass })} />
+            </Spread>
+            <T style={{ fontWeight: '700', marginTop: 14, marginBottom: 8, opacity: store.prefs.glass ? 1 : 0.4 }}>درجة التعتيم</T>
+            <View style={{ opacity: store.prefs.glass ? 1 : 0.4 }} pointerEvents={store.prefs.glass ? 'auto' : 'none'}>
+              <Segmented options={BLUR_LABELS.map((label, value) => ({ value: value as 0 | 1 | 2 | 3, label }))} value={store.prefs.blur} onChange={(blur) => store.setPrefs({ blur })} />
+            </View>
+            <Sub style={{ marginTop: 8 }}>«شفاف» يبيّن اللي وراه أكثر، و«قوي» أوضح للقراءة. على iOS 26 وأحدث يستخدم زجاج النظام.</Sub>
+          </Card>
+        </>
+      ) : null}
+
+      {section === 'departments' ? (
+        <>
       <SectionTitle title="الأقسام والشفتات" sub="بداية الدورات وأوقات الدوام" right={<Button small variant="secondary" icon="calendar" label="جدول الشفتات" onPress={() => ui.go('roster')} />} />
       {ws.departments.map((department) => (
         <Card key={department.id}>
@@ -144,7 +203,7 @@ export function SettingsScreen() {
             value={newDept}
             onChangeText={setNewDept}
             placeholder="اسم القسم"
-            placeholderTextColor="#a29db3"
+            placeholderTextColor={C.placeholder}
             style={[s.input, { flex: 1, minWidth: 0 }]}
           />
           <Button
@@ -162,13 +221,23 @@ export function SettingsScreen() {
         </Row>
       </Card>
 
-      <SectionTitle title="المستودعات ونقاط الانطلاق" sub="تنزار مرة في الشهر على الأقل، وتطلع في خطة اليوم إذا ما انزارت" />
+        </>
+      ) : null}
+
+      {section === 'places' ? (
+        <>
+      <SectionTitle title="المستودعات ونقاط الانطلاق" sub="المطلوب زيارة مستودعين كل ربع سنة، وتطلع في خطة اليوم لين يتحقق الهدف" />
       <PlacesCard />
 
+        </>
+      ) : null}
+
+      {section === 'people' ? (
+        <>
       <SectionTitle
-        title="الفنيون"
-        sub={ws.technicians.filter((t) => t.active !== false).length + ' فني نشط'}
-        right={<Button small icon="user-plus" label="إضافة فني" testID="add-tech" onPress={() => setTechSheet('new')} />}
+        title="الموظفون والفرق"
+        sub={ws.technicians.filter((t) => t.active !== false).length + ' نشط'}
+        right={<Button small icon="user-plus" label="إضافة يدوية" testID="add-tech" onPress={() => setTechSheet('new')} />}
       />
       <Card>
         <T style={{ fontWeight: '800' }}>استيراد من Excel</T>
@@ -200,7 +269,13 @@ export function SettingsScreen() {
         )}
       </Card>
 
-      <SectionTitle title={'اجتماعات ' + year} sub="تضيف العناوين الجديدة من شاشة الاجتماعات مباشرة" />
+        </>
+      ) : null}
+
+      {section === 'meetings' ? (
+        <>
+      <SectionTitle title={'عناوين اجتماعات ' + year} sub="اكتب عناوينك، والتطبيق يقترحها مع الزيارات ويتابع من حضر ومن باقي." />
+      <MeetingTitleAdder year={year} />
       <Card style={{ paddingVertical: 4 }}>
         {ws.meetings.filter((m) => m.year === year).length ? (
           ws.meetings
@@ -223,6 +298,11 @@ export function SettingsScreen() {
       </Card>
 
 
+        </>
+      ) : null}
+
+      {section === 'backup' ? (
+        <>
       {mode === 'live' ? (
         <>
           <SectionTitle title="نسخة احتياطية" sub="بيانات العمل محفوظة على الجهاز. صدّر نسخة بشكل دوري." />
@@ -238,11 +318,23 @@ export function SettingsScreen() {
               onChangeText={setImportText}
               multiline
               placeholder="الصق محتوى النسخة الاحتياطية هنا للاستيراد"
-              placeholderTextColor="#a29db3"
+              placeholderTextColor={C.placeholder}
               style={[s.input, { minHeight: 80, marginTop: 10, textAlignVertical: 'top', paddingTop: 8, fontSize: 12 }]}
             />
             <Button style={{ marginTop: 8 }} variant="secondary" label="استيراد" disabled={!importText.trim()} onPress={importLive} />
           </Card>
+          <SectionTitle title="منطقة الخطر" sub="صدّر نسخة احتياطية قبل أي مسح." />
+          <Card>
+          <Button
+                        variant="danger"
+            icon="trash-2"
+            label="مسح بيانات العمل"
+            onPress={() => confirm('مسح كل بيانات العمل (الفنيين والزيارات والحضور)؟ لا يمكن التراجع.', () => (store.resetLive(), ui.notify('تم مسح بيانات العمل')))}
+          />
+          </Card>
+        </>
+      ) : null}
+
         </>
       ) : null}
 
@@ -260,6 +352,63 @@ export function SettingsScreen() {
       <DepartmentSheet departmentId={deptSheet} onClose={() => setDeptSheet(null)} onSaved={(m) => (setDeptSheet(null), saved(m))} />
       <TechnicianEditSheet technicianId={techSheet} onClose={() => setTechSheet(null)} onSaved={(m) => (setTechSheet(null), saved(m))} />
     </View>
+  );
+}
+
+function MenuRow({ icon, title, sub, count, onPress, first, testID }: { icon: IconName; title: string; sub?: string; count?: number; onPress: () => void; first?: boolean; testID?: string }) {
+  return (
+    <Touch testID={testID} accessibilityRole="button" accessibilityLabel={title} feedback="select" scaleTo={0.98} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: first ? 0 : 1, borderTopColor: C.line }}>
+      <IconBox name={icon} size={38} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <T style={{ fontWeight: '700' }}>{title}</T>
+        {sub ? <Sub numberOfLines={1}>{sub}</Sub> : null}
+      </View>
+      {count !== undefined ? <Chip tone={count ? 'purple' : 'amber'} label={count ? String(count) : 'فاضي'} /> : null}
+      <Icon name="chevron-left" size={16} color={C.muted} />
+    </Touch>
+  );
+}
+
+/** إضافة عناوين اجتماعات: عنوان واحد، أو عدة عناوين كل واحد في سطر. */
+function MeetingTitleAdder({ year }: { year: number }) {
+  const apply = useApply();
+  const ui = useUi();
+  const [text, setText] = useState('');
+  const titles = text.split(/\n|،|,/).map((item) => item.trim()).filter(Boolean);
+  const add = () => {
+    let added = 0;
+    let skipped = 0;
+    // تعديل واحد يضيف كل العناوين، والمكرر ينتخطى.
+    apply((current) => {
+      added = 0;
+      skipped = 0;
+      let next = current;
+      for (const title of titles) {
+        try {
+          next = addMeeting(next, title, year).ws;
+          added++;
+        } catch {
+          skipped++;
+        }
+      }
+      return next;
+    });
+    setText('');
+    ui.notify(added ? 'تمت إضافة ' + added + (added === 1 ? ' عنوان' : ' عناوين') + (skipped ? ' · ' + skipped + ' موجود من قبل' : '') : 'العنوان موجود من قبل');
+  };
+  return (
+    <Card>
+      <TextInput
+        testID="settings-meeting-title"
+        value={text}
+        onChangeText={setText}
+        multiline
+        placeholder={'اكتب عنوان الاجتماع\nتقدر تكتب أكثر من عنوان، كل واحد في سطر'}
+        placeholderTextColor={C.placeholder}
+        style={[s.input, { minHeight: 76, textAlignVertical: 'top', paddingTop: 10 }]}
+      />
+      <Button testID="settings-meeting-add" style={{ marginTop: 8 }} icon="plus" label={titles.length > 1 ? 'إضافة ' + titles.length + ' عناوين' : 'إضافة العنوان'} disabled={!titles.length} onPress={add} />
+    </Card>
   );
 }
 
@@ -305,7 +454,7 @@ function WorkScheduleCard() {
               onPress={() => save({ days: on ? schedule.days.filter((d) => d !== day) : [...schedule.days, day].sort() })}
               style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
             >
-              <T style={{ color: on ? C.white : C.ink, fontSize: 14 }}>{name}</T>
+              <T style={{ color: on ? C.onAccent : C.ink, fontSize: 14 }}>{name}</T>
             </Touch>
           );
         })}
@@ -336,6 +485,7 @@ function PlacesCard() {
         options={[
           { value: 'warehouse', label: 'مستودع' },
           { value: 'staging', label: 'نقطة انطلاق' },
+          { value: 'equipment', label: 'معدة' },
         ]}
         value={kind}
         onChange={setKind}
@@ -345,8 +495,8 @@ function PlacesCard() {
           testID="new-place-name"
           value={name}
           onChangeText={setName}
-          placeholder={kind === 'warehouse' ? 'اسم المستودع' : 'اسم نقطة الانطلاق'}
-          placeholderTextColor="#a29db3"
+          placeholder={PLACE_HINT[kind]}
+          placeholderTextColor={C.placeholder}
           style={[s.input, { flex: 1, minWidth: 0 }]}
         />
         <Button

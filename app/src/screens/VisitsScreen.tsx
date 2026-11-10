@@ -14,8 +14,10 @@ function CrewVisits() {
   const { ws, now } = useStore();
   const ui = useUi();
   const [scope, setScope] = useState<'shift' | 'all'>('shift');
-  const [limit, setLimit] = useState(15);
-  const department = ws.departments.find((item) => item.id === ui.departmentId);
+  const [limit, setLimit] = useState(5);
+  // بدون اختيار: نفتح على أول قسم بدل صفحة فاضية.
+  const departmentId = ui.departmentId ?? ws.departments[0]?.id ?? null;
+  const department = ws.departments.find((item) => item.id === departmentId);
   const slot = department ? currentSlot(ws, department, now) : null;
   const crew = !department ? [] : scope === 'shift' ? slot?.crew ?? [] : activeTechnicians(ws).filter((tech) => tech.departmentId === department.id);
   const history = department
@@ -29,8 +31,8 @@ function CrewVisits() {
 
   return (
     <View>
-      <SectionTitle title="الزيارات الميدانية" sub={'اختر القسم. تقدر تسجل أكثر من زيارة لنفس القسم في نفس اليوم. هدف كل فني ' + ws.settings.visitTarget + ' زيارات خلال آخر ' + ws.settings.visitWindowMonths + ' أشهر.'} />
-      <DepartmentPicker value={ui.departmentId} onChange={ui.setDepartmentId} icon="map-pin" />
+      <SectionTitle title="الزيارات الميدانية" sub={'هدف كل فني ' + ws.settings.visitTarget + ' زيارات خلال آخر ' + ws.settings.visitWindowMonths + ' أشهر.'} />
+      <DepartmentPicker value={departmentId} onChange={ui.setDepartmentId} icon="map-pin" />
 
       {department ? (
         <>
@@ -95,7 +97,7 @@ function CrewVisits() {
   );
 }
 
-/** الزيارات: زيارات الفنيين، أو المستودعات ونقاط الانطلاق. */
+/** الزيارات: الفنيون، المستودعات ونقاط الانطلاق، أو معدات التوزيع. */
 export function VisitsScreen() {
   const [view, setView] = useState<'crew' | 'places'>('crew');
   return (
@@ -103,8 +105,8 @@ export function VisitsScreen() {
       <View style={{ marginTop: 6 }}>
         <Segmented
           options={[
-            { value: 'crew', label: 'زيارات الفنيين' },
-            { value: 'places', label: 'المستودعات والانطلاق' },
+            { value: 'crew', label: 'الفنيون' },
+            { value: 'places', label: 'المستودعات والمعدات' },
           ]}
           value={view}
           onChange={setView}

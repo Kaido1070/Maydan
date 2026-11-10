@@ -91,6 +91,7 @@ async function overflow(page) {
     assert(body.includes('بلاغ طوارئ') && body.includes('ساعة و30 دقيقة'), 'تسجيل خارج الدوام مع المدة');
 
     await id('tab-reports').click();
+    await page.getByText('الملاحظات', { exact: true }).click();
     assert((await id('report-follow').innerText()).includes('ملاحظات'), 'التقرير فيه الملاحظات وخارج الدوام');
     const named = await id('report-findings').innerText();
     assert(named.includes('فيصل عمر المرواني') && named.includes('المقفلة · 1') && named.includes('الباقية · 1') && named.includes('LSR'), 'التقرير فيه الملاحظات وLSR بأسماء الفنيين');
@@ -115,8 +116,17 @@ async function overflow(page) {
     await id('visit-save').click();
     await page.waitForTimeout(200);
     await id('tab-visits').click();
-    await page.getByText('المستودعات والانطلاق', { exact: true }).click();
-    assert((await page.locator('body').innerText()).includes('انزار هالشهر'), 'المكان صار مزار هالشهر');
+    await page.getByText('المستودعات والمعدات', { exact: true }).click();
+    assert((await page.locator('body').innerText()).includes('انزار هالربع'), 'المستودع صار مزار هالربع');
+    assert((await id('warehouse-quarter').innerText()).replace(/[^0-9/ ]/g, '').includes('1 / 2'), 'هدف الربع: مستودع من مستودعين');
+
+    // زيارة معدات التوزيع: بدون فنيين
+    await id('add-equipment-visit').click();
+    await id('visit-site').fill('محطة توزيع 12');
+    await id('visit-save').click();
+    await page.waitForTimeout(200);
+    assert((await page.locator('body').innerText()).includes('محطة توزيع 12'), 'زيارة المعدة انسجلت');
+    await page.getByText('المستودعات والمعدات', { exact: true }).click();
     assert(placesBefore >= 1, 'الخطة فيها مستودع أو نقطة انطلاق');
 
     // تسجيل مستودع جديد من صفحة الأماكن، وتعديله، وتسجيل زيارته
@@ -143,10 +153,12 @@ async function overflow(page) {
 
     // موضوع الاجتماع: اعتماده يضيفه كاجتماع ويحدده
     await id('tab-meetings').click();
+    await page.getByText('مواضيع مقترحة', { exact: true }).click();
     const topic = await id('talk-title').innerText();
     await id('talk-adopt').click();
     await page.waitForTimeout(200);
     assert((await page.locator('body').innerText()).includes('تم اختيار «' + topic + '»'), 'الموضوع انعتمد كاجتماع');
+    await page.getByText('مواضيع مقترحة', { exact: true }).click();
     await id('talk-next').click();
     assert((await id('talk-title').innerText()) !== topic, 'اقتراح ثاني يغيّر الموضوع');
     await context.close();
@@ -166,11 +178,17 @@ async function overflow(page) {
     const screens = [
       ['اليوم', async () => id('tab-day').click()],
       ['الزيارات', async () => (await id('tab-visits').click(), await id('dept-b').click())],
-      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات والانطلاق', { exact: true }).click())],
+      ['المستودعات', async () => (await id('tab-visits').click(), await page.getByText('المستودعات والمعدات', { exact: true }).click())],
       ['الاجتماعات', async () => (await id('tab-meetings').click(), await id('dept-b').click())],
       ['المتابعة', async () => id('tab-follow').click()],
       ['التقارير', async () => id('tab-reports').click()],
+      ['الاجتماعات: من باقي', async () => (await id('tab-meetings').click(), await page.getByText('من باقي؟', { exact: true }).click())],
+      ['الاجتماعات: مواضيع', async () => (await id('tab-meetings').click(), await page.getByText('مواضيع مقترحة', { exact: true }).click())],
+      ['التقارير: التغطية', async () => (await id('tab-reports').click(), await page.getByText('التغطية', { exact: true }).click())],
+      ['التقارير: من باقي', async () => (await id('tab-reports').click(), await page.getByText('من باقي', { exact: true }).click())],
+      ['التقارير: الملاحظات', async () => (await id('tab-reports').click(), await page.getByText('الملاحظات', { exact: true }).click())],
       ['الإعدادات', async () => id('open-settings').click()],
+      ...['people', 'places', 'meetings', 'departments', 'goals', 'appearance'].map((section) => ['الإعدادات: ' + section, async () => (await id('open-settings').click(), await id('settings-' + section).click())]),
       ['الشفتات', async () => (await id('tab-day').click(), await id('open-roster').click())],
     ];
     for (const [name, open] of screens) {
@@ -182,7 +200,7 @@ async function overflow(page) {
     const sheets = [
       ['نافذة الزيارة', async () => (await id('tab-visits').click(), await id('add-visit').click())],
       ['نافذة الملاحظة', async () => (await id('tab-follow').click(), await id('add-observation').click())],
-      ['تفاصيل الفني', async () => (await id('tab-day').click(), await page.locator('[data-testid^="daily-"]').first().click())],
+      ['تفاصيل الفني', async () => (await id('tab-day').click(), await page.locator('[data-testid^="reminders-"]').first().click(), await page.locator('[data-testid^="daily-"]').first().click())],
       ['خارج الدوام', async () => (await id('tab-follow').click(), await page.getByText('خارج الدوام', { exact: true }).first().click(), await id('add-overtime').click())],
     ];
     for (const [name, open] of sheets) {

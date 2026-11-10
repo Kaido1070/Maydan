@@ -25,6 +25,7 @@ export function ReportsScreen() {
     departmentId: 'all',
   }));
   const [showAll, setShowAll] = useState(false);
+  const [view, setView] = useState<'summary' | 'coverage' | 'pending' | 'follow'>('summary');
   const [busy, setBusy] = useState(false);
   const report = useMemo(() => buildReport(ws, params, now.date), [ws, params, now.date]);
   const set = (patch: Partial<ReportParams>) => setParams((prev) => ({ ...prev, ...patch }));
@@ -56,7 +57,7 @@ export function ReportsScreen() {
     <View>
       <EmployeeSearch />
 
-      <SectionTitle title="تقرير الإنجاز حسب الفترة" sub="اختر الفترة والقسم لمراجعة النشاط المسجل والمتبقي." />
+      <SectionTitle title="التقرير" sub="اختر الفترة والقسم." />
       <Card style={{ gap: 10 }}>
         <Segmented options={(Object.keys(REPORT_MODES) as ReportMode[]).map((mode) => ({ value: mode, label: REPORT_MODES[mode] }))} value={params.mode} onChange={(mode) => set({ mode })} />
         <Spread>
@@ -83,6 +84,21 @@ export function ReportsScreen() {
         </Row>
       </Card>
 
+      <View style={{ marginBottom: 12 }}>
+        <Segmented
+          options={[
+            { value: 'summary', label: 'الإنجاز' },
+            { value: 'coverage', label: 'التغطية' },
+            { value: 'pending', label: 'من باقي' },
+            { value: 'follow', label: 'الملاحظات' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
+
+      {view === 'summary' ? (
+        <>
       <Card>
         <T style={{ fontWeight: '800', fontSize: 16 }}>{report.label + ' · ' + report.scopeLabel}</T>
         <Sub>{'من ' + formatDate(report.start) + ' إلى ' + formatDate(report.last) + ' · من السجلات المحفوظة'}</Sub>
@@ -114,6 +130,11 @@ export function ReportsScreen() {
         <Sub style={{ marginTop: 8 }}>الزيارة تُحسب مرة واحدة في التقرير ولو شملت أكثر من فني، وتُحسب زيارة لكل فني في سجله.</Sub>
       </Card>
 
+        </>
+      ) : null}
+
+      {view === 'follow' ? (
+        <>
       <SectionTitle title="الملاحظات والمخالفات وLSR وخارج الدوام" sub={'المسجلة في ' + report.label} />
       <View testID="report-follow">
         <Card>
@@ -132,6 +153,11 @@ export function ReportsScreen() {
       <SectionTitle title="الملاحظات والمخالفات وLSR بالأسماء" sub={'المسجلة في ' + report.label + ' · ' + report.scopeLabel} />
       <FindingsByName detail={report.findingsDetail} />
 
+        </>
+      ) : null}
+
+      {view === 'coverage' ? (
+        <>
       <SectionTitle title="صورة التغطية" sub={'حالة الفنيين حتى ' + formatDate(report.asOf, { year: true }) + ' · ' + report.scopeLabel} />
       <Card>
         <StackedBar
@@ -208,6 +234,11 @@ export function ReportsScreen() {
         </Card>
       ))}
 
+        </>
+      ) : null}
+
+      {view === 'pending' ? (
+        <>
       <SectionTitle title="من باقي عليه" sub={report.pending.length ? 'مرتبة حسب الأكثر احتياجًا للزيارات ثم الحضور · ' + report.pending.length + ' فني' : 'اكتملت تغطية جميع الفنيين'} />
       <Card style={{ paddingVertical: 4 }}>
         {report.pending.length ? (
@@ -229,6 +260,9 @@ export function ReportsScreen() {
         )}
         {report.pending.length > 8 ? <Button small variant="ghost" label={showAll ? 'عرض أقل' : 'عرض باقي الفنيين · ' + (report.pending.length - 8)} onPress={() => setShowAll(!showAll)} /> : null}
       </Card>
+        </>
+      ) : null}
+
 
     </View>
   );
@@ -262,7 +296,7 @@ function EmployeeSearch() {
             onSubmitEditing={search}
             returnKeyType="search"
             placeholder={example ? 'الرقم الوظيفي أو الاسم، مثل ' + example : 'الرقم الوظيفي أو الاسم'}
-            placeholderTextColor="#a29db3"
+            placeholderTextColor={C.placeholder}
             style={[s.input, { flex: 1, minWidth: 0 }]}
           />
           <Button testID="employee-search-go" label="بحث" icon="search" onPress={search} disabled={!query.trim()} />
@@ -378,7 +412,7 @@ function FindingLine({ row }: { row: FindingRow }) {
 
 function Kpi({ label, value, hint, testID, half }: { label: string; value: number; hint?: string; testID?: string; half?: boolean }) {
   return (
-    <View testID={testID} style={{ flexBasis: half ? '46%' : 0, flexGrow: 1, minWidth: 0, backgroundColor: '#f7f5fb', borderRadius: 12, padding: 9 }}>
+    <View testID={testID} style={{ flexBasis: half ? '46%' : 0, flexGrow: 1, minWidth: 0, backgroundColor: C.subtle, borderRadius: 12, padding: 9 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       <T style={{ fontSize: 20, fontWeight: '800' }}>{value}</T>
       {hint ? <Sub style={{ fontSize: 10 }}>{hint}</Sub> : null}
@@ -389,7 +423,7 @@ function Kpi({ label, value, hint, testID, half }: { label: string; value: numbe
 function Metric({ label, remaining, total, done }: { label: string; remaining: number; total: number; done?: number }) {
   const completed = done ?? total - remaining;
   return (
-    <View style={{ flex: 1, backgroundColor: '#f7f5fb', borderRadius: 10, padding: 8 }}>
+    <View style={{ flex: 1, backgroundColor: C.subtle, borderRadius: 10, padding: 8 }}>
       <Sub style={{ fontSize: 11 }}>{label}</Sub>
       <T style={{ fontSize: 16, fontWeight: '800' }}>{remaining + ' متبقية'}</T>
       <Progress value={Math.min(completed, total)} max={total} height={5} />

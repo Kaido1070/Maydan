@@ -34,9 +34,10 @@ function userData(): Workspace {
 describe('التحديث ما يحذف بياناتك', () => {
   test('كل بيانات العمل تبقى كما هي بعد فتح نسخة جديدة', () => {
     const live = userData();
-    const saved: AppState = { version: 1, mode: 'live', demo: demoWorkspace('2026-11-09'), live };
+    const saved: AppState = { version: 1, mode: 'live', demo: demoWorkspace('2026-11-09'), live, prefs: { theme: 'dark', glass: true, blur: 3 } };
     const loaded = loadState(JSON.stringify(saved))!;
     expect(loaded.mode).toBe('live');
+    expect(loaded.prefs).toEqual({ theme: 'dark', glass: true, blur: 3 });
     const keys: (keyof Workspace)[] = ['technicians', 'visits', 'meetings', 'attendance', 'findings', 'places', 'overtime', 'settings', 'overrides'];
     for (const key of keys) expect(loaded.live[key]).toEqual(JSON.parse(JSON.stringify(live[key])));
     // الأقسام: القديمة والمضافة كلها موجودة بنفس البيانات (الترقيات تضيف فقط).

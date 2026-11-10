@@ -162,7 +162,7 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
                 onPress={() => setRotation({ ...rotation, workDays: on ? rotation.workDays.filter((d) => d !== day) : [...rotation.workDays, day].sort() })}
                 style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
               >
-                <T style={{ color: on ? C.white : C.ink, fontSize: 12 }}>{name}</T>
+                <T style={{ color: on ? C.onAccent : C.ink, fontSize: 12 }}>{name}</T>
               </Touch>
             );
           })}
@@ -189,10 +189,10 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
                   const next = cycleValues[(cycleValues.indexOf(value) + 1) % cycleValues.length];
                   setRotation({ ...rotation, pattern: rotation.pattern.map((v, i) => (i === index ? next : v)) });
                 }}
-                style={{ width: 62, padding: 6, borderRadius: 9, alignItems: 'center', backgroundColor: value === OFF ? '#f0edf3' : C.soft }}
+                style={{ width: 62, padding: 6, borderRadius: 9, alignItems: 'center', backgroundColor: value === OFF ? C.track : C.soft }}
               >
                 <Sub style={{ fontSize: 10 }}>{'يوم ' + (index + 1)}</Sub>
-                <T style={{ fontSize: 12, fontWeight: '700', color: value === OFF ? C.muted : C.purple }}>{periodName(value)}</T>
+                <T style={{ fontSize: 12, fontWeight: '700', color: value === OFF ? C.muted : C.link }}>{periodName(value)}</T>
               </Touch>
             ))}
           </View>
