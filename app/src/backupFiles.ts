@@ -11,7 +11,7 @@ import { photoSrc } from './photos';
 const MIME = 'application/zip';
 const DEVICE_PHOTOS = /^maydan-photos\/(?:[a-zA-Z0-9_-]+\/)?[a-zA-Z0-9_-]+\.(jpg|jpeg|png)$/i;
 
-async function readPhoto(photo: Photo): Promise<Uint8Array> {
+export async function readBackupPhoto(photo: Photo): Promise<Uint8Array> {
   if (/^data:image\/(jpeg|png);base64,/.test(photo.uri)) {
     const encoded = photo.uri.slice(photo.uri.indexOf(',') + 1);
     if (encoded.length > 16 * 1024 * 1024) throw new Error('إحدى الصور كبيرة جدًا لإضافتها للنسخة.');
@@ -29,12 +29,46 @@ async function readPhoto(photo: Photo): Promise<Uint8Array> {
 }
 
 export function packWorkspaceBackup(workspace: Workspace) {
-  return packBackup(workspace, readPhoto);
+  return packBackup(workspace, readBackupPhoto);
 }
 
 export async function exportBackupZip(workspace: Workspace, date: string) {
   const bytes = await packWorkspaceBackup(workspace);
   await shareBytes(`Maydan-Backup-${date}.zip`, bytes, MIME, 'public.zip-archive');
+}
+
+const emergencyFolder = () => new Directory(Paths.document, 'maydan-before-restore');
+
+function emergencyFiles(directory: Directory) {
+  return directory.list().filter((entry): entry is File => entry instanceof File && /^Maydan-\d+-[a-zA-Z0-9_-]+\.zip$/.test(entry.name))
+    .sort((a, b) => b.name.localeCompare(a.name));
+}
+
+export async function saveBeforeRestore(workspace: Workspace) {
+  if (Platform.OS === 'web') return;
+  const bytes = await packWorkspaceBackup(workspace);
+  const directory = emergencyFolder();
+  directory.create({ idempotent: true });
+  const name = 'Maydan-' + Date.now() + '-' + newId('local');
+  const temp = new File(directory, name + '.tmp');
+  try {
+    temp.create();
+    await temp.write(bytes);
+    await temp.move(new File(directory, name + '.zip'));
+  } finally {
+    const pending = new File(directory, name + '.tmp');
+    if (pending.exists) pending.delete();
+  }
+  for (const old of emergencyFiles(directory).slice(2)) {
+    try { old.delete(); } catch { /* Retain the older backup if cleanup fails. */ }
+  }
+}
+
+export async function latestBeforeRestore() {
+  if (Platform.OS === 'web') return null;
+  const directory = emergencyFolder();
+  const latest = directory.exists ? emergencyFiles(directory)[0] : undefined;
+  return latest ? unpackBackup(await latest.bytes()) : null;
 }
 
 export async function pickBackupZip(): Promise<ReturnType<typeof unpackBackup> | null> {

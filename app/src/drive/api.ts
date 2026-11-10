@@ -6,9 +6,12 @@ const FILES = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 const FORMAT = "appProperties has { key='maydanFormat' and value='backup-v1' }";
 const ZIP = 'application/zip';
-const FIELDS = 'id,name,size,modifiedTime';
+const FIELDS = 'id,name,size,modifiedTime,parents,appProperties';
+const FOLDER = 'application/vnd.google-apps.folder';
+const ARCHIVE = "appProperties has { key='maydanFormat' and value='archive-v1' }";
 
-export type DriveFile = { id: string; name: string; size: string; modifiedTime: string };
+export type DriveFile = { id: string; name: string; size: string; modifiedTime: string; parents?: string[]; appProperties?: Record<string, string> };
+type Metadata = { name: string; mimeType: string; appProperties: Record<string, string>; parents?: string[] };
 
 function headers(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -45,19 +48,65 @@ export function listDriveBackups(token: string) {
 }
 
 /** One rolling file per installation. A new device never replaces the old device's file. */
-export async function uploadDriveBackup(token: string, device: string, archive: Uint8Array): Promise<DriveFile> {
+export async function uploadDriveBackup(token: string, device: string, archive: Uint8Array, folder?: string): Promise<DriveFile> {
   if (!archive.length || archive.length > BACKUP_LIMIT) throw new Error('حجم النسخة غير مدعوم.');
   const [current] = await list(token, device);
+  return upload(token, { name: `Maydan-Backup-${device.slice(0, 8)}.zip`, mimeType: ZIP, appProperties: { maydanFormat: 'backup-v1', maydanDevice: device } }, archive, current, folder);
+}
+
+function destination(params: URLSearchParams, current?: DriveFile, folder?: string) {
+  if (!current || !folder || current.parents?.includes(folder)) return;
+  params.set('addParents', folder);
+  if (current.parents?.length) params.set('removeParents', current.parents.join(','));
+}
+
+async function upload(token: string, metadata: Metadata, archive: Uint8Array, current?: DriveFile, folder?: string): Promise<DriveFile> {
   const path = current ? '/' + encodeURIComponent(current.id) : '';
-  const target = await request(`${UPLOAD}${path}?uploadType=resumable&fields=${encodeURIComponent(FIELDS)}`, {
+  const params = new URLSearchParams({ uploadType: 'resumable', fields: FIELDS });
+  destination(params, current, folder);
+  const target = await request(`${UPLOAD}${path}?${params}`, {
     method: current ? 'PATCH' : 'POST',
-    headers: { ...headers(token), 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': ZIP, 'X-Upload-Content-Length': String(archive.length) },
-    body: JSON.stringify({ name: `Maydan-Backup-${device.slice(0, 8)}.zip`, mimeType: ZIP, appProperties: { maydanFormat: 'backup-v1', maydanDevice: device } }),
+    headers: { ...headers(token), 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': metadata.mimeType, 'X-Upload-Content-Length': String(archive.length) },
+    body: JSON.stringify({ ...metadata, parents: !current && folder ? [folder] : undefined }),
   }, 30_000, async (response) => response.headers.get('Location'));
   if (!target || !/^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files(?:\/[^/?]+)?\?/.test(target)) throw new Error('رابط رفع النسخة من Google Drive غير صالح.');
   const buffer = archive.buffer;
   const body = buffer instanceof ArrayBuffer && archive.byteOffset === 0 && archive.byteLength === buffer.byteLength ? buffer : Uint8Array.from(archive).buffer;
-  return request(target, { method: 'PUT', headers: { ...headers(token), 'Content-Type': ZIP }, body }, 120_000, async (response) => await response.json() as DriveFile);
+  return request(target, { method: 'PUT', headers: { ...headers(token), 'Content-Type': metadata.mimeType }, body }, 120_000, async (response) => await response.json() as DriveFile);
+}
+
+export async function listDriveArchive(token: string, rootOnly = false) {
+  const catalog = new Map<string, DriveFile>();
+  let pageToken: string | undefined;
+  do {
+    const q = `trashed = false and ${ARCHIVE}${rootOnly ? " and appProperties has { key='maydanKey' and value='root' }" : ''}`;
+    const params = new URLSearchParams({ q, fields: `nextPageToken,files(${FIELDS})`, orderBy: 'createdTime', pageSize: rootOnly ? '1' : '100' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const page = await request(`${FILES}?${params}`, { headers: headers(token) }, 30_000, async (response) => await response.json() as { nextPageToken?: string; files?: DriveFile[] });
+    for (const file of page.files ?? []) {
+      const key = file.appProperties?.maydanKey;
+      if (key && !catalog.has(key)) catalog.set(key, file);
+    }
+    pageToken = rootOnly && catalog.size ? undefined : page.nextPageToken;
+  } while (pageToken);
+  return catalog;
+}
+
+export async function saveDriveArchiveItem(token: string, item: { key: string; name: string; folder?: string; content?: { mimeType: string; digest: string; read: () => Promise<Uint8Array> } }, current?: DriveFile): Promise<DriveFile> {
+  const { key, name, folder, content } = item;
+  const sameLocation = current?.name === name && (!folder || current.parents?.includes(folder));
+  const sameContent = !content || current?.appProperties?.maydanDigest === content.digest;
+  if (current && sameLocation && sameContent) return current;
+  const metadata = { name, mimeType: content?.mimeType ?? FOLDER, appProperties: { maydanFormat: 'archive-v1', maydanKey: key, ...(content ? { maydanDigest: content.digest } : {}) } };
+  if (content && !sameContent) return upload(token, metadata, await content.read(), current, folder);
+
+  const params = new URLSearchParams({ fields: FIELDS });
+  destination(params, current, folder);
+  return request(`${FILES}${current ? '/' + encodeURIComponent(current.id) : ''}?${params}`, {
+    method: current ? 'PATCH' : 'POST',
+    headers: { ...headers(token), 'Content-Type': 'application/json; charset=UTF-8' },
+    body: JSON.stringify({ ...metadata, parents: !current && folder ? [folder] : undefined }),
+  }, 30_000, async (response) => await response.json() as DriveFile);
 }
 
 export async function downloadDriveBackup(token: string, file: DriveFile): Promise<Uint8Array> {

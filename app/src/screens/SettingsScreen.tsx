@@ -1,20 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { formatDate } from '../domain/dates';
+import { formatDate, isTime, WEEKDAYS_AR } from '../domain/dates';
 import { addMeeting, deleteMeeting, renameMeeting } from '../domain/records';
 import { shiftName, techTag } from '../domain/shifts';
 import { weeklyGoal } from '../domain/stats';
 import { scheduleOf } from '../domain/worktime';
-import { isTime, WEEKDAYS_AR } from '../domain/dates';
-import { Pressable } from 'react-native';
 import { addDepartment } from '../domain/plan';
 import { addPlace, deletePlace, PLACE_HINT, PLACE_NOUN, placesOf } from '../domain/places';
-import type { PlaceKind } from '../domain/types';
-import type { Settings, Workspace } from '../domain/types';
+import type { PlaceKind, Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
 import { shareBytes, shareText } from '../exporting';
-import { exportBackupZip, pickBackupZip, restoreBackupPhotos } from '../backupFiles';
+import { exportBackupZip, latestBeforeRestore, pickBackupZip, restoreBackupPhotos, saveBeforeRestore } from '../backupFiles';
 import { DriveBackupCard } from '../drive/DriveBackup';
 import type { unpackBackup } from '../domain/backup';
 import { ImportSheet } from '../sheets/ImportSheet';
@@ -81,12 +78,25 @@ export function SettingsScreen() {
       setBackupBusy(false);
     }
   };
-  const confirmRestore = (archive: ReturnType<typeof unpackBackup>) => {
-    confirm('استعادة النسخة ستستبدل بيانات العمل الحالية بالسجلات والصور الموجودة فيها. تبي تكمل؟', () => {
+  const confirmRestore = (archive: ReturnType<typeof unpackBackup>, protectCurrent = false) => {
+    const { workspace, photos } = archive;
+    const current = workState.current;
+    if (!current) return;
+    const counts = [
+      workspace.visits.length + ' زيارة',
+      workspace.attendance.length + ' سجل اجتماع',
+      (workspace.findings?.length ?? 0) + ' متابعة',
+      (workspace.equipment?.length ?? 0) + ' معدة',
+      (workspace.overtime?.length ?? 0) + ' سجل دوام إضافي',
+      workspace.technicians.length + ' فني أو فريق',
+      photos.size + ' صورة',
+    ];
+    const protection = protectCurrent ? '\nبنحفظ نسخة محلية من بياناتك الحالية قبل الاستبدال.' : '';
+    confirm('محتوى النسخة\n' + counts.join(' · ') + '\nبتستبدل بيانات العمل الحالية.' + protection + '\nتبي تكمل؟', () => {
       void runBackup(async () => {
-        const expected = workState.current;
-        if (!expected) return;
-        const restored = await restoreBackupPhotos(archive, () => workState.current === expected);
+        if (workState.current !== current) throw new Error('تغيّرت بيانات العمل. اختر النسخة مرة ثانية.');
+        if (protectCurrent) await saveBeforeRestore(current);
+        const restored = await restoreBackupPhotos(archive, () => workState.current === current);
         store.replaceLive(restored);
         ui.notify('تم استرجاع بيانات العمل والصور');
       });
@@ -352,7 +362,13 @@ export function SettingsScreen() {
         <>
       {mode === 'live' ? (
         <>
-          <DriveBackupCard onRestore={confirmRestore} />
+          <DriveBackupCard onRestore={(archive) => confirmRestore(archive, true)} onLocalRecovery={() => {
+            void runBackup(async () => {
+              const archive = await latestBeforeRestore();
+              if (archive) confirmRestore(archive, true);
+              else ui.notify('ما فيه نسخة محلية قبل الاستعادة.');
+            });
+          }} />
           <SectionTitle title="نسخة احتياطية" sub="احفظ السجلات والصور في ملف ZIP، ثم اختر المجلد السحابي من نافذة المشاركة." />
           <Card>
             <Button testID="export-backup-zip" icon="download" label="حفظ نسخة مضغوطة مع الصور" disabled={backupBusy} onPress={() => { void runBackup(() => exportBackupZip(ws, now.date)); }} />

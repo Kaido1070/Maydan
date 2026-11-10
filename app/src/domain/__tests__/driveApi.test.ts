@@ -1,5 +1,5 @@
 import { fetch } from 'expo/fetch';
-import { downloadDriveBackup, listDriveBackups, uploadDriveBackup } from '../../drive/api';
+import { downloadDriveBackup, listDriveArchive, listDriveBackups, saveDriveArchiveItem, uploadDriveBackup } from '../../drive/api';
 import { BACKUP_LIMIT } from '../backup';
 
 jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
@@ -19,7 +19,7 @@ test('lists only Maydan backup metadata', async () => {
   reply({ files: [file] });
   expect(await listDriveBackups(token)).toEqual([file]);
   const [url, options] = mockedFetch.mock.calls[0];
-  expect(decodeURIComponent(String(url))).toContain("trashed = false and appProperties has { key='maydanFormat' and value='backup-v1' }");
+  expect(new URL(String(url)).searchParams.get('q')).toContain("trashed = false and appProperties has { key='maydanFormat' and value='backup-v1' }");
   expect(options?.headers).toEqual({ Authorization: `Bearer ${token}` });
 });
 
@@ -28,7 +28,7 @@ test('updates only the rolling backup of the current installation', async () => 
   reply(null, session);
   reply(file);
   expect(await uploadDriveBackup(token, device, bytes)).toEqual(file);
-  expect(decodeURIComponent(String(mockedFetch.mock.calls[0][0]))).toContain(`value='${device}'`);
+  expect(new URL(String(mockedFetch.mock.calls[0][0])).searchParams.get('q')).toContain(`value='${device}'`);
   expect(mockedFetch).toHaveBeenNthCalledWith(2, expect.stringContaining(`/files/${file.id}?`), expect.objectContaining({ method: 'PATCH' }));
   expect(mockedFetch).toHaveBeenNthCalledWith(3, session, expect.objectContaining({ method: 'PUT', redirect: 'error', body: bytes.buffer, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/zip' } }));
 });
@@ -45,4 +45,44 @@ test('checks download size before reading and downloads valid archives', async (
   expect(mockedFetch).not.toHaveBeenCalled();
   reply(null);
   expect(await downloadDriveBackup(token, file)).toEqual(bytes);
+});
+
+test('creates a folder under its parent and moves an existing record without creating a duplicate', async () => {
+  const folder = { ...file, name: '2026-11-10 - زيارة', parents: ['month-11'] };
+  reply(folder);
+  await saveDriveArchiveItem(token, { key: 'visit', name: folder.name, folder: 'month-11' });
+  expect(JSON.parse(String(mockedFetch.mock.calls[0][1]?.body))).toMatchObject({ parents: ['month-11'], mimeType: 'application/vnd.google-apps.folder' });
+
+  reply({ ...folder, name: '2026-12-10 - زيارة', parents: ['month-12'] });
+  await saveDriveArchiveItem(token, { key: 'visit', name: '2026-12-10 - زيارة', folder: 'month-12' }, folder);
+  const [url, options] = mockedFetch.mock.calls[1];
+  expect(String(url)).toContain('/files/' + folder.id + '?');
+  expect(new URL(String(url)).searchParams.get('addParents')).toBe('month-12');
+  expect(new URL(String(url)).searchParams.get('removeParents')).toBe('month-11');
+  expect(options?.method).toBe('PATCH');
+});
+
+test('reuses the saved PDF and renders again only when the contents change', async () => {
+  const previous = { ...file, name: 'visit.pdf', parents: ['visit-folder'], appProperties: { maydanDigest: 'current' } };
+  const read = jest.fn(async () => bytes);
+  const item = { key: 'visit-pdf', name: previous.name, folder: 'visit-folder', content: { mimeType: 'application/pdf', digest: 'current', read } };
+  expect(await saveDriveArchiveItem(token, item, previous)).toBe(previous);
+  expect(read).not.toHaveBeenCalled();
+  expect(mockedFetch).not.toHaveBeenCalled();
+
+  reply(null, session);
+  reply(previous);
+  await saveDriveArchiveItem(token, { ...item, content: { ...item.content, digest: 'changed' } }, previous);
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(mockedFetch).toHaveBeenNthCalledWith(1, expect.stringContaining('/files/' + previous.id + '?'), expect.objectContaining({ method: 'PATCH' }));
+});
+
+test('loads the next archive page and keeps the first match for each managed key', async () => {
+  const first = { ...file, appProperties: { maydanKey: 'root' } };
+  reply({ files: [first], nextPageToken: 'next' });
+  reply({ files: [{ ...first, id: 'duplicate' }, { ...file, id: 'record', appProperties: { maydanKey: 'record' } }] });
+  const catalog = await listDriveArchive(token);
+  expect(catalog.get('root')).toEqual(first);
+  expect(catalog.get('record')?.id).toBe('record');
+  expect(new URL(String(mockedFetch.mock.calls[1][0])).searchParams.get('pageToken')).toBe('next');
 });

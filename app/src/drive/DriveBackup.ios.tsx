@@ -10,7 +10,8 @@ import { unpackBackup } from '../domain/backup';
 import type { Workspace } from '../domain/types';
 import { useStore } from '../store';
 import { Button, Card, Checkbox, Row, SectionTitle, Spread, Sub, T } from '../ui/kit';
-import { downloadDriveBackup, DRIVE_SCOPE, listDriveBackups, uploadDriveBackup, type DriveFile } from './api';
+import { downloadDriveBackup, DRIVE_SCOPE, listDriveArchive, listDriveBackups, uploadDriveBackup, type DriveFile } from './api';
+import { driveArchive } from './archiveFiles.ios';
 import type { DriveBackupCardProps } from './DriveBackup';
 
 const CLIENT_ID = config.expo.extra.googleIosClientId;
@@ -28,7 +29,7 @@ function getSdk() {
   return sdkPromise;
 }
 
-type BackupSettings = { automatic: boolean; lastSaved: number; digest: string };
+type BackupSettings = { automatic: boolean; lastSaved: number; digest: string; archiveDigest?: string };
 type Session = { user: User['user']; device: string; settings: BackupSettings };
 const DEFAULT: BackupSettings = { automatic: false, lastSaved: 0, digest: '' };
 
@@ -43,7 +44,7 @@ async function openSession(user: User['user']): Promise<Session> {
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as Partial<BackupSettings>;
-      if (typeof parsed.automatic === 'boolean' && typeof parsed.lastSaved === 'number' && typeof parsed.digest === 'string') settings = { automatic: parsed.automatic, lastSaved: parsed.lastSaved, digest: parsed.digest };
+      if (typeof parsed.automatic === 'boolean' && typeof parsed.lastSaved === 'number' && typeof parsed.digest === 'string') settings = { automatic: parsed.automatic, lastSaved: parsed.lastSaved, digest: parsed.digest, archiveDigest: typeof parsed.archiveDigest === 'string' ? parsed.archiveDigest : '' };
     } catch {
       // A corrupt preference never enables automatic uploads.
     }
@@ -61,6 +62,7 @@ type Controller = {
   toggle: (automatic: boolean) => void;
   save: () => void;
   refresh: () => void;
+  openArchive: () => void;
   restore: (file: DriveFile, done: DriveBackupCardProps['onRestore']) => void;
 };
 const DriveContext = createContext<Controller | null>(null);
@@ -118,17 +120,27 @@ export function DriveBackupProvider({ children }: { children: ReactNode }) {
 
   const saveBackup = useCallback(async (current: Session, automatic: boolean) => {
     const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, JSON.stringify(ws));
-    if (automatic && digest === current.settings.digest) {
+    if (automatic && digest === current.settings.digest && digest === current.settings.archiveDigest) {
       backedUp.current = { account: current.user.id, workspace: ws };
       return;
     }
     const token = await tokenFor(current);
-    const archive = await packWorkspaceBackup(ws);
-    const uploaded = await uploadDriveBackup(token, current.device, archive);
-    await update(current, { ...current.settings, digest, lastSaved: Date.now() });
+    const archive = await driveArchive(token);
+    let settings = current.settings;
+    if (!automatic || digest !== settings.digest) {
+      const uploaded = await uploadDriveBackup(token, current.device, await packWorkspaceBackup(ws), archive.backupFolder);
+      settings = { ...settings, digest, lastSaved: Date.now() };
+      await update(current, settings);
+      setFiles((old) => old ? [uploaded, ...old.filter((item) => item.id !== uploaded.id)].slice(0, 20) : null);
+    }
+    try {
+      await archive.sync(ws);
+    } catch {
+      throw new Error('نسخة الاستعادة محفوظة. تعذر إكمال ملفات العرض في Drive. جرّب «احفظ الآن».');
+    }
+    await update(current, { ...settings, archiveDigest: digest });
     backedUp.current = { account: current.user.id, workspace: ws };
-    setFiles((old) => old ? [uploaded, ...old.filter((item) => item.id !== uploaded.id)].slice(0, 20) : null);
-    setStatus('تم حفظ نسخة العمل والصور في Google Drive.');
+    setStatus('تم حفظ نسخة الاستعادة وتحديث ملفات العرض في Google Drive.');
   }, [tokenFor, update, ws]);
 
   useEffect(() => {
@@ -165,6 +177,11 @@ export function DriveBackupProvider({ children }: { children: ReactNode }) {
     toggle: (automatic) => { if (session) void run(() => update(session, { ...session.settings, automatic })); },
     save: () => { if (session && ready && mode === 'live') void run(() => saveBackup(session, false)); },
     refresh: () => { if (session) void run(async () => setFiles(await listDriveBackups(await tokenFor(session)))); },
+    openArchive: () => { if (session) void run(async () => {
+      const root = (await listDriveArchive(await tokenFor(session), true)).get('root');
+      if (!root) throw new Error('اضغط «احفظ الآن» لإنشاء مجلد ميدان في Drive.');
+      await Linking.openURL('https://drive.google.com/drive/folders/' + encodeURIComponent(root.id));
+    }); },
     restore: (file, done) => { if (session && ready && mode === 'live') void run(async () => {
       const archive = await downloadDriveBackup(await tokenFor(session), file);
       done(unpackBackup(archive));
@@ -173,7 +190,7 @@ export function DriveBackupProvider({ children }: { children: ReactNode }) {
   return <DriveContext.Provider value={actions}>{children}</DriveContext.Provider>;
 }
 
-export function DriveBackupCard({ onRestore }: DriveBackupCardProps) {
+export function DriveBackupCard({ onRestore, onLocalRecovery }: DriveBackupCardProps) {
   const drive = useContext(DriveContext);
   if (!drive) return null;
   return (
@@ -185,11 +202,11 @@ export function DriveBackupCard({ onRestore }: DriveBackupCardProps) {
             <T style={{ fontWeight: '700' }}>{drive.session.user.email}</T>
             <Checkbox label="حفظ تلقائي أثناء استخدام ميدان" checked={drive.session.settings.automatic} disabled={drive.busy} onChange={drive.toggle} />
             <Sub>تُحدّث نسخة هذا الجهاز عند تغير بيانات العمل. الاستعادة من جهاز آخر تكون باختيار نسخة وتأكيدها.</Sub>
-            {drive.session.settings.lastSaved ? <Sub>{'آخر حفظ · ' + formatDate(riyadhNow(new Date(drive.session.settings.lastSaved)).date, { year: true })}</Sub> : null}
+            {drive.session.settings.lastSaved ? <Sub>{'آخر نسخة استعادة · ' + formatDate(riyadhNow(new Date(drive.session.settings.lastSaved)).date, { year: true }) + ' · ' + riyadhNow(new Date(drive.session.settings.lastSaved)).time}</Sub> : null}
             <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
               <Button small label="احفظ الآن" icon="upload" disabled={drive.busy} onPress={drive.save} />
               <Button small variant="secondary" label="عرض النسخ" icon="cloud" disabled={drive.busy} onPress={drive.refresh} />
-              <Button small variant="ghost" label="فتح Drive" onPress={() => { void Linking.openURL('https://drive.google.com/drive/my-drive').catch(() => {}); }} />
+              <Button small variant="ghost" label="مجلد أعمالي في Drive" disabled={drive.busy} onPress={drive.openArchive} />
             </Row>
             {drive.files?.length === 0 ? <Sub style={{ marginTop: 8 }}>ما فيه نسخ محفوظة في هذا الحساب.</Sub> : null}
             {drive.files?.map((file) => (
@@ -201,6 +218,7 @@ export function DriveBackupCard({ onRestore }: DriveBackupCardProps) {
             <Button small variant="ghost" label="فصل الحساب" disabled={drive.busy} onPress={drive.disconnect} />
           </>
         ) : <Button label="ربط Google Drive" icon="cloud" disabled={drive.busy} onPress={drive.connect} />}
+        <Button small variant="ghost" label="استعادة آخر نسخة محلية قبل الاستبدال" disabled={drive.busy} onPress={onLocalRecovery} />
         {drive.busy ? <Sub>جاري العمل مع Google Drive…</Sub> : null}
         {drive.status ? <Sub accessibilityLiveRegion="polite">{drive.status}</Sub> : null}
       </Card>
