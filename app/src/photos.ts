@@ -6,8 +6,9 @@ import { newId } from './domain/records';
 import type { Photo } from './domain/types';
 
 // الصور تنحفظ داخل مساحة التطبيق على الجهاز فقط، بحجم مضغوط.
-const MAX_WIDTH = Platform.OS === 'web' ? 1024 : 1600;
-const QUALITY = Platform.OS === 'web' ? 0.6 : 0.75;
+const MAX_EDGE = Platform.OS === 'web' ? 1024 : 1600;
+const QUALITY = Platform.OS === 'web' ? 0.6 : 0.74;
+const TARGET_BYTES = 500 * 1024;
 
 const DIR = 'maydan-photos';
 
@@ -34,22 +35,48 @@ export async function pickPhotos(source: 'camera' | 'library'): Promise<Photo[]>
   if (result.canceled || !result.assets?.length) return [];
 
   const photos: Photo[] = [];
-  for (const asset of result.assets) {
-    const context = ImageManipulator.manipulate(asset.uri);
-    if (asset.width > MAX_WIDTH) context.resize({ width: MAX_WIDTH });
-    const image = await context.renderAsync();
-    const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: QUALITY, base64: Platform.OS === 'web' });
-    const id = newId('ph');
-    let uri: string;
-    if (Platform.OS === 'web') {
-      uri = 'data:image/jpeg;base64,' + saved.base64;
-    } else {
-      const target = new File(photoDir(), id + '.jpg');
-      await new File(saved.uri).copy(target);
-      // نخزن المسار النسبي: مسار مجلد التطبيق على iOS يتغير بعد التحديثات.
-      uri = DIR + '/' + id + '.jpg';
+  try {
+    for (const asset of result.assets) {
+      const context = ImageManipulator.manipulate(asset.uri);
+      if (Math.max(asset.width, asset.height) > MAX_EDGE) {
+        context.resize(asset.width >= asset.height ? { width: MAX_EDGE } : { height: MAX_EDGE });
+      }
+      const image = await context.renderAsync();
+      const id = newId('ph');
+      try {
+        const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: QUALITY, base64: Platform.OS === 'web' });
+        if (Platform.OS === 'web') {
+          if (!saved.base64) throw new Error('تعذر حفظ الصورة.');
+          photos.push({ id, uri: 'data:image/jpeg;base64,' + saved.base64, takenAt: new Date().toISOString() });
+          continue;
+        }
+        const first = new File(saved.uri);
+        let smaller: File | undefined;
+        const target = new File(photoDir(), id + '.jpg');
+        try {
+          if (first.size > TARGET_BYTES) {
+            const compressed = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.62 });
+            smaller = new File(compressed.uri);
+          }
+          const selected = smaller && smaller.size < first.size ? smaller : first;
+          await selected.move(target);
+          // A relative path survives changes to the iOS app container after an update.
+          photos.push({ id, uri: DIR + '/' + id + '.jpg', takenAt: new Date().toISOString() });
+        } finally {
+          for (const temporary of [first, smaller]) {
+            if (temporary?.uri !== target.uri && temporary?.exists) {
+              try { temporary.delete(); } catch { /* iOS can purge this cache later. */ }
+            }
+          }
+        }
+      } finally {
+        image.release();
+        context.release();
+      }
     }
-    photos.push({ id, uri, takenAt: new Date().toISOString() });
+  } catch (error) {
+    deletePhotoFiles(photos);
+    throw error;
   }
   return photos;
 }

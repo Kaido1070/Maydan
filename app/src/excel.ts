@@ -18,7 +18,7 @@ export function buildTechnicianWorkbook(ws: Workspace): Uint8Array {
   help['!cols'] = [{ wch: 18 }, { wch: 60 }];
   XLSX.utils.book_append_sheet(book, techs, 'الفنيين');
   XLSX.utils.book_append_sheet(book, help, 'تعليمات');
-  return new Uint8Array(XLSX.write(book, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
+  return new Uint8Array(XLSX.write(book, { type: 'array', bookType: 'xlsx', compression: true }) as ArrayBuffer);
 }
 
 /** فك ترميز UTF-8 بدون الاعتماد على TextDecoder (قد لا يتوفر في Hermes). */

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { formatDate } from '../domain/dates';
 import { addMeeting, deleteMeeting, renameMeeting } from '../domain/records';
@@ -14,6 +14,7 @@ import type { Settings, Workspace } from '../domain/types';
 import { previewTechnicianImport, type ImportPreview } from '../domain/importer';
 import { buildTechnicianWorkbook, pickSpreadsheet, readTable, XLSX_MIME, XLSX_UTI } from '../excel';
 import { shareBytes, shareText } from '../exporting';
+import { exportBackupZip, pickBackupZip, restoreBackupPhotos } from '../backupFiles';
 import { ImportSheet } from '../sheets/ImportSheet';
 import { DepartmentPicker } from './DepartmentPicker';
 import { rotationText } from './RosterScreen';
@@ -37,6 +38,13 @@ export function SettingsScreen() {
   const [techSheet, setTechSheet] = useState<string | null>(null);
   const [techDept, setTechDept] = useState<string | null>(ws.departments[0]?.id ?? null);
   const [importText, setImportText] = useState('');
+  const [backupBusy, setBackupBusy] = useState(false);
+  const activeBackup = useRef(false);
+  const workState = useRef<Workspace | null>(null);
+  useEffect(() => {
+    workState.current = mode === 'live' ? ws : null;
+    return () => { workState.current = null; };
+  }, [mode, ws]);
   const [newDept, setNewDept] = useState('');
   const [excel, setExcel] = useState<{ file: string; preview: ImportPreview } | null>(null);
 
@@ -57,6 +65,33 @@ export function SettingsScreen() {
 
   const setSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => apply((c) => ({ ...c, settings: { ...c.settings, [key]: value } }));
   const saved = (message: string) => ui.notify(message);
+
+  const runBackup = async <Result,>(task: () => Promise<Result>): Promise<Result | undefined> => {
+    if (activeBackup.current) return;
+    activeBackup.current = true;
+    setBackupBusy(true);
+    try {
+      return await task();
+    } catch (error) {
+      ui.notify(error instanceof Error ? error.message : 'تعذرت عملية النسخ الاحتياطي');
+    } finally {
+      activeBackup.current = false;
+      setBackupBusy(false);
+    }
+  };
+  const importZip = async () => {
+    const archive = await runBackup(pickBackupZip);
+    if (!archive) return;
+    confirm('استعادة النسخة ستستبدل بيانات العمل الحالية بالسجلات والصور الموجودة فيها. تبي تكمل؟', () => {
+      void runBackup(async () => {
+        const expected = workState.current;
+        if (!expected) return;
+        const restored = await restoreBackupPhotos(archive, () => workState.current === expected);
+        store.replaceLive(restored);
+        ui.notify('تم استرجاع بيانات العمل والصور');
+      });
+    });
+  };
 
   const importLive = () => {
     try {
@@ -118,7 +153,7 @@ export function SettingsScreen() {
       <Card style={{ paddingVertical: 2 }}>
         <MenuRow first testID="settings-goals" icon="target" title="الأهداف ودوامي" sub={'\u2066' + ws.settings.dailyVisitGoal + '\u2069 زيارات في اليوم · ' + scheduleOf(ws.settings).days.length + ' أيام دوام'} onPress={() => ui.go('settings', { section: 'goals' })} />
         <MenuRow testID="settings-appearance" icon="moon" title="المظهر" sub={(store.theme === 'dark' ? 'داكن' : 'فاتح') + ' · الشريط السفلي ' + (store.prefs.glass ? 'زجاجي' : 'عادي')} onPress={() => ui.go('settings', { section: 'appearance' })} />
-        {mode === 'live' ? <MenuRow testID="settings-backup" icon="shield" title="نسخة احتياطية" sub="صدّر بياناتك واحفظها" onPress={() => ui.go('settings', { section: 'backup' })} /> : null}
+        {mode === 'live' ? <MenuRow testID="settings-backup" icon="shield" title="نسخة احتياطية" sub="احفظ سجلاتك وصورك في ملف مضغوط" onPress={() => ui.go('settings', { section: 'backup' })} /> : null}
       </Card>
 
         </>
@@ -312,7 +347,13 @@ export function SettingsScreen() {
         <>
       {mode === 'live' ? (
         <>
-          <SectionTitle title="نسخة احتياطية" sub="بيانات العمل محفوظة على الجهاز. صدّر نسخة بشكل دوري." />
+          <SectionTitle title="نسخة احتياطية" sub="احفظ السجلات والصور في ملف ZIP، ثم اختر المجلد السحابي من نافذة المشاركة." />
+          <Card>
+            <Button testID="export-backup-zip" icon="download" label="حفظ نسخة مضغوطة مع الصور" disabled={backupBusy} onPress={() => { void runBackup(() => exportBackupZip(ws, now.date)); }} />
+            <Button testID="import-backup-zip" style={{ marginTop: 8 }} variant="secondary" icon="upload" label="استعادة نسخة ZIP" disabled={backupBusy} onPress={() => { void importZip(); }} />
+            <Sub style={{ marginTop: 10 }}>تقدر تفتح النسخة من السحابة على جهاز ثاني وتستعيدها هنا.</Sub>
+          </Card>
+          <SectionTitle title="نسخة JSON" sub="للتوافق مع النسخ القديمة. تحتوي على بيانات السجلات." />
           <Card>
             <Button
               variant="secondary"
@@ -328,7 +369,7 @@ export function SettingsScreen() {
               placeholderTextColor={C.placeholder}
               style={[s.input, { minHeight: 80, marginTop: 10, textAlignVertical: 'top', paddingTop: 8, fontSize: 12 }]}
             />
-            <Button style={{ marginTop: 8 }} variant="secondary" label="استيراد" disabled={!importText.trim()} onPress={importLive} />
+            <Button style={{ marginTop: 8 }} variant="secondary" label="استيراد" disabled={backupBusy || !importText.trim()} onPress={importLive} />
           </Card>
           <SectionTitle title="منطقة الخطر" sub="صدّر نسخة احتياطية قبل أي مسح." />
           <Card>

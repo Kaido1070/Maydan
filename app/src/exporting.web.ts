@@ -68,7 +68,7 @@ export async function buildPdf(html: string): Promise<Blob> {
     const body = doc.body;
     body.style.background = '#ffffff';
     const canvas = await html2canvas(body, { scale: 2, backgroundColor: '#ffffff', windowWidth: 794, width: 794, height: body.scrollHeight });
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait', compress: true });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const pxPerPage = Math.floor((canvas.width * pageHeight) / pageWidth);
