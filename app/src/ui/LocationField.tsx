@@ -33,6 +33,8 @@ export function LocationField({
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [picking, setPicking] = useState(false);
   const [pin, setPin] = useState<Coords>();
+  const [mapCenter, setMapCenter] = useState<Coords>();
+  const mapRequest = useRef(0);
   const search = useRef<(() => void) | null>(null);
   const requestId = useRef(0);
   const address = useRef(value);
@@ -42,6 +44,7 @@ export function LocationField({
 
   useEffect(() => () => {
     requestId.current += 1;
+    mapRequest.current += 1;
     search.current?.();
   }, []);
 
@@ -75,9 +78,42 @@ export function LocationField({
     onCoords(found);
     onMapUrl(undefined);
   };
+  const stopMapCenter = () => { mapRequest.current += 1; };
+  const closeMap = () => {
+    stopMapCenter();
+    setPicking(false);
+  };
+  const focusMap = async (askForPermission: boolean) => {
+    const id = ++mapRequest.current;
+    const started = Date.now();
+    if (askForPermission) setNote(null);
+    try {
+      const permission = askForPermission ? await Location.requestForegroundPermissionsAsync() : await Location.getForegroundPermissionsAsync();
+      if (id !== mapRequest.current) return;
+      if (!permission.granted) {
+        if (askForPermission) setNote('إذن الموقع غير متاح. تقدر تختار النقطة يدويًا من الخريطة.');
+        return;
+      }
+      const cached = await Location.getLastKnownPositionAsync({ maxAge: 5 * 60_000, requiredAccuracy: 3000 });
+      const position = cached ?? (id === mapRequest.current ? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }) : null);
+      if (id !== mapRequest.current) return;
+      if (position && (askForPermission || Date.now() - started < 8000)) {
+        setMapCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
+      } else if (askForPermission) setNote('تعذر تحديد موقعك التقريبي. اختر النقطة من الخريطة.');
+    } catch {
+      if (askForPermission && id === mapRequest.current) setNote('تعذر تحديد موقعك التقريبي. اختر النقطة من الخريطة.');
+    }
+  };
+  const openMap = () => {
+    resetSearch();
+    setPin(coords);
+    setMapCenter(undefined);
+    setPicking(true);
+    void focusMap(false);
+  };
   const typeCoords = (input: string) => {
     resetSearch();
-    setPicking(false);
+    closeMap();
     const found = parseCoords(input);
     if (found) {
       selectCoords(found, /^https?:/i.test(input.trim()) ? formatCoords(found) : input);
@@ -216,11 +252,7 @@ export function LocationField({
       <Row gap={8} style={{ marginTop: -4, flexWrap: 'wrap' }}>
         <Button testID="locate-me" small variant="secondary" icon="crosshair" label={busy ? 'جاري التحديد…' : coords ? 'حدّث من موقعي' : 'موقعي الحالي'} disabled={busy || picking} onPress={locate} />
         {Platform.OS === 'ios' && !picking ? (
-          <Button testID="location-map-pick" small variant="secondary" icon="map-pin" label="حدد على الخريطة" onPress={() => {
-            resetSearch();
-            setPin(coords);
-            setPicking(true);
-          }} />
+          <Button testID="location-map-pick" small variant="secondary" icon="map-pin" label="حدد على الخريطة" onPress={openMap} />
         ) : null}
         {busy ? <Button small variant="ghost" label="أوقف البحث" onPress={resetSearch} /> : null}
       </Row>
@@ -239,16 +271,21 @@ export function LocationField({
       {picking ? (
         <View style={{ marginTop: 8, gap: 8 }}>
           <Sub>حرّك الخريطة أو كبّرها ثم اضغط على المكان المطلوب وثبّت النقطة.</Sub>
-          <MapPreview coords={coords} selected={pin} onPick={setPin} />
+          <MapPreview coords={coords} selected={pin} center={mapCenter} onInteract={stopMapCenter} onPick={(point) => {
+            stopMapCenter();
+            setPin(point);
+          }} />
+          {mapCenter ? <Sub>النقطة البترولية توضح موقعك التقريبي.</Sub> : null}
           {pin ? <T style={{ textAlign: 'left', writingDirection: 'ltr' }}>{formatCoords(pin)}</T> : null}
           <Row gap={8} style={{ flexWrap: 'wrap' }}>
             <Button testID="location-map-confirm" small icon="check" label="ثبّت النقطة" disabled={!pin} onPress={() => {
               if (!pin) return;
               selectCoords(pin);
-              setPicking(false);
+              closeMap();
               setNote('تم تثبيت النقطة على الخريطة.');
             }} />
-            <Button small variant="ghost" label="إلغاء" onPress={() => setPicking(false)} />
+            <Button small variant="secondary" icon="crosshair" label="قرّب من موقعي" onPress={() => { void focusMap(true); }} />
+            <Button small variant="ghost" label="إلغاء" onPress={closeMap} />
           </Row>
         </View>
       ) : null}
@@ -267,7 +304,7 @@ export function LocationField({
               label="إزالة"
               onPress={() => {
                 resetSearch();
-                setPicking(false);
+                closeMap();
                 clearAutomaticAddress();
                 setShown(undefined);
                 setText('');

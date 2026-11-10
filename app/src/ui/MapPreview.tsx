@@ -8,6 +8,8 @@ import { C } from './theme';
 export function MapPreview({ coords }: {
   coords?: Coords;
   selected?: Coords;
+  center?: Coords;
+  onInteract?: () => void;
   onPick?: (coords: Coords) => void;
 }) {
   if (!coords) return null;
