@@ -160,7 +160,7 @@ export function DepartmentSheet({ departmentId, onClose, onSaved }: { department
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: on }}
                 onPress={() => setRotation({ ...rotation, workDays: on ? rotation.workDays.filter((d) => d !== day) : [...rotation.workDays, day].sort() })}
-                style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
+                style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9, backgroundColor: on ? C.brand : C.white, borderWidth: 1, borderColor: on ? C.brand : C.line }}
               >
                 <T style={{ color: on ? C.onAccent : C.ink, fontSize: 12 }}>{name}</T>
               </Touch>

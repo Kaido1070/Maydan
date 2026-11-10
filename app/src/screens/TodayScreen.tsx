@@ -61,7 +61,7 @@ export function TodayScreen() {
       <View style={styles.hero}>
         <Spread style={{ alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
-            <T style={{ color: '#d9ccff', fontSize: 13 }}>{greeting}</T>
+            <T style={{ color: '#d6e7df', fontSize: 13 }}>{greeting}</T>
             <T style={{ color: '#fff', fontSize: 13, opacity: 0.8 }}>{formatDate(now.date, { weekday: true })}</T>
           </View>
           <View testID="hero-streak" style={styles.badge}>
@@ -73,7 +73,7 @@ export function TodayScreen() {
             <T testID="hero-progress" style={{ color: '#fff', fontSize: 40, fontWeight: '700', lineHeight: 50 }}>
               {today.workDay ? '⁦' + today.visits + ' / ' + today.goal + '⁩' : String(today.visits)}
             </T>
-            <T style={{ color: '#e9e1ff', fontSize: 14 }}>{today.workDay ? 'زيارات اليوم' : 'زيارات في يوم إجازة'}</T>
+            <T style={{ color: '#e4eee8', fontSize: 14 }}>{today.workDay ? 'زيارات اليوم' : 'زيارات في يوم إجازة'}</T>
           </View>
           <T style={{ fontSize: 40, lineHeight: 50 }}>{goalMet ? '🏆' : today.workDay ? '' : '🌴'}</T>
         </Spread>
@@ -85,7 +85,7 @@ export function TodayScreen() {
             <T style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{'⁦' + week.visits + ' / ' + week.goal + '⁩ زيارة'}</T>
           </Spread>
           <Progress value={week.visits} max={week.goal} color="#ffd27a" track="#ffffff2e" height={8} />
-          <T style={{ color: '#d9ccff', fontSize: 12 }}>{'⭐ مستوى ' + xp.level + ' · ⁦' + xp.levelXp + '/100 XP⁩'}</T>
+          <T style={{ color: '#d6e7df', fontSize: 12 }}>{'⭐ مستوى ' + xp.level + ' · ⁦' + xp.levelXp + '/100 XP⁩'}</T>
         </View>
       </View>
 

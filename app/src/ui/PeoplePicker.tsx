@@ -143,7 +143,7 @@ export function PeoplePicker({
                   accessibilityState={{ selected: active }}
                   feedback="select"
                   onPress={() => onDepartment(item.id)}
-                  style={{ paddingHorizontal: 13, minHeight: 36, justifyContent: 'center', borderRadius: 99, borderWidth: 1, borderColor: active ? C.purple : C.line, backgroundColor: active ? C.purple : C.white }}
+                  style={{ paddingHorizontal: 13, minHeight: 36, justifyContent: 'center', borderRadius: 99, borderWidth: 1, borderColor: active ? C.brand : C.line, backgroundColor: active ? C.brand : C.white }}
                 >
                   <T style={{ fontSize: 14, fontWeight: '600', color: active ? C.onAccent : C.ink }}>{item.name}</T>
                 </Touch>

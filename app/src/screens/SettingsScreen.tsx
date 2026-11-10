@@ -79,7 +79,7 @@ export function SettingsScreen() {
         <Spread>
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: '800', fontSize: 16 }}>ميدان</T>
-            <Sub testID="app-version">{'الإصدار ' + versionLabel()}</Sub>
+            <T testID="app-version" style={{ color: C.link, fontWeight: '700', fontSize: 14 }}>{'الإصدار ' + versionLabel()}</T>
             <Sub>{CHANGELOG[0].title + ' · ' + formatDate(CHANGELOG[0].date, { year: true })}</Sub>
           </View>
           <Button small variant="secondary" icon="list" label="سجل التحديثات" testID="open-changelog" onPress={ui.openChangelog} />
@@ -452,7 +452,7 @@ function WorkScheduleCard() {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
               onPress={() => save({ days: on ? schedule.days.filter((d) => d !== day) : [...schedule.days, day].sort() })}
-              style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.purple : C.white, borderWidth: 1, borderColor: on ? C.purple : C.line }}
+              style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.brand : C.white, borderWidth: 1, borderColor: on ? C.brand : C.line }}
             >
               <T style={{ color: on ? C.onAccent : C.ink, fontSize: 14 }}>{name}</T>
             </Touch>
