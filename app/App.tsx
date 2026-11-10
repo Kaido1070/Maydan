@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Platform, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FollowScreen, OvertimeSheet } from './src/screens/FollowScreen';
 import { MeetingsScreen } from './src/screens/MeetingsScreen';
@@ -20,6 +19,7 @@ import { MeetingSheet, MeetingTarget } from './src/sheets/MeetingSheet';
 import { StoreProvider, useStore } from './src/store';
 import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
 import { alpha, BLUR_LEVELS, SPACE, themed } from './src/ui/theme';
+import { hasNativeTabBar, NativeTabBar } from './src/ui/NativeTabBar';
 import { useAppFonts } from './src/ui/fonts';
 import { SettingsSection, Tab, Ui, UiContext } from './src/ui/ui';
 import { APP_VERSION, Release, releasesSince } from './src/version';
@@ -27,19 +27,19 @@ import { dailyTasks } from './src/domain/daily';
 import { weekProgress, xpSummary } from './src/domain/stats';
 import { haptic, Touch } from './src/ui/touch';
 
-/** iOS 26 وأحدث: زجاج النظام السائل. قبله: ضبابية النظام. */
-const LIQUID = Platform.OS === 'ios' && isLiquidGlassAvailable();
-
 /** آخر إصدار شاف المستخدم نافذة «الجديد» حقه. */
 export const SEEN_VERSION_KEY = 'maydan-seen-version';
 
-const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: 'day', label: 'اليوم', icon: 'grid' },
-  { id: 'visits', label: 'الزيارات', icon: 'map-pin' },
-  { id: 'meetings', label: 'الاجتماعات', icon: 'users' },
-  { id: 'follow', label: 'المتابعة', icon: 'flag' },
-  { id: 'reports', label: 'التقارير', icon: 'bar-chart-2' },
-];
+const TABS = [
+  { id: 'day', label: 'اليوم', icon: 'grid', symbol: 'square.grid.2x2' },
+  { id: 'visits', label: 'الزيارات', icon: 'map-pin', symbol: 'mappin.circle' },
+  { id: 'meetings', label: 'الاجتماعات', icon: 'users', symbol: 'person.2' },
+  { id: 'follow', label: 'المتابعة', icon: 'flag', symbol: 'flag' },
+  { id: 'reports', label: 'التقارير', icon: 'bar-chart-2', symbol: 'chart.bar' },
+] as const satisfies readonly { id: Tab; label: string; icon: IconName; symbol: string }[];
+
+type MainTab = typeof TABS[number]['id'];
+const NATIVE_TABS = TABS.map(({ id, label, symbol }) => ({ id, title: label, symbol }));
 
 const TITLES: Record<Tab, string> = {
   day: 'مهام اليوم',
@@ -54,13 +54,13 @@ const TITLES: Record<Tab, string> = {
 function Shell() {
   const insets = useSafeAreaInsets();
   // الشريط السفلي العائم يختفي لما تنزل ويرجع لما تطلع (مثل شريط النظام في iOS 26).
-  const barShift = useRef(new Animated.Value(0)).current;
+  const [barShift] = useState(() => new Animated.Value(0));
   const barState = useRef({ y: 0, hidden: false });
-  const setBarHidden = (hidden: boolean) => {
+  const setBarHidden = useCallback((hidden: boolean) => {
     if (barState.current.hidden === hidden) return;
     barState.current.hidden = hidden;
     Animated.timing(barShift, { toValue: hidden ? 1 : 0, duration: 220, useNativeDriver: Platform.OS !== 'web' }).start();
-  };
+  }, [barShift]);
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     const y = contentOffset.y;
@@ -73,6 +73,7 @@ function Shell() {
   };
   const { mode, ready, ws, now, prefs, theme } = useStore();
   const [tab, setTab] = useState<Tab>('day');
+  const [mainTab, setMainTab] = useState<MainTab>('day');
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>(null);
   const [rosterDate, setRosterDate] = useState<string | null>(null);
@@ -108,6 +109,8 @@ function Shell() {
         setFocusMeetingId(options?.meetingId ?? null);
         setSettingsSection(next === 'settings' ? options?.section ?? null : null);
         setTab(next);
+        const primary = TABS.find((item) => item.id === next);
+        if (primary) setMainTab(primary.id);
         setBarHidden(false);
         scroll.current?.scrollTo({ y: 0, animated: false });
       },
@@ -138,7 +141,7 @@ function Shell() {
       rosterDate,
       setRosterDate,
     }),
-    [tab, departmentId, rosterDate, focusMeetingId, settingsSection],
+    [tab, departmentId, rosterDate, focusMeetingId, settingsSection, setBarHidden],
   );
 
   // احتفالات الإنجاز: مستوى جديد، هدف الأسبوع، وكل مهام اليوم.
@@ -203,7 +206,10 @@ function Shell() {
           {ready ? <Screen /> : null}
         </ScrollView>
 
-        <TabBar glassBottom={Math.max(insets.bottom, 8)} shift={barShift}>
+        <TabBar glassBottom={Math.max(insets.bottom, 8)} shift={barShift} selection={mainTab} onSelect={(id) => {
+          haptic.select();
+          ui.go(id);
+        }}>
           {TABS.map((item) => {
             const active = item.id === tab;
             return (
@@ -286,8 +292,14 @@ function Shell() {
   );
 }
 
-/** الشريط السفلي: زجاجي عائم (بدرجة ضبابية من الإعدادات) أو عادي ثابت. */
-function TabBar({ children, glassBottom, shift }: { children: React.ReactNode; glassBottom: number; shift: Animated.Value }) {
+/** Use the iOS tab bar directly; older systems retain the configurable blur. */
+function TabBar({ children, glassBottom, shift, selection, onSelect }: {
+  children: React.ReactNode;
+  glassBottom: number;
+  shift: Animated.Value;
+  selection: MainTab;
+  onSelect: (id: MainTab) => void;
+}) {
   const { prefs, theme } = useStore();
   if (!prefs.glass) {
     return (
@@ -296,27 +308,35 @@ function TabBar({ children, glassBottom, shift }: { children: React.ReactNode; g
       </View>
     );
   }
-  const level = BLUR_LEVELS[prefs.blur] ?? BLUR_LEVELS[2];
-  const frame = [styles.tabbarGlass, { borderColor: alpha(theme === 'dark' ? '#ffffff' : '#ffffff', theme === 'dark' ? 0.14 : 0.7) }];
-  const tint = { ...fill, backgroundColor: alpha(C.white, level.tint) };
-  const slide = { transform: [{ translateY: shift.interpolate({ inputRange: [0, 1], outputRange: [0, 110 + glassBottom] }) }], opacity: shift.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) };
-  if (LIQUID) {
+  const transform = [{ translateY: shift.interpolate({ inputRange: [0, 1], outputRange: [0, 110 + glassBottom] }) }];
+  if (hasNativeTabBar) {
     return (
-      <Animated.View testID="tabbar-wrap" style={[styles.tabbarWrap, { bottom: glassBottom }, slide]}>
-      <GlassView testID="tabbar-glass" glassEffectStyle={prefs.blur < 2 ? 'clear' : 'regular'} colorScheme={theme} isInteractive style={frame} accessibilityRole="tablist">
-        <View pointerEvents="none" style={{ ...fill, backgroundColor: alpha(C.white, level.tint * 0.5) }} />
-        {children}
-      </GlassView>
+      <Animated.View pointerEvents="box-none" testID="tabbar-wrap" style={[styles.nativeTabbarWrap, { height: 82 + glassBottom, transform }]}>
+        <NativeTabBar
+          testID="tabbar-glass"
+          style={{ flex: 1 }}
+          items={NATIVE_TABS}
+          selection={selection}
+          colorScheme={theme}
+          selectionColor={C.link}
+          onTabSelect={({ nativeEvent }) => {
+            const selected = TABS.find((item) => item.id === nativeEvent.id);
+            if (selected) onSelect(selected.id);
+          }}
+        />
       </Animated.View>
     );
   }
+  const level = BLUR_LEVELS[prefs.blur] ?? BLUR_LEVELS[2];
+  const borderColor = alpha('#ffffff', theme === 'dark' ? 0.14 : 0.7);
+  const opacity = shift.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   return (
-    <Animated.View testID="tabbar-wrap" style={[styles.tabbarWrap, { bottom: glassBottom }, slide]}>
-    <View testID="tabbar-glass" style={[frame, styles.tabbarShadow]} accessibilityRole="tablist">
-      <BlurView pointerEvents="none" intensity={level.intensity} tint={theme === 'dark' ? 'dark' : 'light'} style={fill} />
-      <View pointerEvents="none" style={tint} />
-      {children}
-    </View>
+    <Animated.View testID="tabbar-wrap" style={[styles.tabbarWrap, { bottom: glassBottom, transform, opacity }]}>
+      <View testID="tabbar-glass" style={[styles.tabbarGlass, styles.tabbarShadow, { borderColor }]} accessibilityRole="tablist">
+        <BlurView pointerEvents="none" intensity={level.intensity} tint={theme === 'dark' ? 'dark' : 'light'} style={fill} />
+        <View pointerEvents="none" style={{ ...fill, backgroundColor: alpha(C.white, level.tint) }} />
+        {children}
+      </View>
     </Animated.View>
   );
 }
@@ -355,6 +375,7 @@ const styles = themed(() => ({
   dot: { width: 7, height: 7, borderRadius: 4 },
   gear: { width: 36, height: 36, borderRadius: 12, backgroundColor: C.track, alignItems: 'center', justifyContent: 'center' },
   tabbarWrap: { position: 'absolute', left: 16, right: 16 },
+  nativeTabbarWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   tabbarGlass: { flexDirection: 'row', borderRadius: 30, paddingVertical: 7, paddingHorizontal: 4, overflow: 'hidden', borderWidth: 1 },
   tabbarShadow: { shadowColor: C.night, shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
   tabbar: { flexDirection: 'row', backgroundColor: C.white, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 6 },
