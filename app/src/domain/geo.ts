@@ -13,11 +13,12 @@ const NUM = '(-?\\d{1,3}\\.\\d{3,})';
  */
 export function parseCoords(text: string): Coords | null {
   const value = normalizeDigits(text).trim();
+  const decimal = '(-?\\d{1,3}(?:\\.\\d+)?)';
   const patterns = [
     new RegExp('!3d' + NUM + '!4d' + NUM),
-    new RegExp('[?&](?:q|query|ll|destination|center)=' + NUM + '(?:,|%2C)\\s*' + NUM),
+    new RegExp('[?&](?:q|query|ll|destination|center)=' + decimal + '(?:,|%2C)\\s*' + decimal + '(?=&|#|$)'),
     new RegExp('@' + NUM + ',' + NUM),
-    new RegExp('^' + NUM + '\\s*[,،\\s]\\s*' + NUM + '$'),
+    new RegExp('^' + decimal + '\\s*[,،\\s]\\s*' + decimal + '$'),
   ];
   for (const pattern of patterns) {
     const match = value.match(pattern);

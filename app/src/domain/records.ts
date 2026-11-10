@@ -71,8 +71,9 @@ export function validateVisit(ws: Workspace, input: VisitInput, today: string): 
   if (!isDateKey(input.date)) return 'التاريخ غير صحيح';
   if (input.date > today) return 'ما يمكن تسجيل زيارة بتاريخ قادم';
   if (!isTime(input.time)) return 'اكتب الوقت بصيغة 24 ساعة مثل 09:30';
-  if (!clean(input.workType) && !clean(input.location) && !input.site.trim()) return 'اكتب نوع المهمة أو الموقع';
-  if (input.target === 'equipment' && !clean(input.location)) return 'اكتب اسم المعدة أو موقعها';
+  const hasLocation = !!(clean(input.location) || input.coords || clean(input.mapUrl));
+  if (!clean(input.workType) && !hasLocation && !input.site.trim()) return 'اكتب نوع المهمة أو الموقع';
+  if (input.target === 'equipment' && !hasLocation) return 'اكتب اسم المعدة أو موقعها';
   if (!free && !input.technicianIds.length) return 'حدد فنيًا واحدًا على الأقل';
   return null;
 }
