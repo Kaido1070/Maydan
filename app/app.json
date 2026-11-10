@@ -2,7 +2,7 @@
   "expo": {
     "name": "ميدان",
     "slug": "maydan",
-    "version": "1.7.5",
+    "version": "1.7.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -61,6 +61,7 @@
     "scheme": "maydan",
     "backgroundColor": "#182524",
     "extra": {
+      "googleIosClientId": "905840548039-ha1nah1dt1ir28ngh627udbdpbbkvof9.apps.googleusercontent.com",
       "supportsRTL": true,
       "forcesRTL": true
     }

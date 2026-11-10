@@ -17,6 +17,7 @@ import { SlotSheet, SlotTarget, TechnicianShiftSheet } from './src/sheets/ShiftS
 import { VisitSheet, VisitTarget } from './src/sheets/VisitSheet';
 import { MeetingSheet, MeetingTarget } from './src/sheets/MeetingSheet';
 import { StoreProvider, useStore } from './src/store';
+import { DriveBackupProvider } from './src/drive/DriveBackup';
 import { AppText as Text, C, Icon, IconName } from './src/ui/kit';
 import { alpha, BLUR_LEVELS, SPACE, themed } from './src/ui/theme';
 import { hasNativeTabBar, NativeTabBar } from './src/ui/NativeTabBar';
@@ -352,7 +353,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StoreProvider>
-        <Shell />
+        <DriveBackupProvider><Shell /></DriveBackupProvider>
       </StoreProvider>
     </SafeAreaProvider>
   );
