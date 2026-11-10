@@ -173,7 +173,7 @@ export function SettingsScreen() {
 
         </>
       ) : (
-        <Touch testID="settings-back" accessibilityRole="button" feedback="select" onPress={() => ui.go('settings')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 4 }}>
+        <Touch testID="settings-back" accessibilityRole="button" feedback="select" onPress={() => ui.go('settings')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 8 }}>
           <Icon name="chevron-right" size={18} color={C.link} />
           <T style={{ color: C.link, fontWeight: '700' }}>الإعدادات</T>
         </Touch>
@@ -214,13 +214,13 @@ export function SettingsScreen() {
             />
           </Card>
           <Card>
-            <Spread>
+            <Touch accessibilityRole="switch" accessibilityState={{ checked: store.prefs.glass }} feedback="select" scaleTo={0.99} onPress={() => store.setPrefs({ glass: !store.prefs.glass })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}>
               <View style={{ flex: 1 }}>
                 <T style={{ fontWeight: '700' }}>الشريط السفلي الزجاجي</T>
                 <Sub>عائم وشفاف فوق المحتوى. إذا طفيته يرجع شريط عادي ثابت.</Sub>
               </View>
               <Checkbox testID="pref-glass" label="الشريط السفلي الزجاجي" checked={store.prefs.glass} onChange={(glass) => store.setPrefs({ glass })} />
-            </Spread>
+            </Touch>
             {hasNativeTabBar ? (
               <Sub style={{ marginTop: 8 }}>iOS يضبط شفافية الشريط الزجاجي حسب إعدادات الجهاز والمحتوى خلفه.</Sub>
             ) : (
@@ -522,7 +522,7 @@ function WorkScheduleCard() {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
               onPress={() => save({ days: on ? schedule.days.filter((d) => d !== day) : [...schedule.days, day].sort() })}
-              style={{ paddingHorizontal: 12, minHeight: 40, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.brand : C.white, borderWidth: 1, borderColor: on ? C.brand : C.line }}
+              style={{ paddingHorizontal: 12, minHeight: 44, justifyContent: 'center', borderRadius: 10, backgroundColor: on ? C.brand : C.white, borderWidth: 1, borderColor: on ? C.brand : C.line }}
             >
               <T style={{ color: on ? C.onAccent : C.ink, fontSize: 14 }}>{name}</T>
             </Touch>
